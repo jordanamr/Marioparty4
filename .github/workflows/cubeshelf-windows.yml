@@ -43,7 +43,7 @@ jobs:
           submodules: recursive
 
       - name: Apply PartyBoard dependency patches
-        shell: pwsh
+        shell: bash
         run: |
           git -C extern/musyx apply --check ../../patches/musyx-partyboard.patch
           git -C extern/musyx apply ../../patches/musyx-partyboard.patch

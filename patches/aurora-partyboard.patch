@@ -617,20 +617,10 @@ index 863ecb8..c2b0663 100644
 diff --git a/lib/dolphin/mtx/mtx.c b/lib/dolphin/mtx/mtx.c
 --- a/lib/dolphin/mtx/mtx.c
 +++ b/lib/dolphin/mtx/mtx.c
-@@ -402,12 +402,20 @@
-   dst[2][3] = (src[2][3] * zS);
- }
-
-+#ifdef PARTYBOARD_ROTATION_MATH
-+void PartyBoard_RotationSinCos(float radians, float* sine, float* cosine);
-+#endif
-+
- void C_MTXRotRad(Mtx m, char axis, f32 rad) {
-   f32 sinA;
-   f32 cosA;
-
+@@ -409,5 +409,10 @@ void C_MTXRotRad(Mtx m, char axis, f32 rad) {
    assert(m && "MTXRotRad():  NULL MtxPtr 'm' ");
 +#ifdef PARTYBOARD_ROTATION_MATH
++  extern void PartyBoard_RotationSinCos(float radians, float* sine, float* cosine);
 +  PartyBoard_RotationSinCos(rad, &sinA, &cosA);
 +#else
    sinA = sinf(rad);
