@@ -135,6 +135,13 @@ jobs:
 
           Write-Host "Offline and online launchers are ready."
 
+      - name: Desktop matrix rotation tests
+        shell: pwsh
+        run: |
+          cmake --build build/x-windows-ci-msvc --target rotation_math_test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./build/x-windows-ci-msvc/tests/rotation_math_test.exe
+
       - name: Engine self-tests
         shell: pwsh
         # The launcher self-test was, until now, the only thing between a build

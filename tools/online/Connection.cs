@@ -91,7 +91,9 @@ static class Wire {
         var ssl=new SslStream(transport,false,(s,c,ch,e)=>c!=null && Equal(Hash(c.GetRawCertData()).Take(invite.Fingerprint.Length).ToArray(),invite.Fingerprint));
         try {
             ssl.ReadTimeout=8000; ssl.WriteTimeout=8000;
-            ssl.AuthenticateAsClient("PartyBoard session",null,SslProtocols.Tls12,false);
+            // TLS sends this as a DNS hostname in SNI. The invitation pins the
+            // certificate, so no DNS lookup or public CA is involved.
+            ssl.AuthenticateAsClient("partyboard.invalid",null,SslProtocols.Tls12,false);
             byte[] hello=Encoding.ASCII.GetBytes("PBAUTO3\n").Concat(Hash(invite.Token)).Concat(build).Concat(new[]{channel}).Concat(clientId).ToArray();
             ssl.Write(hello); ssl.Flush();
             byte ack=Read(ssl,1)[0];

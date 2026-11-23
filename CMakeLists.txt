@@ -199,6 +199,29 @@ elseif (MSVC)
 endif ()
 
 add_subdirectory(extern/aurora EXCLUDE_FROM_ALL)
+
+# libc sinf/cosf differ by a bit on Windows and Linux. Rotations are inputs
+# to movement, so a tiny difference eventually splits the simulation.
+if (WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(msl_math src/MSL_C.PPCEABI.bare.H)
+    add_library(partyboard_rotation STATIC src/port/rotation_math.c
+        ${msl_math}/k_sin.c ${msl_math}/k_cos.c
+        ${msl_math}/e_rem_pio2.c ${msl_math}/k_rem_pio2.c)
+    target_include_directories(partyboard_rotation PRIVATE include)
+    set(rotation_adapter "${CMAKE_CURRENT_SOURCE_DIR}/include/port/rotation_kernels.h")
+    if (MSVC)
+        target_compile_options(partyboard_rotation PRIVATE "/FI${rotation_adapter}" /fp:strict)
+    else ()
+        target_compile_options(partyboard_rotation PRIVATE -include "${rotation_adapter}"
+            -fno-strict-aliasing -ffp-contract=off)
+    endif ()
+    if (CMAKE_C_BYTE_ORDER STREQUAL "BIG_ENDIAN")
+        target_compile_definitions(partyboard_rotation PRIVATE PB_BIG_ENDIAN)
+    endif ()
+    set_target_properties(partyboard_rotation PROPERTIES POSITION_INDEPENDENT_CODE ON C_VISIBILITY_PRESET hidden)
+    target_compile_definitions(aurora_mtx PRIVATE PARTYBOARD_ROTATION_MATH)
+    target_link_libraries(aurora_mtx PRIVATE partyboard_rotation)
+endif ()
 add_subdirectory(extern/musyx EXCLUDE_FROM_ALL)
 # MusyX carries the bank lifetime diagnostic's hooks, so it needs the port
 # header that declares them. Added from here rather than inside the submodule so
@@ -782,3 +805,12 @@ target_include_directories(widescreen_fit_test PRIVATE include)
 set_target_properties(online_invitation_test cubeshelf_social_test touch_controls_test disc_version_test launch_args_test app_update_test widescreen_fit_test PROPERTIES
         CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests)
 add_custom_target(online_tests DEPENDS online_invitation_test cubeshelf_social_test touch_controls_test disc_version_test launch_args_test app_update_test widescreen_fit_test)
+if (TARGET partyboard_rotation)
+    add_executable(rotation_math_test EXCLUDE_FROM_ALL tools/tests/rotation_math_test.c)
+    target_link_libraries(rotation_math_test PRIVATE aurora::mtx)
+    if (UNIX)
+        target_link_libraries(rotation_math_test PRIVATE m)
+    endif ()
+    set_target_properties(rotation_math_test PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests)
+    add_dependencies(online_tests rotation_math_test)
+endif ()

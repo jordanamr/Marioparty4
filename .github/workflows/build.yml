@@ -163,6 +163,7 @@ jobs:
       - name: Online, CubeShelf and screen controller tests
         run: |
           cmake --build --preset x-linux-ci-${{matrix.preset}} --target online_tests
+          build/x-linux-ci-${{matrix.preset}}/tests/rotation_math_test
           build/x-linux-ci-${{matrix.preset}}/tests/online_invitation_test
           build/x-linux-ci-${{matrix.preset}}/tests/cubeshelf_social_test tools/tests/fixtures
           build/x-linux-ci-${{matrix.preset}}/tests/touch_controls_test
