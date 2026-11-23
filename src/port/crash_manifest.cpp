@@ -51,6 +51,12 @@ std::string lowered(std::string text)
     return text;
 }
 
+std::string reportFileName(const std::string &path)
+{
+    const auto separator = path.find_last_of("/\\");
+    return separator == std::string::npos ? path : path.substr(separator + 1);
+}
+
 // Windows paths are case-insensitive and mix separators, so both sides are
 // normalised before a prefix is compared. The replacement is spliced into the
 // ORIGINAL string, so nothing else is case-folded.
@@ -240,10 +246,7 @@ extern "C" size_t PartyBoard_CrashBuildFingerprint(const char *defectClass, int3
         site = symbol;
         if (source != nullptr && source[0] != 0) {
             // The file and line survive a rebuild; a module offset does not.
-            std::string file = source;
-            const auto cut = file.find_last_of("/\\");
-            if (cut != std::string::npos) file = file.substr(cut + 1);
-            site += "@" + file;
+            site += "@" + reportFileName(source);
         }
     } else {
         site = module != nullptr && module[0] != 0 ? module : "unknown";
@@ -293,7 +296,7 @@ extern "C" bool PartyBoard_CrashWriteManifest(const char *reportPath, const char
 
     const std::string moduleName = moduleFull.empty()
         ? std::string("unknown")
-        : fs::path(moduleFull).filename().string();
+        : reportFileName(moduleFull);
 
     char fingerprint[512] = {};
     PartyBoard_CrashBuildFingerprint(defectClass.c_str(),
@@ -323,7 +326,7 @@ extern "C" bool PartyBoard_CrashWriteManifest(const char *reportPath, const char
 #endif
     manifest["exception"] = {{"code", exceptionCode}, {"name", exceptionName},
         {"operation", operation}, {"module", moduleName}, {"module_offset", moduleOffset},
-        {"symbol", topFrame}, {"source", fs::path(topSource).filename().string()}};
+        {"symbol", topFrame}, {"source", reportFileName(topSource)}};
     manifest["game"] = {{"overlay", overlayText.empty() ? -1 : std::atoi(overlayText.c_str())},
         {"game_context", contextText.empty() ? -1 : std::atoi(contextText.c_str())},
         {"minigame", minigameText.empty() ? -1 : std::atoi(minigameText.c_str())},
@@ -802,7 +805,11 @@ extern "C" bool PartyBoard_CrashManifestRunSelfTest(void)
     fs::create_directories(sandbox / "incident", error);
 
     std::string report = kSyntheticReport;
-    const std::string install = profile.empty() ? std::string("C:\\PartyBoard") : profile;
+    if (user.size() >= 3)
+        report += "EVENT frame=27744 t=806600000 ACCOUNT " + user + "\n";
+    const std::string privateDirectory = "private-install-manifest-test";
+    const std::string install = (profile.empty() ? std::string("C:\\PartyBoard") : profile)
+        + "\\" + privateDirectory;
     for (;;) {
         const auto at = report.find("PLACEHOLDER_INSTALL");
         if (at == std::string::npos) break;
@@ -838,11 +845,18 @@ extern "C" bool PartyBoard_CrashManifestRunSelfTest(void)
                     && manifest["consent"].value("asked", true) == false,
                 "consent did not start refused on every count");
             ok &= expectManifest(manifest["events"].size() >= 2, "no breadcrumbs were carried over");
+            if (user.size() >= 3) {
+                ok &= expectManifest(manifest["events"].back() == "ACCOUNT <user>",
+                    "an account in an event was not sanitised");
+            }
         }
-        // The whole document, whatever it contains, must not name the account.
-        if (!user.empty() && user.size() >= 3) {
-            ok &= expectManifest(
-                normalisedForCompare(manifestText).find(lowered(user)) == std::string::npos,
+        // Track the original private path with a unique component: an actual
+        // account name can legitimately occur in a schema key such as user_note.
+        ok &= expectManifest(manifestText.find(privateDirectory) == std::string::npos,
+            "the private installation path appears in the manifest");
+        const std::string username = lowered(user);
+        if (username.size() >= 3 && std::string("user_note <user>").find(username) == std::string::npos) {
+            ok &= expectManifest(normalisedForCompare(manifestText).find(username) == std::string::npos,
                 "the account name appears somewhere in the manifest");
         }
         ok &= expectManifest(manifestText.find("46724") == std::string::npos,
