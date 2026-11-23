@@ -26,6 +26,8 @@ static class L {
         return Table.TryGetValue(french,out text)?text:french;
     }
     static readonly Dictionary<string,string> Table=new Dictionary<string,string>(StringComparer.Ordinal) {
+        {"Le salon est fermé.","The lobby is closed."},
+        {"Cette invitation fonctionne sur le réseau local. Pour jouer par Internet, vérifiez le relais ou la redirection de port, puis recréez le salon.","This invitation works on your local network. To play over the Internet, check the relay or port forwarding, then create the room again."},
         {" (jeu à 3 ou 4) est déjà utilisé par un autre programme. Choisissez un autre port fixe."," (3 or 4 player games) is already used by another program. Pick another fixed port."},
         {" : la box ne donne pas votre adresse publique. Indiquez-la dans Port fixe…, puis recréez le salon.",": the router does not give your public address. Enter it in Fixed port…, then create the room again."},
         {" Votre box refuse les connexions depuis Internet : tout passera par le relais en ligne."," Your router refuses connections from the Internet: everything will go through the online relay."},

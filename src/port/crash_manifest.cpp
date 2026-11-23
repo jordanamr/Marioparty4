@@ -94,24 +94,34 @@ std::vector<Replacement> sanitiseRules()
     // Last, and only as a fallback: a bare occurrence of the account name that
     // survived every path rule above.
     if (!user.empty() && user.size() >= 3) rules.push_back({user, "<user>"});
+    for (auto &rule : rules) rule.from = normalisedForCompare(std::move(rule.from));
     return rules;
+}
+
+std::string sanitiseWithRules(const std::string &input, const std::vector<Replacement> &rules)
+{
+    const std::string haystack = normalisedForCompare(input);
+    std::string output;
+    for (std::size_t at = 0; at < input.size();) {
+        // Match only the original text. A Windows account named "user" also
+        // matches the replacement "<user>", so scanning the output can loop.
+        const auto match = std::find_if(rules.begin(), rules.end(), [&](const Replacement &rule) {
+            return haystack.compare(at, rule.from.size(), rule.from) == 0;
+        });
+        if (match == rules.end()) {
+            output.push_back(input[at++]);
+        } else {
+            output += match->to;
+            at += match->from.size();
+        }
+    }
+    return output;
 }
 
 std::string sanitise(const std::string &input)
 {
     static const std::vector<Replacement> rules = sanitiseRules();
-    std::string output = input;
-    for (const auto &rule : rules) {
-        const std::string needle = normalisedForCompare(rule.from);
-        if (needle.empty()) continue;
-        for (;;) {
-            const std::string haystack = normalisedForCompare(output);
-            const auto at = haystack.find(needle);
-            if (at == std::string::npos) break;
-            output.replace(at, needle.size(), rule.to);
-        }
-    }
-    return output;
+    return sanitiseWithRules(input, rules);
 }
 
 std::string readFile(const std::string &path)
@@ -715,17 +725,16 @@ extern "C" bool PartyBoard_CrashManifestRunSelfTest(void)
 
     // ---- sanitisation ----
     char buffer[4096] = {};
+    ok &= expectManifest(sanitiseWithRules("C:/Users/USER/Disc.rvz user USER",
+        {{"c:\\users\\user", "C:\\Users\\<user>"}, {"user", "<user>"}})
+        == "C:\\Users\\<user>/Disc.rvz <user> <user>", "a replacement was sanitised again");
 
     if (!profile.empty()) {
         const std::string personal = profile + "\\Documents\\Mario Party 4.iso";
         PartyBoard_CrashSanitizeText(personal.c_str(), buffer, sizeof(buffer));
         const std::string cleaned = buffer;
-        ok &= expectManifest(cleaned.find("<user>") != std::string::npos,
+        ok &= expectManifest(cleaned == "C:\\Users\\<user>\\Documents\\Mario Party 4.iso",
             "a path under the profile was not rewritten");
-        if (!user.empty() && user.size() >= 3) {
-            ok &= expectManifest(normalisedForCompare(cleaned).find(lowered(user)) == std::string::npos,
-                "the account name survived sanitisation of a profile path");
-        }
         ok &= expectManifest(cleaned.find("Mario Party 4.iso") != std::string::npos,
             "sanitisation ate the part that was not personal");
     }
@@ -740,7 +749,7 @@ extern "C" bool PartyBoard_CrashManifestRunSelfTest(void)
     if (!user.empty() && user.size() >= 3) {
         const std::string bare = "played by " + user + " on a board";
         PartyBoard_CrashSanitizeText(bare.c_str(), buffer, sizeof(buffer));
-        ok &= expectManifest(normalisedForCompare(buffer).find(lowered(user)) == std::string::npos,
+        ok &= expectManifest(std::string(buffer) == "played by <user> on a board",
             "a bare account name survived sanitisation");
     }
 

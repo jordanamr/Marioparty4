@@ -6,20 +6,24 @@ decompilation, not an emulator.
 This repository does **not** contain any game assets or assembly. You need your
 own copy of the game as a disc image.
 
-Current release: **v0.19.0**.
+This fork starts from **v0.21.1** (`e4c51af8`) and adds private online lobbies
+between Linux and Windows, including European disc revision 0. Download matching
+builds from the same commit in [Linux builds](https://github.com/jordanamr/Marioparty4/actions/workflows/build.yml?query=branch%3Alinux-netplay-pal)
+and [Windows builds](https://github.com/jordanamr/Marioparty4/actions/workflows/cubeshelf-windows.yml?query=branch%3Alinux-netplay-pal),
+or [build from source](building.md).
 
 ## Getting started
 
 | Platform | How |
 |---|---|
-| Windows | Install it from **CubeShelf**, or extract `PartyBoard-win-x64.zip` and run `Lancer PartyBoard.cmd` |
+| Windows | Extract the fork’s `PartyBoard-win-x64.zip` and run `Lancer PartyBoard.cmd` |
 | Linux | Run the `.AppImage` |
 | macOS (Apple silicon and Intel) | Open the app from the `.zip` |
 | Android phone | Install the `phone` APK |
 | Meta Quest | Install the `quest` APK; it updates itself afterwards |
 | Nintendo Switch (homebrew) | `partyboard.nro` and a GameCube-style launcher build from source; not run on a console yet ([status](platforms/switch/README.md)) |
 
-Everything is on the [releases page](https://github.com/zeranemesis/Marioparty4/releases).
+Releases for the original project are on its [releases page](https://github.com/zeranemesis/Marioparty4/releases).
 On first launch, choose your disc image. **F1**, the gamepad's **Back/Select**
 button or the screen controller's menu button opens the Party Board menu at any
 time.
@@ -168,15 +172,21 @@ When the game is started from CubeShelf:
 
 ## Building
 
-See [building.md](building.md). Every push is built for Windows, Linux, macOS and
-Android; every `v*` tag publishes a release for all of them and refreshes
-CubeShelf.
+See [building.md](building.md). The Build workflow produces the Linux AppImage.
+The CubeShelf Windows workflow can build a matching ZIP with its publish input disabled.
 
 ## Testing
 
 ```
 partyboard.exe --netplay-self-test
 tools\run_all_tests.ps1 -DiscPath <disc image> -BinaryDirectory <build folder>
+```
+
+On Linux, test a private lobby and its native game processes using your own
+disc. From a graphical session (or under Xvfb), run:
+
+```sh
+python3 tools/test_online_linux.py build/linux-default-relwithdebinfo/PartyBoardOnline "/path/to/disc.rvz" --players 2
 ```
 
 The game carries its own self-tests (`--*-self-test`), and `tools/run_all_tests.ps1`

@@ -18,6 +18,7 @@ sealed class LinuxRoom {
     volatile string failure;
     volatile Session session;
     volatile bool opened;
+    bool closing;
     string lastSnapshot;
     long revision;
 
@@ -26,9 +27,19 @@ sealed class LinuxRoom {
     void Publish(string state, string invitation=null) {
         var current=session;
         var lobby=current?.Lobby;
+        bool canStart=state=="waiting" && lobby?.CanStart==true && current.GameRouteReady;
+        string detail=failure??message??"";
+        if(state=="closed") detail=L.T("Le salon est fermé.");
+        else if(state=="preparing") detail=L.T("Chargement sur les deux PC… Le jeu attendra que tout le monde soit prêt. Aucun bouton à presser dans l'autre fenêtre.");
+        else if(state=="playing") detail=L.T("Partie lancée par l'hôte. Gardez le salon ouvert pendant le jeu.");
+        else if(state=="waiting" && lobby?.Occupied>=2) {
+            if(!lobby.DiscMatches)detail=L.T("Tous les joueurs doivent avoir exactement le meme fichier disque.");
+            else if(!lobby.ModsMatch)detail=L.T("Tous les joueurs doivent avoir exactement les memes mods actifs : ")+lobby.ModAdvice;
+            else if(canStart)detail=L.T("Disques et mods identiques. Vous pouvez lancer la partie pour tout le monde.");
+        }
         var fields=new Dictionary<string,object>{
-            {"state",state}, {"message",failure??message??""},
-            {"invitation",invitation??""}, {"canStart",lobby?.CanStart==true && current.GameRouteReady},
+            {"state",state}, {"message",detail},
+            {"invitation",invitation??""}, {"canStart",canStart},
             {"players",current?.RoomStatus().Players??new List<string>()}
         };
         var serialized=JsonSerializer.Serialize(fields);
@@ -53,7 +64,7 @@ sealed class LinuxRoom {
                         current.RoomName=startup.RoomName;
                         current.Create(startup.Players??2);
                         message=current.LocalOnly && !current.RelayReady
-                            ? L.T("La room n'est pas joignable depuis Internet : votre box refuse et le relais en ligne ne répond pas. Pour jouer à la maison, choisissez « Réseau local (LAN) » ; sinon, réessayez plus tard ou ouvrez un port fixe.")
+                            ? L.T("Cette invitation fonctionne sur le réseau local. Pour jouer par Internet, vérifiez le relais ou la redirection de port, puis recréez le salon.")
                             : L.T("En attente de votre ami…");
                     } else {
                         current.Join(startup.Invitation);
@@ -77,7 +88,7 @@ sealed class LinuxRoom {
             Publish("opening");
             var worker=Task.Run(Open);
             try {
-                while(!cancel.IsCancellationRequested && parent?.HasExited!=true) {
+                while(!closing && parent?.HasExited!=true) {
                     var current=session;
                     var lobby=current?.Lobby;
                     if(failure!=null || lobby?.Phase==LobbyPhase.Closed) {
@@ -97,7 +108,7 @@ sealed class LinuxRoom {
                     Publish(state,invitation);
                     foreach(var request in RoomSync.Read(startup.StateDirectory,DateTime.UtcNow)) {
                         try {
-                            if(request.Action=="close") cancel.Cancel();
+                            if(request.Action=="close") closing=true;
                             else if(request.Action=="start" && current?.Host==true)current.Launch();
                             else throw new IOException(L.T("La partie ne peut pas encore être lancée."));
                             RoomSync.Complete(startup.StateDirectory,request,true,"");
@@ -111,9 +122,9 @@ sealed class LinuxRoom {
                 Publish("closed");
                 return 0;
             } finally {
-                cancel.Cancel();
-                // Give active sockets and any temporary router leases time to close.
                 var current=session;
+                current?.Lobby?.LocalGameExited();
+                cancel.Cancel();
                 // A close request can arrive while mapping ports or preparing a game.
                 current?.Dispose();
                 worker.Wait(TimeSpan.FromSeconds(5));

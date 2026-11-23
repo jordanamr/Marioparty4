@@ -85,8 +85,8 @@ jobs:
 
       - name: Configure CMake
         shell: pwsh
-        # The default desktop backend is deliberately silent.  CubeShelf must
-        # ship the same MusyX-backed configuration as the tested Windows build.
+        # Desktop releases share the MusyX-backed audio bank state used by
+        # the netplay simulation.
         run: cmake --preset x-windows-ci-msvc -DPARTYBOARD_EXPERIMENTAL_MUSYX_AUDIO=ON
 
       - name: Validate audio configuration

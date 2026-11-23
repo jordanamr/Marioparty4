@@ -9,7 +9,7 @@ sealed class Report {
     public readonly string DirectoryPath;
     public string NativePath {get{return Path.Combine(DirectoryPath,"native.txt");}}
     readonly object gate=new object();int lines;
-    static string Root {get{return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"PartyBoard","Diagnostics");}}
+    static string Root {get{return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData,Environment.SpecialFolderOption.DoNotVerify),"PartyBoard","Diagnostics");}}
     public Report(string root=null) {
         DirectoryPath=Path.Combine(root??Root,DateTime.UtcNow.ToString("yyyyMMdd-HHmmss")+"-"+Guid.NewGuid().ToString("N"));
         try{Directory.CreateDirectory(DirectoryPath);Write("format=1");}catch{}

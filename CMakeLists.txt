@@ -131,7 +131,13 @@ set(PARTY_BOARD_COPYRIGHT "Copyright (C) Mario Party R&D contributors")
 option(USE_ASAN "Enable address sanitization" OFF)
 option(SKIP_HU_ALLOC "Skip the game's built in allocator" OFF)
 option(RUNTIME_SANITIZE "Runtime (stack) sanitization" OFF)
-option(PARTYBOARD_EXPERIMENTAL_MUSYX_AUDIO "Enable the experimental MusyX audio backend" OFF)
+# Audio bank selection is part of the synchronized game state. Both desktop
+# packages use MusyX; the silent developer backend leaves that state unset.
+set(partyboard_default_musyx OFF)
+if (WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(partyboard_default_musyx ON)
+endif()
+option(PARTYBOARD_EXPERIMENTAL_MUSYX_AUDIO "Enable the MusyX audio backend" ${partyboard_default_musyx})
 
 # ASan stays off by default, but the switch has to be reachable: this line used
 # to FORCE it off, which silently discarded -DUSE_ASAN=ON and made the option
@@ -375,7 +381,8 @@ target_compile_definitions(partyboard PRIVATE TARGET_PC NON_MATCHING VERSION=${V
 if (WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_custom_target(netplay_build_id
         COMMAND ${CMAKE_COMMAND} "-DSOURCE_DIR=${CMAKE_SOURCE_DIR}" "-DOUTPUT_DIR=${CMAKE_BINARY_DIR}"
-            "-DGIT_EXECUTABLE=${GIT_EXECUTABLE}" -P "${CMAKE_SOURCE_DIR}/cmake/NetplayBuildId.cmake"
+            "-DGIT_EXECUTABLE=${GIT_EXECUTABLE}" "-DMUSYX=$<BOOL:${PARTYBOARD_EXPERIMENTAL_MUSYX_AUDIO}>"
+            -P "${CMAKE_SOURCE_DIR}/cmake/NetplayBuildId.cmake"
         BYPRODUCTS "${CMAKE_BINARY_DIR}/netplay_build_id.h"
         VERBATIM)
     add_dependencies(partyboard netplay_build_id)

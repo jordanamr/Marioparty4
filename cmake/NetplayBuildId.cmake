@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.25)
 # The release commit pins the game, submodules, and their patches. For a
 # developer build, also distinguish edits which have not been committed.
 set(inputs src include libc patches tools/online CMakeLists.txt files.cmake cmake)
-set(source_key "PartyBoard desktop netplay 1\n")
+set(source_key "PartyBoard desktop netplay 1\nmusyx=${MUSYX}\n")
 if(GIT_EXECUTABLE AND EXISTS "${SOURCE_DIR}/.git")
     function(read_git result)
         execute_process(COMMAND "${GIT_EXECUTABLE}" -c core.quotepath=false ${ARGN}

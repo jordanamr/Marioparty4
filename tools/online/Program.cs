@@ -617,6 +617,13 @@ sealed class Session : IDisposable {
             if(disposed)throw new OperationCanceledException();
             meshMapping=lanMesh || NoSystemChanges?Gateway.LocalFor(route,port,true):Gateway.OpenFor(route,port,port,true);
             if(disposed)throw new OperationCanceledException();
+            if(meshMapping.LocalOnly && !lanMesh && Relay.Available && !NoSystemChanges) {
+                // The control channel can reach the host even when this guest
+                // has no inbound mapping for UDP from the other guests.
+                socket.Close();meshFirewall?.Dispose();meshFirewall=null;
+                meshMapping.Dispose();meshMapping=null;
+                OpenMeshThroughRelay();return;
+            }
             meshRelay=new MeshRelay(Lobby.LocalSeat,Invite.Token,socket){Diagnostic=Report.Write};
             var wiring=new MeshWiring(meshRelay,Lobby.LocalSeat);
             Lobby.EndpointLearned+=wiring.OnEndpointLearned;
@@ -696,6 +703,16 @@ sealed class Session : IDisposable {
         Report.Write("loading="+attempt);
         if(disc==null || !Wire.Equal(disc.Hash,Profile.DiscHash))throw new IOException(L.T("Le disque n'est pas vérifié."));
         cancel.Token.ThrowIfCancellationRequested();
+        if(maxPlayers>2) {
+            // A host can reach every seat while two of its guests are still
+            // negotiating their own mesh leg. READY covers those links too.
+            var connecting=Stopwatch.StartNew();
+            while(!GameRouteReady) {
+                if(connecting.Elapsed.TotalSeconds>=30)
+                    throw new IOException(L.T("Le canal rapide du jeu se prépare encore. Attendez deux secondes puis réessayez."));
+                if(cancel.Token.WaitHandle.WaitOne(100))cancel.Token.ThrowIfCancellationRequested();
+            }
+        }
         gameStart=new GameStart(attempt);
         cancel.Token.ThrowIfCancellationRequested();
         string args;
@@ -743,8 +760,7 @@ sealed class Session : IDisposable {
     }
     public void Dispose() {
         lock(this) {
-            if(disposed)return;
-            Report.Write("session_closed");
+            if(!disposed)Report.Write("session_closed");
             if(modListDirectory!=null)try{Directory.Delete(modListDirectory,true);}catch{}if(diagnosticTimer!=null)diagnosticTimer.Dispose();
             disposed=true;cancel.Cancel();if(listener!=null) listener.Stop();if(peer!=null) peer.Close();if(peerWrite!=null)peerWrite.Close();
             if(turn!=null){turn.Dispose();turn=null;}if(relayHost!=null){relayHost.Dispose();relayHost=null;}

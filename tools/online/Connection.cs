@@ -340,7 +340,13 @@ sealed class Bridge : IDisposable {
         try{if(toPeer.IsAddingCompleted || !toPeer.TryAdd(frame,1000))throw new ControlChannelException(new IOException("Control queue unavailable."));}
         catch(InvalidOperationException e){throw new ControlChannelException(e);}
     }
-    public void SendControl(byte[] payload) {Write(payload);}
+    // A voluntary departure is often followed immediately by Dispose. Wait for
+    // the TLS writer to deliver that last notice before it loses its socket.
+    readonly TaskCompletionSource<bool> departureWritten=new TaskCompletionSource<bool>();
+    public void SendControl(byte[] payload) {
+        Write(payload);
+        if(payload.Length==17 && payload[0]==8)departureWritten.Task.Wait(1000);
+    }
 
     void SendGame(byte[] payload) {
         var target=networkPeer;if(target==null)return;
@@ -419,9 +425,13 @@ sealed class Bridge : IDisposable {
             try {first=toPeer.Take();} catch(InvalidOperationException) {break;}
             using(var batch=new MemoryStream(8192)) {
                 batch.Write(first,0,first.Length);
+                bool departing=first[2]==8;
                 byte[] next;int count=1;
-                while(count<64 && batch.Length<8192 && toPeer.TryTake(out next)) {batch.Write(next,0,next.Length);count++;}
+                while(count<64 && batch.Length<8192 && toPeer.TryTake(out next)) {
+                    batch.Write(next,0,next.Length);count++;departing|=next[2]==8;
+                }
                 var bytes=batch.GetBuffer();WriteControl(bytes,(int)batch.Length);
+                if(departing)departureWritten.TrySetResult(true);
             }
         }
     }
