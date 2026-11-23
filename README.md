@@ -122,9 +122,14 @@ Press **F1** (or **Back/Select**) in the game:
   state every tick. If they ever diverge, the session stops rather than letting
   the two games drift apart.
 
-Online play runs from **Windows** (`Play Online`, or `Jouer en ligne.cmd`) and
-from **Android phones**, and a phone can play with a PC. All players need the same
-release. Online sessions run at 60 Hz in 4:3, with a fresh profile: your own
+On **Linux and Windows**, build both clients from the same revision of this fork.
+Open **Play Online**, select the same disc image on both computers, and create a
+lobby on either one. Copy the PB4 invitation to the other player. Once everyone
+has joined, the host selects **Start game**. European revisions 0, 1 and 2 are
+accepted. All players in one lobby need byte-identical image files, including
+the compression format. The Linux menu supports private rooms by invitation.
+The original Windows v0.21.1 client uses a different build check and rejects
+European revision 0. Windows players should use the matching fork build. Online sessions run at 60 Hz in 4:3, with a fresh profile: your own
 memory-card saves are not loaded.
 
 ## CubeShelf

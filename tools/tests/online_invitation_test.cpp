@@ -92,6 +92,16 @@ int main()
     invite.port = 0;
     check(decode_invitation(encode_invitation(invite), kNow).error == InvitationError::Malformed, "port zero refused");
 
+    invite.address = {};
+    invite.localAddress = {};
+    invite.localPort = 0;
+    check(decode_invitation(encode_invitation(invite), kNow).invitation.has_value(), "Windows relay invitation");
+    invite = sample();
+    invite.address = invite.localAddress;
+    check(decode_invitation(encode_invitation(invite), kNow).error == InvitationError::Malformed, "mismatched LAN ports");
+    invite.port = invite.localPort;
+    check(decode_invitation(encode_invitation(invite), kNow).invitation.has_value(), "Windows LAN invitation");
+
     for (const Ipv4 &addr : { Ipv4 { 0, 1, 2, 3 }, Ipv4 { 10, 0, 0, 1 }, Ipv4 { 127, 0, 0, 1 }, Ipv4 { 100, 64, 0, 1 }, Ipv4 { 192, 168, 1, 1 },
              Ipv4 { 169, 254, 1, 1 }, Ipv4 { 198, 18, 0, 1 }, Ipv4 { 203, 0, 113, 1 }, Ipv4 { 224, 0, 0, 1 } }) {
         check(!is_public_address(addr), "public address filter");

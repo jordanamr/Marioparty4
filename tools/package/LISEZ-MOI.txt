@@ -19,13 +19,11 @@ fichier .iso.
 
 LES TROIS RÈGLES, À LIRE AVANT DE COMMENCER
 -------------------------------------------
-1. LES DEUX PC EXTRAIENT CE MÊME ZIP.
-   Le salon calcule une empreinte de tous les fichiers du dossier et la
-   compare avec celle de l'autre PC. Un seul fichier différent d'un côté et
-   le départ est refusé, avec le message « Les versions du jeu sont
-   différentes. Copiez le même dossier PartyBoard sur les deux PC. »
-   L'empreinte attendue est celle inscrite en haut de ce fichier, et vous
-   pouvez la vérifier à tout moment avec « Verifier le dossier.cmd ».
+1. LES DEUX PC UTILISENT LA MÊME VERSION DU FORK PARTYBOARD.
+   Installez la version Windows ou Linux x86_64 sur chaque PC. Le salon
+   vérifie la compatibilité des deux jeux avant d'autoriser la connexion.
+   « Verifier le dossier.cmd » compare les fichiers du paquet Windows avec
+   l'empreinte inscrite en haut de cette notice.
 
 2. LES DEUX PC ONT LE MÊME FICHIER .ISO, OCTET POUR OCTET.
    Le salon calcule le SHA-256 complet du disque des deux côtés et bloque le
@@ -79,9 +77,8 @@ SI ÇA NE MARCHE PAS
     complémentaires » puis « Exécuter quand même ».
 
 « Les versions du jeu sont différentes »
-    Les deux dossiers ne sont pas identiques. Comparer la sortie de
-    « Verifier le dossier.cmd » sur les deux PC. Ré-extraire le zip du côté
-    qui diffère.
+    Installer la même version du fork sur les deux PC, pour le système
+    d'exploitation de chacun.
 
 Le départ reste grisé alors que les deux joueurs sont là
     Les deux .iso ne sont pas identiques. Recopier le fichier d'un PC vers

@@ -3,6 +3,7 @@
 #include "iso_validate.hpp"
 
 #include <SDL3/SDL_iostream.h>
+#include <SDL3/SDL_stdinc.h>
 #include <nod.h>
 #include <xxhash.h>
 
@@ -12,8 +13,6 @@
 #include <stdexcept>
 #include <string_view>
 #include <vector>
-#include <filesystem>
-#include <cstdlib>
 
 namespace {
 
@@ -114,6 +113,7 @@ constexpr const KnownDisc* find_disc(std::string_view id) {
 static void fill_disc_info(const NodDiscHeader& header, DiscInfo& info) {
     const auto identity = version::identify_disc(std::string_view(header.game_id, 6), header.disc_version);
     info.known = identity.has_value();
+    info.supportsOnline = identity && identity->supports_online();
     if (identity) {
         info.region = identity->region;
         info.revision = identity->revision;
@@ -289,28 +289,13 @@ void log_verification_state(std::string_view path, DiscVerificationState state) 
 }
 }  // namespace partyboard::iso
 
-/* Which disc an online session may use: 1 for USA revision 1, 2 for the
- * European disc (GMPP01 version 2, PAL data converted at runtime), 0 for any
- * other. Every player's whole image is then compared by hash, so a session
- * never mixes the two. */
+// The companion compares the complete image hashes after this header check.
 extern "C" int PartyBoard_OnlineCheckDisc(void) {
-#ifdef _WIN32
-    const auto *path = _wgetenv(L"PARTYBOARD_ONLINE_DISC");
-    if (!path || !*path) return 0;
-    const auto utf8 = std::filesystem::path(path).u8string();
-    const auto stream = SDL_IOFromFile(reinterpret_cast<const char *>(utf8.c_str()), "rb");
-    if (!stream) return 0;
-    partyboard::iso::NodHandleWrapper disc;
-    const NodDiscStream input { .user_data = stream, .read_at = partyboard::iso::StreamReadAt,
-        .stream_len = partyboard::iso::StreamLength, .close = partyboard::iso::StreamClose };
-    if (nod_disc_open_stream(&input, nullptr, &disc.handle) != NOD_RESULT_OK || !disc.handle) return 0;
-    NodDiscHeader header {};
-    if (nod_disc_header(disc.handle, &header) != NOD_RESULT_OK) return 0;
-    const std::string_view id(header.game_id, 6);
-    if (id == "GMPE01" && header.disc_version == 1) return 1;
-    if (id == "GMPP01" && header.disc_version == 2) return 2;
-    return 0;
-#else
-    return 0;
-#endif
+    const char* path = SDL_getenv("PARTYBOARD_ONLINE_DISC");
+    partyboard::iso::DiscInfo info{};
+    if (!path || !*path || partyboard::iso::inspect(path, info) != partyboard::iso::ValidationError::Success
+        || !info.supportsOnline) {
+        return 0;
+    }
+    return info.isPal ? 2 : 1;
 }

@@ -22,13 +22,37 @@ static class Wire {
     public static byte[] Hash(byte[] b) { using(var h=SHA256.Create()) return h.ComputeHash(b); }
     public static bool Equal(byte[] a, byte[] b) { if(a==null || b==null || a.Length!=b.Length) return false; int d=0; for(int i=0;i<a.Length;i++) d|=a[i]^b[i]; return d==0; }
     public static byte[] Read(Stream s,int n) { var b=new byte[n]; int p=0; while(p<n) { int k=s.Read(b,p,n-p); if(k==0) throw new IOException(L.T("L'autre joueur s'est déconnecté.")); p+=k; } return b; }
+    // Native Linux and Windows binaries have different bytes. Their engines
+    // report the source identity baked into them by CMake, the CPU architecture,
+    // and the packet contract. Reject a mismatched or older engine locally.
     public static byte[] BuildHash(string root) {
+        var info = new ProcessStartInfo(ChildProcess.GameExecutable(root), "--netplay-build-id") {
+            WorkingDirectory=root, UseShellExecute=false, CreateNoWindow=true, RedirectStandardOutput=true
+        };
+        using(var process = Process.Start(info)) {
+            var output = process.StandardOutput.ReadToEndAsync();
+            if(!process.WaitForExit(10000)) { process.Kill(); throw new IOException("Game build check timed out."); }
+            string prefix = "PB4-DESKTOP/" + WireFormat.ProtocolVersion + "/" + WireFormat.PacketSize + "/";
+            string line = output.GetAwaiter().GetResult().Trim();
+            if(process.ExitCode != 0 || !line.StartsWith(prefix, StringComparison.Ordinal))
+                throw new IOException("The game and the online lobby are from different releases.");
+            string[] parts = line.Substring(prefix.Length).Split('/');
+            if(parts.Length != 2 || (parts[0] != "x86_64" && parts[0] != "arm64" && parts[0] != "x86")
+                || parts[1].Length != 64 || !parts[1].All(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')))
+                throw new IOException("The game has no valid online build identity.");
+            return Hash(Encoding.ASCII.GetBytes(line));
+        }
+    }
+#if !PARTYBOARD_LINUX
+    // The Windows package verifier still checks the installed files byte for byte.
+    public static byte[] FolderHash(string root) {
         using(var h=SHA256.Create()) using(var m=new MemoryStream()) {
             var paths=Directory.GetFiles(root,"*.dll").Concat(new[]{Path.Combine(root,"partyboard.exe"),Path.Combine(root,"PartyBoardOnline.exe")}).OrderBy(x=>Path.GetFileName(x),StringComparer.OrdinalIgnoreCase);
             foreach(var p in paths) { byte[] name=Encoding.UTF8.GetBytes(Path.GetFileName(p).ToLowerInvariant()+"\n"); m.Write(name,0,name.Length); using(var f=File.OpenRead(p)) {var b=h.ComputeHash(f); m.Write(b,0,b.Length);} }
             return h.ComputeHash(m.ToArray());
         }
     }
+#endif
     public static X509Certificate2 Certificate() {
         using(var rsa=RSA.Create()) {
             rsa.KeySize=2048;
@@ -39,11 +63,15 @@ static class Wire {
             using(var cert=req.CreateSelfSigned(DateTimeOffset.UtcNow.AddMinutes(-5),DateTimeOffset.UtcNow.AddHours(12))) {
                 // A temporary PFX import makes the private key usable by Schannel
                 // on .NET Framework. Nothing is installed in a certificate store.
+#if PARTYBOARD_LINUX
+                return X509CertificateLoader.LoadPkcs12(cert.Export(X509ContentType.Pfx),null,X509KeyStorageFlags.EphemeralKeySet);
+#else
                 var identity=WindowsIdentity.GetCurrent();
                 var keyDirectory=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                     "Microsoft","Crypto","RSA",identity.User.Value);
                 Directory.CreateDirectory(keyDirectory);
                 return new X509Certificate2(cert.Export(X509ContentType.Pfx));
+#endif
             }
         }
     }
@@ -67,7 +95,7 @@ static class Wire {
             byte[] hello=Encoding.ASCII.GetBytes("PBAUTO3\n").Concat(Hash(invite.Token)).Concat(build).Concat(new[]{channel}).Concat(clientId).ToArray();
             ssl.Write(hello); ssl.Flush();
             byte ack=Read(ssl,1)[0];
-            if(ack==2) throw new IOException(L.T("Les versions du jeu sont différentes. Copiez le même dossier PartyBoard sur les deux PC."));
+            if(ack==2) throw new IOException(L.T("Les versions du jeu sont différentes. Installez la même version du fork PartyBoard sur les deux PC."));
             if(ack!=1) throw new IOException(L.T("Cette invitation n'est plus valable. Demandez-en une nouvelle."));
             ssl.ReadTimeout=120000; ssl.WriteTimeout=120000; return ssl;
         } catch {ssl.Dispose(); throw;}
@@ -141,9 +169,9 @@ sealed class Invitation {
             // same build anyway, so a mismatched prefix only ever means one of
             // them has an old folder.
             if(text.StartsWith("PB2.",StringComparison.Ordinal))
-                throw new IOException(L.T("Cette invitation vient d'une version plus ancienne de PartyBoard. Copiez le même dossier sur les deux PC et recréez le salon."));
+                throw new IOException(L.T("Cette invitation vient d'une version plus ancienne de PartyBoard. Installez la même version sur les deux PC et recréez le salon."));
             if(text.StartsWith("PB3.",StringComparison.Ordinal))
-                throw new IOException(L.T("Cette invitation vient d'une version plus ancienne de PartyBoard. Copiez le même dossier sur les deux PC et recréez le salon."));
+                throw new IOException(L.T("Cette invitation vient d'une version plus ancienne de PartyBoard. Installez la même version sur les deux PC et recréez le salon."));
             if(text.Length!=72 || !text.StartsWith("PB4.",StringComparison.Ordinal)) throw new FormatException();
             var b64=text.Substring(4).Replace('-','+').Replace('_','/'); b64+=new string('=',(4-b64.Length%4)%4);
             var data=Convert.FromBase64String(b64); if(data.Length!=49) throw new FormatException();

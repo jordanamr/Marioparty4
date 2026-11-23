@@ -32,7 +32,7 @@ cd "$GITHUB_WORKSPACE"
 
 mkdir -p build/appdir/usr/{bin,lib,share/{applications,icons/hicolor}}
 
-cp build/install/partyboard build/appdir/usr/bin/
+cp build/install/{partyboard,PartyBoardOnline} build/appdir/usr/bin/
 cp -r build/install/res build/appdir/usr/bin/
 cp build/install/libdol.so build/appdir/usr/bin/
 cp build/install/*.so build/appdir/usr/lib/

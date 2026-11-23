@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <DefineConstants>$(DefineConstants);PARTYBOARD_LINUX</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Connection.cs;../Gateway.cs;../Lan.cs;../Lobby.cs;../Mods.cs;../Program.cs;../Relay.cs;../Report.cs;../RoomSync.cs;../Startup.cs;../Text.cs" />
+  </ItemGroup>
+  <!-- Windows reads these same constants in build_online.ps1. -->
+  <Target Name="GenerateWireFormat" BeforeTargets="CoreCompile">
+    <PropertyGroup>
+      <TransportHeader>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)../../../include/port/netplay_transport.hpp'))</TransportHeader>
+      <PacketSize>$([System.Text.RegularExpressions.Regex]::Match($(TransportHeader), 'kNetplayPacketSize\s*=\s*(\d+)').Groups[1].Value)</PacketSize>
+      <ProtocolVersion>$([System.Text.RegularExpressions.Regex]::Match($(TransportHeader), 'kProtocolVersion\s*=\s*(\d+)').Groups[1].Value)</ProtocolVersion>
+    </PropertyGroup>
+    <Error Condition="'$(PacketSize)' == '' Or '$(ProtocolVersion)' == ''" Text="Missing packet size or protocol version in netplay_transport.hpp." />
+    <WriteLinesToFile File="$(IntermediateOutputPath)WireFormat.generated.cs" Overwrite="true" WriteOnlyWhenDifferent="true"
+      Lines="namespace PartyBoardOnline { static class WireFormat { public const int PacketSize=$(PacketSize), ProtocolVersion=$(ProtocolVersion)%3B public const byte VersionHigh=(byte)(ProtocolVersion &gt;&gt; 8), VersionLow=(byte)(ProtocolVersion &amp; 255)%3B } }" />
+    <ItemGroup><Compile Include="$(IntermediateOutputPath)WireFormat.generated.cs" /></ItemGroup>
+  </Target>
+</Project>

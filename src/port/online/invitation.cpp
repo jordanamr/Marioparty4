@@ -193,7 +193,11 @@ DecodedInvitation decode_invitation(std::string_view rawText, std::uint32_t nowU
     if (invitation.maxPlayers < 2 || invitation.maxPlayers > kMaxSeats) {
         return { std::nullopt, InvitationError::Malformed };
     }
-    if (invitation.port == 0 || (!localTest && !is_public_address(invitation.address))) {
+    // Windows emits both LAN-only invitations and address-free relay invitations.
+    const bool lan = is_private_address(invitation.address) && invitation.address == invitation.localAddress
+        && invitation.localPort == invitation.port;
+    const bool relay = invitation.port == 0 && invitation.address == Ipv4{} && invitation.localPort == 0;
+    if (!relay && (invitation.port == 0 || (!localTest && !lan && !is_public_address(invitation.address)))) {
         return { std::nullopt, InvitationError::Malformed };
     }
     // The local address only ever points inside the host's own network; any

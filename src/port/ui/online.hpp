@@ -3,6 +3,11 @@
 #include "window.hpp"
 
 #include <string>
+#if defined(__linux__) && !defined(__ANDROID__)
+#include <chrono>
+#include <filesystem>
+struct SDL_Process;
+#endif
 
 // The "Play Online" window on platforms that cannot start PartyBoardOnline.exe
 // (Android, iOS, Linux, macOS). It carries the same lobby as the Windows
@@ -23,6 +28,10 @@ class OnlineWindow : public Window {
 public:
     // With an invitation -- one a CubeShelf friend sent -- the window opens on joining it.
     explicit OnlineWindow(std::string invitation = {});
+#if defined(__linux__) && !defined(__ANDROID__)
+    ~OnlineWindow() override;
+    void update() override;
+#endif
 
 private:
     void build(Rml::Element *content);
@@ -32,6 +41,20 @@ private:
     void paste_invitation();
     void leave_lobby();
 
+#if defined(__linux__) && !defined(__ANDROID__)
+    void open_linux_room(bool host);
+    bool send_room_request(const char *action);
+    bool consume_close_request() override;
+    void reset_linux_room();
+    SDL_Process *mCompanion = nullptr;
+    std::filesystem::path mRoomDirectory;
+    std::chrono::steady_clock::time_point mNextPoll{};
+    std::string mHostInvitation;
+    bool mCanStart = false;
+    bool mRefreshRoom = false;
+    bool mCloseRequested = false;
+    bool mPopWhenClosed = false;
+#endif
     int mPlayers = 2;
     std::string mInvitation;
     std::string mStatus;

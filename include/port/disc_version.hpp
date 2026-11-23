@@ -38,6 +38,10 @@ struct DiscIdentity {
     bool exactRevision;
     // Japan needs its own fonts and text encoding, which the port does not handle yet.
     bool supported;
+
+    constexpr bool supports_online() const {
+        return supported && exactRevision && (region == DiscRegion::Europe || version == GameVersion::UsaRev1);
+    }
 };
 
 // `gameId` is the 6-character ID from the disc header (e.g. "GMPE01"). Returns nothing for

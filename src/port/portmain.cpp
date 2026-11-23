@@ -5,7 +5,7 @@
 #endif
 #include <windows.h>
 #endif
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__linux__)
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <netinet/in.h>
@@ -559,11 +559,9 @@ static bool online_wait_for_start(bool pumpEvents) {
     if (go) CloseHandle(go);
     if (cancel) CloseHandle(cancel);
     return started;
-#elif defined(__ANDROID__)
-    // The lobby runs in the app's ":online" process (platforms/android,
-    // online/GameLink.java) and hands over "port:secret". READY is the hello
-    // below; GO is one 'G' byte back. The socket is never closed: the lobby
-    // learns this game has ended, however it ended, from the end of stream.
+#elif defined(__ANDROID__) || defined(__linux__)
+    // The desktop or Android lobby passes "port:secret". The game signals
+    // readiness here and waits for the host to commit the shared launch.
     static int link = -1;
     const char *disc = std::getenv("PARTYBOARD_ONLINE_DISC");
     const char *barrier = std::getenv("PARTYBOARD_ONLINE_BARRIER");
@@ -683,8 +681,8 @@ extern "C" int port_main(int argc, char* argv[]) {
             onlineDisc.assign(reinterpret_cast<const char *>(utf8.c_str()));
         }
     }
-#elif defined(__ANDROID__)
-    // Set by PartyBoardActivity from the lobby's launch intent.
+#elif defined(__ANDROID__) || defined(__linux__)
+    // The online companion has already verified this exact image.
     if (PartyBoard_NetplayEnabled()) {
         if (const auto *path = std::getenv("PARTYBOARD_ONLINE_DISC"); path && *path) {
             onlineDisc = path;

@@ -10,21 +10,20 @@ using System.Diagnostics;
 
 namespace PartyBoardOnline {
 static class ChildProcess {
-    static readonly object environmentLock=new object();
+    public static string GameExecutable(string root) {
+#if PARTYBOARD_LINUX
+        return System.IO.Path.Combine(root,"partyboard");
+#else
+        return System.IO.Path.Combine(root,"partyboard.exe");
+#endif
+    }
     public static Process Start(ProcessStartInfo info,params string[] variables) {
         if(variables.Length%2!=0)throw new ArgumentException("Environment variables must be name/value pairs.");
-        lock(environmentLock) {
-            var previous=new string[variables.Length/2];
-            try {
-                for(int i=0;i<variables.Length;i+=2) {
-                    previous[i/2]=Environment.GetEnvironmentVariable(variables[i]);
-                    Environment.SetEnvironmentVariable(variables[i],variables[i+1]);
-                }
-                return Process.Start(info);
-            } finally {
-                for(int i=0;i<variables.Length;i+=2)Environment.SetEnvironmentVariable(variables[i],previous[i/2]);
-            }
+        for(int i=0;i<variables.Length;i+=2) {
+            if(variables[i+1]==null)info.EnvironmentVariables.Remove(variables[i]);
+            else info.EnvironmentVariables[variables[i]]=variables[i+1];
         }
+        return Process.Start(info);
     }
 }
 
@@ -47,7 +46,7 @@ sealed class DiscFile : IDisposable {
         try {
             if(inspect) {
                 var root=AppDomain.CurrentDomain.BaseDirectory;
-                var info=new ProcessStartInfo(System.IO.Path.Combine(root,"partyboard.exe"),"--online-disc-check"){WorkingDirectory=root,UseShellExecute=false,CreateNoWindow=true};
+                var info=new ProcessStartInfo(ChildProcess.GameExecutable(root),"--online-disc-check"){WorkingDirectory=root,UseShellExecute=false,CreateNoWindow=true};
                 using(var p=ChildProcess.Start(info,"PARTYBOARD_ONLINE_DISC",disc.Path)) {
                     var timer=Stopwatch.StartNew();
                     while(!p.WaitForExit(100)) {
@@ -507,9 +506,25 @@ sealed class GameStart : IDisposable {
         }
         return args;
     }
-    readonly EventWaitHandle ready,go,cancel;readonly string prefix;
     public Process Process {get;private set;} public readonly Guid Attempt;
+#if PARTYBOARD_LINUX
+    readonly System.Net.Sockets.TcpListener listener;
+    readonly string secret = Convert.ToHexString(Wire.Random(16));
+    readonly string barrier;
+    readonly object barrierLock = new object();
+    System.Net.Sockets.TcpClient game;
+    bool aborted;
+
+    public GameStart(Guid id) {
+        Attempt = id;
+        listener = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
+        listener.Start(2);
+        barrier = ((IPEndPoint)listener.LocalEndpoint).Port + ":" + secret;
+    }
+#else
+    readonly EventWaitHandle ready,go,cancel;readonly string prefix;
     public GameStart(Guid id){Attempt=id;prefix="Local\\PartyBoardOnlineStart-"+Guid.NewGuid().ToString("N");ready=new EventWaitHandle(false,EventResetMode.ManualReset,prefix+"-ready");go=new EventWaitHandle(false,EventResetMode.ManualReset,prefix+"-go");cancel=new EventWaitHandle(false,EventResetMode.ManualReset,prefix+"-cancel");}
+#endif
     // modListPath is the list the salon announced and both players agreed on. It is
     // passed explicitly because the game loads mods from PARTYBOARD_MOD_LIST and this
     // launcher never set it: an online game used to run with no mods at all, whatever
@@ -517,26 +532,75 @@ sealed class GameStart : IDisposable {
     // the right answer when neither side has any.
     public void Launch(string arguments,string path,bool probe=false,string diagnosticPath=null,string modListPath=null) {
         var root=AppDomain.CurrentDomain.BaseDirectory;
-        var info=new ProcessStartInfo(System.IO.Path.Combine(root,"partyboard.exe"),arguments+(probe?" --netplay-start-probe --netplay-pad-probe":"")){WorkingDirectory=root,UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=probe,RedirectStandardError=probe};
+        var info=new ProcessStartInfo(ChildProcess.GameExecutable(root),arguments+(probe?" --netplay-start-probe --netplay-pad-probe":"")){WorkingDirectory=root,UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=probe,RedirectStandardError=probe};
         Process=ChildProcess.Start(info,
             "PARTYBOARD_ONLINE_DISC",path,
+#if PARTYBOARD_LINUX
+            "PARTYBOARD_ONLINE_BARRIER",barrier,
+#else
             "PARTYBOARD_ONLINE_READY",prefix+"-ready",
             "PARTYBOARD_ONLINE_GO",prefix+"-go",
             "PARTYBOARD_ONLINE_CANCEL",prefix+"-cancel",
+#endif
             "PARTYBOARD_MOD_LIST",string.IsNullOrEmpty(modListPath)?null:modListPath,
             "PARTYBOARD_NET_DIAGNOSTIC",diagnosticPath);
     }
     public void WaitReady(CancellationToken token) {
         var timer=Stopwatch.StartNew();
+#if PARTYBOARD_LINUX
+        var expected = Encoding.ASCII.GetBytes("PBGAME1\n" + secret + "R");
+        while(true) {
+            token.ThrowIfCancellationRequested();
+            if(listener.Pending()) {
+                var candidate = listener.AcceptTcpClient();
+                try {
+                    candidate.ReceiveTimeout = 1000;
+                    if(Wire.Equal(Wire.Read(candidate.GetStream(), expected.Length), expected)) {
+                        lock(barrierLock) {
+                            if(aborted) throw new OperationCanceledException();
+                            game = candidate;
+                            candidate = null;
+                            listener.Stop();
+                            break;
+                        }
+                    }
+                } catch(IOException) {
+                    // An unrelated loopback client may disconnect before READY.
+                } finally {
+                    candidate?.Dispose();
+                }
+            }
+            token.WaitHandle.WaitOne(50);
+#else
         while(!ready.WaitOne(50)) {
+#endif
             token.ThrowIfCancellationRequested();
             if(Process.HasExited)throw new IOException(L.T("Le jeu s'est fermé pendant le chargement. Vérifiez votre disque et relancez le salon."));
             if(timer.Elapsed.TotalSeconds>=120)throw new IOException(L.T("Le jeu n'a pas terminé son chargement après deux minutes."));
         }
         token.ThrowIfCancellationRequested();if(Process.HasExited)throw new IOException(L.T("Le jeu s'est fermé avant le départ."));
     }
+#if PARTYBOARD_LINUX
+    public void Commit(Guid id) {
+        lock(barrierLock) {
+            if(id!=Attempt || aborted || game==null) throw new IOException(L.T("Départ périmé."));
+            game.GetStream().WriteByte((byte)'G');
+        }
+    }
+    public void Abort() {
+        lock(barrierLock) {
+            aborted = true;
+            // Closing the socket before GO also wakes the game's poll immediately.
+            game?.Dispose();
+            game = null;
+            listener.Stop();
+        }
+    }
+    public void Dispose(){Abort();}
+#else
     public void Commit(Guid id){if(id!=Attempt)throw new IOException(L.T("Départ périmé."));go.Set();}
     public void Abort(){try{cancel.Set();}catch(ObjectDisposedException){}}
     public void Dispose(){cancel.Set();ready.Dispose();go.Dispose();cancel.Dispose();}
+#endif
 }
 }

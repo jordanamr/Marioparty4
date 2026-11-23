@@ -237,7 +237,7 @@ try {
 
     $lines = New-Object 'Collections.Generic.List[string]'
     $lines.Add('# Empreintes SHA-256 de chaque fichier livre.')
-    $lines.Add('# Empreinte du dossier, celle que le salon compare : ' + $buildHash)
+    $lines.Add('# Empreinte du dossier Windows livré : ' + $buildHash)
     $lines.Add('')
     foreach ($file in Get-ChildItem $staging -Recurse -File | Sort-Object FullName) {
         $relative = $file.FullName.Substring($staging.Length + 1)

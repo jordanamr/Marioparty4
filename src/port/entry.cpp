@@ -1,4 +1,8 @@
 #include <aurora/main.h>
+#if defined(_WIN32) || (defined(__linux__) && !defined(__ANDROID__))
+#include "partyboard_version.h"
+#include "netplay_build_id.h"
+#endif
 #include "port/netplay_transport.hpp"
 #include "port/netplay_runtime.h"
 #include "port/rollback.h"
@@ -56,6 +60,14 @@ int main(int argc, char *argv[])
     _set_FMA3_enable(0);
 #endif
 
+#if defined(PARTY_BOARD_ARCH) && (defined(_WIN32) || (defined(__linux__) && !defined(__ANDROID__)))
+    if (argc == 2 && std::strcmp(argv[1], "--netplay-build-id") == 0) {
+        std::printf("PB4-DESKTOP/%u/%zu/%s/%s\n",
+            static_cast<unsigned>(partyboard::netplay::kProtocolVersion),
+            partyboard::netplay::kNetplayPacketSize, PARTY_BOARD_ARCH, PARTY_BOARD_NETPLAY_SOURCE_ID);
+        return 0;
+    }
+#endif
     if (argc == 2 && std::strcmp(argv[1], "--crash-report-self-test") == 0)
         return PartyBoard_CrashReportRunSelfTest() ? 0 : 1;
     if (argc == 2 && std::strcmp(argv[1], "--mem-diagnostics-self-test") == 0)

@@ -139,6 +139,25 @@ void OnlineWindow::build(Rml::Element *content)
     auto &leftPane = add_child<Pane>(content, Pane::Type::Controlled);
     auto &rightPane = add_child<Pane>(content, Pane::Type::Uncontrolled);
 
+#if defined(__linux__) && !defined(__ANDROID__)
+    if (mCompanion) {
+        leftPane.add_section("Lobby");
+        mStatusElem = leftPane.add_text(mStatus);
+        if (!mHostInvitation.empty()) {
+            leftPane.add_button("Copy invitation").on_pressed([this] {
+                if (SDL_SetClipboardText(mHostInvitation.c_str())) {
+                    set_status("Invitation copied.");
+                }
+            });
+        }
+        if (mCanStart) {
+            leftPane.add_button("Start game").on_pressed([this] { send_room_request("start"); });
+        }
+        leftPane.add_button("Leave lobby").on_pressed([this] { leave_lobby(); });
+        leftPane.finalize();
+        return;
+    }
+#endif
     leftPane.add_section("Your Party Board lobby");
     leftPane.register_control(leftPane.add_child<StringButton>(StringButton::Props {
                                   .key = "Nickname",
@@ -220,10 +239,14 @@ void OnlineWindow::create_lobby()
         set_status("Choose your disc to get started.");
         return;
     }
+#if defined(__linux__) && !defined(__ANDROID__)
+    open_linux_room(true);
+#else
     // The lobby itself (TLS control channel, router opening, relay) is being
     // ported from tools/online; until it lands this window says so rather than
     // pretending a lobby exists.
     set_status("Hosting from this device is not available yet: the online connection is still being ported. Create the lobby on a PC for now.");
+#endif
 }
 
 void OnlineWindow::join_lobby()
@@ -241,12 +264,16 @@ void OnlineWindow::join_lobby()
         set_status("Choose your disc to get started.");
         return;
     }
+#if defined(__linux__) && !defined(__ANDROID__)
+    open_linux_room(false);
+#else
     const auto &invite = *decoded.invitation;
     mStatus = fmt::format(fmt::runtime(ui_translate("Valid invitation for a lobby of {} players.")), invite.maxPlayers) + " "
         + ui_translate("Joining from this device is not available yet: the online connection is still being ported.");
     if (mStatusElem != nullptr) {
         mStatusElem->SetInnerRML(escape(mStatus));
     }
+#endif
 }
 
 void OnlineWindow::paste_invitation()
@@ -271,6 +298,15 @@ void OnlineWindow::paste_invitation()
 
 void OnlineWindow::leave_lobby()
 {
+#if defined(__linux__) && !defined(__ANDROID__)
+    if (mCompanion) {
+        if (!mCloseRequested && send_room_request("close")) {
+            mCloseRequested = true;
+            set_status("Closing lobby…");
+        }
+        return;
+    }
+#endif
     mInvitation.clear();
     set_status(disc_ready() ? "Disc ready. Create a lobby or paste your friend's invitation." : "Choose your disc to get started.");
 }

@@ -372,6 +372,14 @@ else ()
     add_executable(partyboard src/port/entry.cpp)
 endif ()
 target_compile_definitions(partyboard PRIVATE TARGET_PC NON_MATCHING VERSION=${VERSION})
+if (WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    add_custom_target(netplay_build_id
+        COMMAND ${CMAKE_COMMAND} "-DSOURCE_DIR=${CMAKE_SOURCE_DIR}" "-DOUTPUT_DIR=${CMAKE_BINARY_DIR}"
+            "-DGIT_EXECUTABLE=${GIT_EXECUTABLE}" -P "${CMAKE_SOURCE_DIR}/cmake/NetplayBuildId.cmake"
+        BYPRODUCTS "${CMAKE_BINARY_DIR}/netplay_build_id.h"
+        VERBATIM)
+    add_dependencies(partyboard netplay_build_id)
+endif()
 target_include_directories(partyboard PRIVATE include ${CMAKE_BINARY_DIR})
 target_link_libraries(partyboard PRIVATE dol aurora::main)
 aurora_copy_runtime_dlls(partyboard dol)
@@ -398,6 +406,39 @@ if (USE_ASAN AND MSVC)
     else ()
         message(WARNING "AddressSanitizer runtime not found at ${PARTY_BOARD_ASAN_DLL};"
                 " the instrumented build will not start.")
+    endif ()
+endif ()
+
+# The desktop lobby shares its wire implementation with the Windows companion.
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+    option(PARTY_BOARD_LINUX_ONLINE "Build the Linux online lobby" ON)
+    option(PARTY_BOARD_BUNDLE_DOTNET "Embed the .NET runtime for distribution" OFF)
+    if (PARTY_BOARD_LINUX_ONLINE)
+        find_program(DOTNET_EXECUTABLE dotnet REQUIRED)
+        set(lobby_project "${CMAKE_SOURCE_DIR}/tools/online/linux/PartyBoardOnline.csproj")
+        set(lobby_files PartyBoardOnline)
+        if (PARTY_BOARD_BUNDLE_DOTNET)
+            set(lobby_flags --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true)
+        else ()
+            set(lobby_flags --self-contained false)
+            list(APPEND lobby_files PartyBoardOnline.dll PartyBoardOnline.deps.json PartyBoardOnline.runtimeconfig.json)
+        endif ()
+        file(GLOB lobby_sources CONFIGURE_DEPENDS tools/online/*.cs tools/online/linux/*.cs)
+        list(TRANSFORM lobby_files PREPEND "${CMAKE_CURRENT_BINARY_DIR}/")
+        add_custom_command(OUTPUT ${lobby_files}
+                COMMAND ${DOTNET_EXECUTABLE} publish "${lobby_project}" -c Release
+                    --artifacts-path "${CMAKE_CURRENT_BINARY_DIR}/online-obj"
+                    ${lobby_flags} -o "${CMAKE_CURRENT_BINARY_DIR}/online-publish"
+                COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_BINARY_DIR}/online-publish" "${CMAKE_CURRENT_BINARY_DIR}"
+                DEPENDS "${lobby_project}" ${lobby_sources} "${CMAKE_SOURCE_DIR}/include/port/netplay_transport.hpp"
+                COMMENT "Publishing the Linux online lobby" VERBATIM)
+        add_custom_target(linux_online DEPENDS ${lobby_files})
+        add_dependencies(partyboard linux_online)
+        install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/PartyBoardOnline DESTINATION ${CMAKE_INSTALL_PREFIX})
+        list(REMOVE_AT lobby_files 0)
+        if (lobby_files)
+            install(FILES ${lobby_files} DESTINATION ${CMAKE_INSTALL_PREFIX})
+        endif ()
     endif ()
 endif ()
 

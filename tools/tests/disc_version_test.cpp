@@ -80,6 +80,14 @@ int main()
 
     // Usable at compile time, so a mistake in the table fails the build of every user.
     static_assert(identify_disc("GMPP01", 1)->version == GameVersion::PalRev1);
+    static_assert(identify_disc("GMPP01", 0)->supports_online());
+    static_assert(identify_disc("GMPP01", 1)->supports_online());
+    static_assert(identify_disc("GMPP01", 2)->supports_online());
+    static_assert(!identify_disc("GMPP01", 3)->supports_online());
+    static_assert(identify_disc("GMPE01", 1)->supports_online());
+    static_assert(!identify_disc("GMPE01", 0)->supports_online());
+    static_assert(!identify_disc("GMPE01", 2)->supports_online());
+    static_assert(!identify_disc("GMPJ01", 0)->supports_online());
 
     if (failures != 0) {
         std::fprintf(stderr, "%d failure(s)\n", failures);

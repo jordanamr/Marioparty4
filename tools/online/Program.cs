@@ -7,13 +7,20 @@ using System.Net.Sockets;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using System.Diagnostics;
-using System.Drawing;
 using System.Threading;
 using System.Threading.Tasks;
+#if !PARTYBOARD_LINUX
+using System.Drawing;
 using System.Windows.Forms;
+#endif
 
 namespace PartyBoardOnline {
 sealed class Firewall : IDisposable {
+#if PARTYBOARD_LINUX
+    // Linux firewall policy is managed by the player. No elevated helper is started.
+    public static Firewall Open(int port,bool lan=false) {return null;}
+    public void Dispose() {}
+#else
     EventWaitHandle stop;
     static string Name(int pid,int port,string suffix) {return "Local\\PartyBoardOnline-"+pid+"-"+port+suffix;}
     public static Firewall Open(int port,bool lan=false) {
@@ -58,6 +65,7 @@ sealed class Firewall : IDisposable {
         } catch {return 1;} finally {if(tcpAdded) try{policy.Rules.Remove(ruleName+" TCP");}catch{} if(udpAdded) try{policy.Rules.Remove(ruleName+" UDP");}catch{}}
     }
     public void Dispose() {if(stop!=null) {stop.Set();stop.Dispose();stop=null;}}
+#endif
 }
 
 enum PublicState {Private,Pending,Listed}
@@ -215,9 +223,12 @@ sealed class Session : IDisposable {
             p=>Report.Write("event=udp_port_reserved port="+p));
         listener=pair.Item1;internetGame=pair.Item2;int port=((IPEndPoint)listener.LocalEndpoint).Port;
         try {
-            status(L.T("Autorisez PartyBoard si Windows vous le demande…")); firewall=NoSystemChanges?null:Firewall.Open(port,Lan);
+#if !PARTYBOARD_LINUX
+            status(L.T("Autorisez PartyBoard si Windows vous le demande…"));
+#endif
+            firewall=NoSystemChanges?null:Firewall.Open(port,Lan);
             if(disposed) throw new OperationCanceledException();
-            bool boxed=!RelayOnly && !Lan;
+            bool boxed=!NoSystemChanges && !Lan;
             if(boxed)status(NetworkSettings.Port==0?L.T("Préparation automatique de votre box…"):L.T("Préparation du port fixe ")+port+"…");
             mapping=boxed?Gateway.OpenFor(route,port,port,false):Gateway.LocalFor(route,port,false);
             if(players==2) {
@@ -242,7 +253,7 @@ sealed class Session : IDisposable {
                 // salon has to exist, and announce this seat's own mesh
                 // address, before anyone has connected to admit into it.
                 guestLinks=new Bridge[players];
-                Lobby=new Lobby(true,Profile,SendToSeat,id=>Task.Run(()=>LoadGame(id)),id=>Report.Write("commit="+id),connected){Capacity=players};
+                Lobby=new Lobby(true,Profile,SendToSeat,id=>Task.Run(()=>LoadGame(id)),id=>{Report.Write("commit="+id);gameStart.Commit(id);},connected){Capacity=players};
                 Report.Write("role=host mode=mesh build="+BitConverter.ToString(build).Replace("-","")+" players="+players);
                 OpenMesh();
                 lock(this) {if(!disposed) diagnosticTimer=new System.Threading.Timer(_=>Report.Write("phase="+Lobby.Phase+" occupied="+Lobby.Occupied+"/"+players+" disk_match="+Lobby.DiscMatches),null,0,5000);}
@@ -464,7 +475,7 @@ sealed class Session : IDisposable {
     public void Join(string invitation) {
         Host=false;Invite=Invitation.Decode(invitation);maxPlayers=Invite.MaxPlayers;
         build=Wire.BuildHash(AppDomain.CurrentDomain.BaseDirectory);
-        if(Invite.Build!=null && !Wire.Equal(Invite.Build,build)) throw new IOException(L.T("Les versions sont différentes. Copiez le même dossier PartyBoard sur les deux PC."));
+        if(Invite.Build!=null && !Wire.Equal(Invite.Build,build)) throw new IOException(L.T("Les versions sont différentes. Installez la même version du fork PartyBoard sur les deux PC."));
         status(L.T("Connexion à votre ami…"));
         // One identity for this guest, used on both of its channels, so the host can
         // pair them and seat us. Random rather than derived from anything: it only has
@@ -476,20 +487,16 @@ sealed class Session : IDisposable {
         if(lanGame) {
             status(L.T("Connexion à la partie sur votre réseau…"));peer=new TcpClient(AddressFamily.InterNetwork);
             bool reachedLan=false;try{reachedLan=peer.ConnectAsync(Invite.Address,Invite.Port).Wait(5000) && peer.Connected;}catch{}
-            if(!reachedLan){peer.Close();peer=null;throw new IOException(L.T("Cette partie n'est plus joignable sur votre réseau. Vérifiez que l'hôte a laissé sa fenêtre ouverte, puis actualisez la liste."));}
+            if(!reachedLan){
+                peer.Close();peer=null;
+                if(!Lan && Relay.Available){JoinViaRelay(clientId);return;}
+                throw new IOException(L.T("Cette partie n'est plus joignable sur votre réseau. Vérifiez que l'hôte a laissé sa fenêtre ouverte, puis actualisez la liste."));}
             var lanHost=Wire.Client(peer,Invite,build,0,clientId);JoinPath="lan";
             status(L.T("Premier canal sécurisé. Préparation du second…"));peerWrite=new TcpClient(AddressFamily.InterNetwork);
             if(!peerWrite.ConnectAsync(Invite.Address,Invite.Port).Wait(10000)){peerWrite.Close();lanHost.Dispose();throw new IOException(L.T("Le second canal n'a pas pu être créé."));}
             var lanFrom=Wire.Client(peerWrite,Invite,build,1,clientId);if(disposed){lanHost.Dispose();lanFrom.Dispose();throw new OperationCanceledException();}
             internetGame=new UdpClient(new IPEndPoint(IPAddress.Any,0));
             Bridge=new Bridge(peerWrite,lanFrom,peer,lanHost,1,internetGame,new IPEndPoint(Invite.Address,Invite.Port),Invite.Token);internetGame=null;AttachLobby();
-            if(maxPlayers>2) {
-                var baseReceive=Bridge.Control;bool meshOpened=false;
-                Bridge.Control=packet=>{
-                    baseReceive(packet);
-                    if(!meshOpened) {meshOpened=true;try{OpenMesh();}catch(Exception e){Report.Write("event=mesh_open_failed error="+e.Message);}}
-                };
-            }
             return;
         }
         // A public room's invitation has no address: the relay is the only way in.
@@ -536,20 +543,6 @@ sealed class Session : IDisposable {
         var fromHost=Wire.Client(peerWrite,Invite,build,1,clientId);if(disposed){toHost.Dispose();fromHost.Dispose();throw new OperationCanceledException();}
         internetGame=new UdpClient(new IPEndPoint(IPAddress.Any,0));
         Bridge=new Bridge(peerWrite,fromHost,peer,toHost,1,internetGame,new IPEndPoint(target,targetPort),Invite.Token);internetGame=null;AttachLobby();
-        if(maxPlayers>2) {
-            // LocalSeat is still its default (1) at this instant: the host's
-            // SeatCommand -- always the first message Admit() queues, ahead of
-            // even the host's own profile -- has not been read yet, because
-            // Watch() has not started the control pump that reads it. Opening
-            // the mesh under the wrong seat would announce the wrong address
-            // for it, so this waits for that first Receive() to run and settle
-            // LocalSeat before calling OpenMesh() exactly once.
-            var baseReceive=Bridge.Control;bool meshOpened=false;
-            Bridge.Control=packet=>{
-                baseReceive(packet);
-                if(!meshOpened) {meshOpened=true;try{OpenMesh();}catch(Exception e){Report.Write("event=mesh_open_failed error="+e.Message);}}
-            };
-        }
     }
     // Both channels through the relay's room, the game datagrams to the host's
     // TURN address it announced there.
@@ -571,19 +564,20 @@ sealed class Session : IDisposable {
         Bridge=new Bridge(second,fromHost,first,toHost,1,internetGame,hostUdp,Invite.Token);internetGame=null;AttachLobby();
         // Three or four players: the mesh opens once the host has said which seat
         // this is (its first message), through TURN since this guest came that way.
-        if(maxPlayers>2) {
-            var baseReceive=Bridge.Control;bool meshOpened=false;
-            Bridge.Control=packet=>{
-                baseReceive(packet);
-                if(!meshOpened) {meshOpened=true;try{OpenMesh();}catch(Exception e){Report.Write("event=mesh_open_failed error="+e.Message);}}
-            };
-        }
     }
     void AttachLobby() {
         Bridge.Diagnostic=Report.Write;
         Report.Write("role="+(Host?"host":"guest")+" build="+BitConverter.ToString(build).Replace("-","")+" tls=connected game_transport=udp-authenticated path="+JoinPath);
         Lobby=new Lobby(Host,Profile,(seat,payload)=>Bridge.SendControl(payload),id=>Task.Run(()=>LoadGame(id)),id=>{Report.Write("commit="+id);Bridge.CommitGame();gameStart.Commit(id);},connected);
-        Bridge.Control=Lobby.Receive;Bridge.Ping=value=>{PingMs=value;connected();};
+        bool meshOpened=false;
+        Bridge.Control=packet=>{
+            Lobby.Receive(packet);
+            if(maxPlayers>2 && !meshOpened && packet[0]==9) {
+                meshOpened=true;
+                OpenMesh();
+            }
+        };
+        Bridge.Ping=value=>{PingMs=value;connected();};
         Watch();Lobby.Announce();connected();
         lock(this) {if(!disposed) diagnosticTimer=new System.Threading.Timer(_=>Report.Write("phase="+Lobby.Phase+" disk_match="+Lobby.DiscMatches+" ping_ms="+PingMs+" udp_ready="+Bridge.UdpReady+" local_packets="+Bridge.GamePackets+" peer_packets="+Bridge.PeerPackets+" "+Bridge.TransportStatus),null,0,5000);}
     }
@@ -673,9 +667,19 @@ sealed class Session : IDisposable {
         // itself holds in AcceptMesh().
         Task.Run(async ()=> {string reason="Votre ami s'est déconnecté. Recréez une connexion.";try {await (maxPlayers>2?Bridge.RunControlOnly():Bridge.Run());}catch(IOException e){Report.Write("transport_error="+e.GetBaseException().GetType().Name+" hresult="+e.GetBaseException().HResult);reason=e.Message;}catch(Exception e){Report.Write("transport_error="+e.GetType().Name);}finally {if(Lobby!=null && Lobby.Ending==LobbyEnding.Kicked)reason=L.T("L'hôte vous a retiré de la room.");if(!disposed) {failed(reason);Dispose();}}});
     }
+    public bool GameRouteReady {
+        get {
+            if(maxPlayers==2)return Bridge!=null && Bridge.UdpReady;
+            var lobby=Lobby;
+            if(lobby==null || !MeshReady)return false;
+            for(int seat=0;seat<maxPlayers;seat++)
+                if(seat!=lobby.LocalSeat && lobby.PeerEndpoint(seat)==null)return false;
+            return true;
+        }
+    }
     public void Launch() {
         if(Lobby==null || disposed)throw new IOException(L.T("Attendez que votre ami soit connecté."));
-        if(!Bridge.UdpReady)throw new IOException(L.T("Le canal rapide du jeu se prépare encore. Attendez deux secondes puis réessayez."));
+        if(!GameRouteReady)throw new IOException(L.T("Le canal rapide du jeu se prépare encore. Attendez deux secondes puis réessayez."));
         Lobby.Start();
     }
     // Not the diagnostics directory: Report is documented as never holding a file
@@ -700,7 +704,7 @@ sealed class Session : IDisposable {
             int ownPort;using(var reserve=new UdpClient(new IPEndPoint(IPAddress.Loopback,0)))ownPort=((IPEndPoint)reserve.Client.LocalEndPoint).Port;
             var peers=new List<Tuple<int,int>>();
             for(int seat=0;seat<maxPlayers;seat++)
-                if(seat!=Lobby.LocalSeat && Lobby.SeatInfo(seat)!=null)peers.Add(Tuple.Create(seat,meshRelay.LoopbackPort(seat)));
+                if(seat!=Lobby.LocalSeat)peers.Add(Tuple.Create(seat,meshRelay.LoopbackPort(seat)));
             args=GameStart.MeshArguments(ownPort,Lobby.LocalSeat,maxPlayers,peers);
         } else {
             args=Host ? "--netplay-host "+HostGamePort : "--netplay-join 127.0.0.1:"+Bridge.LocalPort;
@@ -739,7 +743,8 @@ sealed class Session : IDisposable {
     }
     public void Dispose() {
         lock(this) {
-            if(!disposed)Report.Write("session_closed");
+            if(disposed)return;
+            Report.Write("session_closed");
             if(modListDirectory!=null)try{Directory.Delete(modListDirectory,true);}catch{}if(diagnosticTimer!=null)diagnosticTimer.Dispose();
             disposed=true;cancel.Cancel();if(listener!=null) listener.Stop();if(peer!=null) peer.Close();if(peerWrite!=null)peerWrite.Close();
             if(turn!=null){turn.Dispose();turn=null;}if(relayHost!=null){relayHost.Dispose();relayHost=null;}
@@ -755,6 +760,7 @@ sealed class Session : IDisposable {
     }
 }
 
+#if !PARTYBOARD_LINUX
 static class Program {
     [STAThread] static int Main(string[] args) {
         L.Init(Environment.GetEnvironmentVariable);
@@ -768,13 +774,11 @@ static class Program {
         int meshPlayers;if(args.Length==2 && args[0]=="--mesh-relay-test" && int.TryParse(args[1],out meshPlayers)) return Tests.RunMeshRelay(meshPlayers);
         if(args.Length==1 && args[0]=="--room-tags") return RoomSync.PrintTags();
         int relayMinutes;if(args.Length==2 && args[0]=="--relay-session-test" && int.TryParse(args[1],out relayMinutes)) return Tests.RunRelaySession(relayMinutes);
-        // Both PCs must hold byte-identical folders or Lobby refuses to start the
-        // game. Printing the same hash the handshake uses lets a player check that
-        // before a session instead of discovering it as a refusal.
+        // The Windows package verifier compares the actual files against its manifest.
         if(args.Length==1 && args[0]=="--build-hash") {
             try {
                 var root=AppDomain.CurrentDomain.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar,Path.AltDirectorySeparatorChar);
-                Console.WriteLine(BitConverter.ToString(Wire.BuildHash(root)).Replace("-","").ToLowerInvariant());
+                Console.WriteLine(BitConverter.ToString(Wire.FolderHash(root)).Replace("-","").ToLowerInvariant());
                 return 0;
             } catch(Exception e) {Console.Error.WriteLine(e.Message);return 1;}
         }
@@ -795,7 +799,5 @@ static class Program {
         Application.Run(new MainForm(Startup.FromEnvironment(args)));return 0;
     }
 }
+#endif
 }
-
-
-

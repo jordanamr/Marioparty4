@@ -45,10 +45,20 @@
 #### Setup
 Clone and initialize the Party Board repository
 ```sh
-git clone --recursive https://github.com/mariopartyrd/partyboard.git
-cd partyboard
-git pull
-git submodule update --init --recursive
+git clone --recursive --branch linux-netplay-pal https://github.com/jordanamr/Marioparty4.git
+cd Marioparty4
+```
+
+Apply the dependency patches once after cloning. On Linux or in Git Bash on Windows:
+
+```sh
+git -C extern/musyx apply ../../patches/musyx-partyboard.patch
+for patch in aurora-partyboard aurora-render-fixes aurora-android-surface-deadlock \
+             aurora-mobile-one-local-player aurora-render-worker-idle aurora-quest-stereo \
+             aurora-android-surface-generation aurora-quest-quality
+do
+    git -C extern/aurora apply "../../patches/$patch.patch" || break
+done
 ```
 
 # Building the port
@@ -75,7 +85,14 @@ cmake --build --preset macos-default-relwithdebinfo
 Alternate presets available:
 - `macos-default-debug`: Clang, Debug
 
-**ninja (Linux)**
+**Ninja (Linux)**
+
+The online lobby requires the .NET 10 SDK to build. Install the .NET 10 runtime
+on machines running a framework-dependent build. Pass
+`-DPARTY_BOARD_BUNDLE_DOTNET=ON` when configuring to embed the runtime, as the
+AppImage workflow does. For an offline-only build, pass
+`-DPARTY_BOARD_LINUX_ONLINE=OFF`. Build the Windows client from the same Git
+revision for a shared online session.
 
 ```sh
 cmake --preset linux-default-relwithdebinfo
@@ -100,3 +117,10 @@ Alternate presets available:
 - `windows-msvc-debug`: MSVC, Debug
 - `windows-clang-relwithdebinfo`: Clang-cl, RelWithDebInfo
 - `windows-clang-debug`: Clang-cl, Debug
+
+Build the Windows lobby beside the installed game with PowerShell:
+
+```powershell
+cmake --install build/windows-msvc-relwithdebinfo
+./tools/build_online.ps1 -OutputDirectory build/install
+```

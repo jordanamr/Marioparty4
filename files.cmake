@@ -158,6 +158,7 @@ set(PORT_FILES
         src/port/ui/nav_types.hpp
         src/port/ui/number_button.cpp
         src/port/ui/number_button.hpp
+        src/port/ui/linux_lobby.cpp
         src/port/ui/online.cpp
         src/port/ui/online.hpp
         src/port/ui/overlay.cpp

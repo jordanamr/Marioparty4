@@ -147,8 +147,12 @@ jobs:
       - name: Print sccache stats
         run: sccache --show-stats
 
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
       - name: Configure CMake
-        run: cmake --preset x-linux-ci-${{matrix.preset}}
+        run: cmake --preset x-linux-ci-${{matrix.preset}} -DPARTY_BOARD_BUNDLE_DOTNET=ON
 
       - name: Build
         run: cmake --build --preset x-linux-ci-${{matrix.preset}}

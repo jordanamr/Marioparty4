@@ -13,20 +13,42 @@ using System.Diagnostics;
 namespace PartyBoardOnline {
 sealed class Route {
     public IPAddress Local,Router;
+#if PARTYBOARD_LINUX
+    static IPAddress OutboundAddress(string destination) {
+        // UDP connect asks the kernel to select its outbound interface. No packet is sent.
+        using(var socket=new Socket(AddressFamily.InterNetwork,SocketType.Dgram,ProtocolType.Udp)) {
+            socket.Connect(IPAddress.Parse(destination),53);
+            return ((IPEndPoint)socket.LocalEndPoint).Address;
+        }
+    }
+#else
     [DllImport("iphlpapi.dll")] static extern int GetBestInterface(uint destination,out uint index);
+#endif
     public static Route Detect() {
+#if PARTYBOARD_LINUX
+        var address=OutboundAddress("1.1.1.1");
+        if(!address.Equals(OutboundAddress("208.67.222.222")))
+            throw new IOException(L.T("Plusieurs connexions sont actives. Gardez une seule connexion Internet puis réessayez."));
+        var nic=NetworkInterface.GetAllNetworkInterfaces().FirstOrDefault(n=>n.OperationalStatus==OperationalStatus.Up &&
+            n.GetIPProperties().UnicastAddresses.Any(a=>a.Address.Equals(address)));
+#else
         uint index,other;
         if(GetBestInterface(BitConverter.ToUInt32(new byte[]{1,1,1,1},0),out index)!=0 ||
            GetBestInterface(BitConverter.ToUInt32(new byte[]{208,67,222,222},0),out other)!=0 || index!=other)
             throw new IOException(L.T("Plusieurs connexions sont actives. Gardez une seule connexion Internet puis réessayez."));
         var nic=NetworkInterface.GetAllNetworkInterfaces().FirstOrDefault(n=>n.Supports(NetworkInterfaceComponent.IPv4) && n.GetIPProperties().GetIPv4Properties().Index==index);
+#endif
         if(nic==null) throw new IOException(L.T("Aucune connexion Internet disponible."));
         string name=(nic.Name+" "+nic.Description).ToLowerInvariant();
         if((nic.NetworkInterfaceType!=NetworkInterfaceType.Ethernet && nic.NetworkInterfaceType!=NetworkInterfaceType.Wireless80211) ||
             new[]{"vpn","nord","lynx","wireguard","tailscale","tunnel","proton","wintun","virtual","tap-","tap "}.Any(name.Contains))
             throw new IOException(L.T("Votre VPN ou votre connexion virtuelle empêche la préparation automatique. Mettez votre VPN en pause, puis cliquez sur Créer une partie."));
         var props=nic.GetIPProperties();
+        #if PARTYBOARD_LINUX
+        var local=props.UnicastAddresses.First(a=>a.Address.Equals(address));
+#else
         var local=props.UnicastAddresses.FirstOrDefault(a=>a.Address.AddressFamily==AddressFamily.InterNetwork && !IPAddress.IsLoopback(a.Address));
+#endif
         var gateway=props.GatewayAddresses.FirstOrDefault(a=>a.Address.AddressFamily==AddressFamily.InterNetwork && !a.Address.Equals(IPAddress.Any));
         if(local==null || gateway==null || !Gateway.Private(gateway.Address))
             throw new IOException(L.T("Cette connexion ne donne pas accès à une box compatible. Essayez depuis votre Wi-Fi ou votre câble Ethernet habituel."));

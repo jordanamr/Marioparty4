@@ -29,6 +29,7 @@ struct VerificationStatus {
 
 struct DiscInfo {
     bool isPal = false;
+    bool supportsOnline = false;
     // Only meaningful once the disc was recognised as Mario Party 4 (`known`).
     bool known = false;
     version::DiscRegion region = version::DiscRegion::Usa;
