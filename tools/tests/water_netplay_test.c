@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "water_gpu_stubs.h"
+#include "gpu_stubs.h"
 
 static float waterY[5];
 static int paused;
