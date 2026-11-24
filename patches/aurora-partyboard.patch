@@ -614,17 +614,3 @@ index 863ecb8..c2b0663 100644
    }
  
    fileInfo->cb.state = DVD_STATE_END;
-diff --git a/lib/dolphin/mtx/mtx.c b/lib/dolphin/mtx/mtx.c
---- a/lib/dolphin/mtx/mtx.c
-+++ b/lib/dolphin/mtx/mtx.c
-@@ -409,5 +409,10 @@ void C_MTXRotRad(Mtx m, char axis, f32 rad) {
-   assert(m && "MTXRotRad():  NULL MtxPtr 'm' ");
-+#ifdef PARTYBOARD_ROTATION_MATH
-+  extern void PartyBoard_RotationSinCos(float radians, float* sine, float* cosine);
-+  PartyBoard_RotationSinCos(rad, &sinA, &cosA);
-+#else
-   sinA = sinf(rad);
-   cosA = cosf(rad);
-+#endif
-   C_MTXRotTrig(m, axis, sinA, cosA);
- }
