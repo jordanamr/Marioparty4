@@ -15,6 +15,7 @@ import signal
 import socket
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 
@@ -103,7 +104,12 @@ def arguments():
     parser.add_argument("--replay-input", type=Path, action="append", default=[], metavar="FILE")
     parser.add_argument("--replay-dir", type=Path, help="read a corpus of *.txt inputs for one scenario")
     parser.add_argument("--max-seconds", type=float, default=1350, help="wall-clock limit per case")
+    parser.add_argument("--gpu-slots", type=int, default=int(os.environ.get("PARTYBOARD_QA_GPU_SLOTS", 8)),
+                        help="shared GPU budget across campaigns for this user (same value for all runs; default 8). "
+                             "A compact pair uses one slot; a mixed-graphics pair uses two")
     args = parser.parse_args()
+    if args.gpu_slots < 1:
+        parser.error("--gpu-slots must be positive")
     args.compact_video = args.fast and not args.mixed_graphics
     if args.list_scenarios:
         for name, s in SCENARIOS.items():
@@ -202,6 +208,28 @@ def display(log, resolution):
         if not number.isdecimal():
             raise RuntimeError("Xvfb failed to start")
         yield ":" + number
+
+
+@contextmanager
+def gpu_reservation(directory, budget, weight, stop):
+    import fcntl
+    directory.mkdir(mode=0o700, exist_ok=True)
+    needed = min(weight, budget)
+    while not stop.is_set():
+        with ExitStack() as held:
+            count = 0
+            for slot in range(budget):
+                file = held.enter_context((directory / str(slot)).open("a"))
+                try:
+                    fcntl.flock(file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except BlockingIOError:
+                    continue
+                count += 1
+                if count == needed:
+                    yield True
+                    return
+        stop.wait(0.5)
+    yield False
 
 
 @contextmanager
@@ -577,26 +605,30 @@ def main():
                     job = jobs.get_nowait()
                 except queue.Empty:
                     return
-                try:
-                    started = time.monotonic()
-                    deadline = started + args.max_seconds
-                    result = run_case(job, env, args, ports, stop, deadline)
-                    if (result.get("reason") == "linux_startup_stalled" and not stop.is_set()
-                            and time.monotonic() < deadline):
-                        first = result
-                        print(f"RETRY {job[0]} (Linux startup stalled)", flush=True)
-                        result = run_case(job, env, args, ports, stop, deadline, startup_retry=True)
-                        result["first_attempt"] = str(Path(first["run_dir"]) / "case.json")
-                        result["total_elapsed_seconds"] = round(time.monotonic() - started, 3)
-                        case_file = Path(result["run_dir"]) / "case.json"
-                        case_file.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
-                except (OSError, RuntimeError, subprocess.SubprocessError) as e:
-                    result = {"id": job[0], "status": "CRASH", "error": str(e), "scenario": job[1],
-                              "directory": str(args.output / "cases" / job[0])}
-                with lock:
-                    results.append(result)
-                    write_campaign(args.output, results)
-                    print(f"{result['status']} {job[0]}", flush=True)
+                slots = Path(tempfile.gettempdir()) / f"partyboard-gpu-slots-{os.getuid()}"
+                with gpu_reservation(slots, args.gpu_slots, 1 if args.compact_video else 2, stop) as acquired:
+                    if not acquired:
+                        return
+                    try:
+                        started = time.monotonic()
+                        deadline = started + args.max_seconds
+                        result = run_case(job, env, args, ports, stop, deadline)
+                        if (result.get("reason") == "linux_startup_stalled" and not stop.is_set()
+                                and time.monotonic() < deadline):
+                            first = result
+                            print(f"RETRY {job[0]} (Linux startup stalled)", flush=True)
+                            result = run_case(job, env, args, ports, stop, deadline, startup_retry=True)
+                            result["first_attempt"] = str(Path(first["run_dir"]) / "case.json")
+                            result["total_elapsed_seconds"] = round(time.monotonic() - started, 3)
+                            case_file = Path(result["run_dir"]) / "case.json"
+                            case_file.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+                    except (OSError, RuntimeError, subprocess.SubprocessError) as e:
+                        result = {"id": job[0], "status": "CRASH", "error": str(e), "scenario": job[1],
+                                  "directory": str(args.output / "cases" / job[0])}
+                    with lock:
+                        results.append(result)
+                        write_campaign(args.output, results)
+                        print(f"{result['status']} {job[0]}", flush=True)
 
     def terminate(_signum, _frame):
         raise KeyboardInterrupt
