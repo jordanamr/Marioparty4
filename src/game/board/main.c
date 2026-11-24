@@ -800,7 +800,7 @@ void BoardCameraViewSet(s32 type)
 {
     BoardCameraData *camera = &boardCamera;
     BoardFocusData *focus;
-    float size;
+    const s32 player = GWSystem.player_curr;
     if(!cameraObj) {
         return;
     }
@@ -818,16 +818,20 @@ void BoardCameraViewSet(s32 type)
     focus->rot_end.z = 0;
     focus->rot_start = camera->rot;
     focus->target_start = camera->target;
-    if(BoardPlayerSizeGet(GWSystem.player_curr) == 2 || GWPlayer[GWSystem.player_curr].bowser_suit) {
-        focus->zoom_end += 400.0f;
-        size = 2.5f;
+    if(player >= 0 && player < 4) {
+        float height = 100.0f;
+        if(BoardPlayerSizeGet(player) == 2 || GWPlayer[player].bowser_suit) {
+            focus->zoom_end += 400.0f;
+            height = 250.0f;
+        }
+        BoardCameraTargetModelSet(BoardPlayerModelGet(player));
+        BoardPlayerPosGet(player, &focus->target_end);
+        BoardCameraOffsetSet(0.0f, height, 0.0f);
+        focus->target_end.y += height;
     } else {
-        size = 1.0f;
+        // Board-wide events have their own camera target and no active player.
+        focus->target_end = camera->target;
     }
-    BoardCameraTargetModelSet(BoardPlayerModelGet(GWSystem.player_curr));
-    BoardPlayerPosGet(GWSystem.player_curr, &focus->target_end);
-    BoardCameraOffsetSet(0.0f, 100.0f*size, 0.0f);
-    focus->target_end.y += 100.0f*size;
     _SetFlag(FLAG_ID_MAKE(1, 21));
     focus->view_type = type;
     focus->time = 0;

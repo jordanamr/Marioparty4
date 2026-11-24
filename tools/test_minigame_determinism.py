@@ -23,6 +23,7 @@ def main():
         ("m408Dll", "stage.c", "minigame_material_coordinates_test.c"),
         ("m412Dll", "main.c", "minigame_wall_slide_test.c"),
         ("w04Dll", "boo_event.c", "boo_train_landing_test.c"),
+        ("dol", "game/board/main.c", "board_camera_view_test.c"),
         ("dol", "game/board/com.c", "board_cpu_item_slot_test.c"),
         ("dol", "game/board/mg_setup.c", "board_minigame_transition_test.c"),
         ("dol", "game/board/shop.c", "board_shop_input_test.c"),
