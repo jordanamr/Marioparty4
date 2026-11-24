@@ -1217,6 +1217,18 @@ static void HideScratchSpr(void)
     }
 }
 
+static Vec ScratchTicketCenter(s32 column, s32 row)
+{
+    return (Vec){107.0f + 110.0f * column, 98.0f + 110.0f * row, 0.0f};
+}
+
+static void PositionScratchPicker(LotteryTicketPickWork *picker)
+{
+    Vec center = ScratchTicketCenter(picker->unk02, picker->unk03);
+    /* The pointing fingertip is offset from the sprite's origin. */
+    HuSprPosSet(picker->unk08, 0, center.x - 16.0f, center.y + 8.0f);
+}
+
 static void InitScratchSpr(void)
 {
     Vec sp18;
@@ -1246,8 +1258,7 @@ static void InitScratchSpr(void)
         temp_r29->unk00_field2 = i;
         temp_r29->unk01 = (i / 4) * 2;
         temp_r29->unk02 = temp_r29->unk04 = -1;
-        temp_r31->trans.x = 107.0f + 110.0f * (i % 4);
-        temp_r31->trans.y = 98.0f + 110.0f * (i / 4);
+        temp_r31->trans = ScratchTicketCenter(i % 4, i / 4);
         temp_r31->rot.x = -56.0f;
         temp_r31->rot.y = temp_r31->trans.y;
         BoardSpriteCreate(ticketSpr[ticketPrize[i]], 5500, NULL, &sp8);
@@ -1290,8 +1301,6 @@ static inline u32 ExecStratchPickInlineFunc(LotteryTicketPickWork *temp_r29)
 
 static void ExecScratchPick(omObjData *arg0)
 {
-    float var_f29;
-    float var_f28;
     s8 var_r28;
     s8 var_r25;
     s8 var_r24;
@@ -1358,17 +1367,11 @@ static void ExecScratchPick(omObjData *arg0)
     if (var_r28 != 0) {
         HuAudFXPlay(0);
     }
-    OSs8tof32(&temp_r29->unk02, &var_f29);
-    OSs8tof32(&temp_r29->unk03, &var_f28);
-    var_f29 = 107.0f + 110.0f * var_f29 - 32.0f + 16.0f;
-    var_f28 = 98.0f + 110.0f * var_f28 + 32.0f - 24.0f;
-    HuSprPosSet(temp_r29->unk08, 0, var_f29, var_f28);
+    PositionScratchPicker(temp_r29);
 }
 
 static void InitScratchPick(void)
 {
-    float temp_f31 = 91.0f;
-    float temp_f30 = 106.0f;
     omObjData *temp_r30;
     LotteryTicketPickWork *var_r31;
 
@@ -1386,7 +1389,7 @@ static void InitScratchPick(void)
     BoardSpriteCreate(pickSpr[var_r31->unk01], 5000, 0, &var_r31->unk06);
     HuSprGrpMemberSet(var_r31->unk08, 0, var_r31->unk06);
     HuSprAttrSet(var_r31->unk08, 0, 8);
-    HuSprPosSet(var_r31->unk08, 0, temp_f31, temp_f30);
+    PositionScratchPicker(var_r31);
     HuSprGrpDrawNoSet(var_r31->unk08, 0x40);
 }
 

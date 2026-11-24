@@ -2,6 +2,7 @@
 #include "game/board/main.h"
 #include "game/audio.h"
 #include "game/animdata.h"
+#include "game/sprite.h"
 #include <string.h>
 static int IgnoreSound(int id) { return id; }
 #define HuAudFXPlay IgnoreSound
@@ -22,6 +23,13 @@ static void RecordUpload(GXTexObj *obj, const void *pixels)
     assert(0);
 }
 
+static Vec cursorOrigin;
+static void RecordCursorPosition(s16 group, s16 member, float x, float y)
+{
+    cursorOrigin = (Vec){x, y, 0};
+}
+
+#define HuSprPosSet RecordCursorPosition
 #define GXInitTexObjData RecordUpload
 #include "src/game/board/lottery.c"
 
@@ -61,6 +69,21 @@ int main(void)
     HuPadBtnDown[1] = PAD_BUTTON_A;
     ExecScratchPick(&cursor);
     assert(currPrize == 6 && ticket->unk00_field0);
+    for (int row = 0; row < 3; row++) {
+        for (int column = 0; column < 4; column++) {
+            Vec center = ScratchTicketCenter(column, row);
+            assert(center.x == 107 + 110 * column && center.y == 98 + 110 * row);
+            ticket->unk00_field0 = 0;
+            ticket->unk02 = column;
+            ticket->unk03 = row;
+            HuPadDStkRep[1] = HuPadBtnDown[1] = 0;
+            ExecScratchPick(&cursor);
+            assert(cursorOrigin.x + 16 == center.x && cursorOrigin.y - 8 == center.y);
+            HuPadBtnDown[1] = PAD_BUTTON_A;
+            ExecScratchPick(&cursor);
+            assert(currPrize == column + 4 * row);
+        }
+    }
     TestAnimatedReveal();
     return 0;
 }
