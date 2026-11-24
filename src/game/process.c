@@ -101,6 +101,14 @@ static void UnlinkProcess(Process **root, Process *process)
     }
 }
 
+#ifdef TARGET_PC
+static void RunProcessEntry(void)
+{
+    processcur->entry();
+    HuPrcEnd();
+}
+#endif
+
 Process *HuPrcCreate(void (*func)(void), u16 prio, u32 stack_size, s32 extra_size)
 {
     Process *process;
@@ -150,7 +158,12 @@ Process *HuPrcCreate(void (*func)(void), u16 prio, u32 stack_size, s32 extra_siz
     process->prio = prio;
     process->sleep_time = 0;
 #ifdef TARGET_PC
-    process->thread = co_create(stack_size, func);
+    process->entry = func;
+    process->thread = co_create(stack_size, RunProcessEntry);
+    if (!process->thread) {
+        HuMemDirectFree(heap);
+        return NULL;
+    }
     process->thread_size = stack_size;
     // The stack libco just allocated is guarded and measurable; tell the meter
     // which process owns it so a guard-page fault can name the culprit and the
@@ -208,7 +221,7 @@ void HuPrcChildUnlink(Process *process)
 Process *HuPrcChildCreate(void (*func)(void), u16 prio, u32 stack_size, s32 extra_size, Process *parent)
 {
     Process *child = HuPrcCreate(func, prio, stack_size, extra_size);
-    HuPrcChildLink(parent, child);
+    if (child) HuPrcChildLink(parent, child);
     return child;
 }
 
@@ -264,8 +277,10 @@ void HuPrcChildKill(Process *process)
         if (child->child) {
             HuPrcChildKill(child);
         }
+        Process *next = child->next_child;
+        HuPrcChildUnlink(child);
         SetKillStatusProcess(child);
-        child = child->next_child;
+        child = next;
     }
     process->child = NULL;
 }
@@ -357,7 +372,10 @@ void HuPrcCall(s32 tick)
         switch (ret) {
             case 2:
 #endif
+                process = processcur->next;
                 HuMemDirectFree(processcur->heap);
+                processcur = process;
+                break;
             case 1:
                 #ifdef NON_MATCHING
                 // avoid dereferencing NULL

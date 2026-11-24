@@ -253,88 +253,24 @@ BOOL PolygonRangeCheck(HSFMAPATTR *arg0, float arg1, float arg2, float *arg3, fl
     }
 }
 
-static s32 DefIfnnerMapCircle(Vec *arg0, s16 *arg1, Vec *arg2, Vec *arg3) {
-    float temp_f30;
-    float temp_f29;
-    float temp_f28;
-    float var_f31;
-    s32 var_r28;
-    s32 var_r27;
-    s32 var_r25;
+static BOOL InsideFaceTriangle(const Vec *point, Vec *a, Vec *b, Vec *c, Vec *direction) {
+    float ab = MapIflnnerCalc(point->x, point->y, point->z, a, b, direction);
+    float bc = MapIflnnerCalc(point->x, point->y, point->z, b, c, direction);
+    float ca = MapIflnnerCalc(point->x, point->y, point->z, c, a, direction);
+    return (ab >= 0 && bc >= 0 && ca >= 0) || (ab <= 0 && bc <= 0 && ca <= 0);
+}
 
-    temp_f30 = arg0->x;
-    temp_f29 = arg0->y;
-    temp_f28 = arg0->z;
-    var_r27 = *arg1 & 0xFF;
-    arg1++;
-    if (var_r27 == 3) {
-        var_f31 = MapIflnnerCalc(temp_f30, temp_f29, temp_f28, &arg2[arg1[0]], &arg2[arg1[1]], arg3);
-        if (var_f31 > 0.0f) {
-            for (var_r28 = 1; var_r28 < var_r27; var_r28++) {
-                var_r25 = (var_r28 + 1) % var_r27;
-                var_f31 = MapIflnnerCalc(temp_f30, temp_f29, temp_f28, &arg2[arg1[var_r28]], &arg2[arg1[var_r25]], arg3);
-                if (var_f31 < 0.0f) {
-                    return 0;
-                }
-            }
-            return 1;
-        } else {
-            for (var_r28 = 1; var_r28 < var_r27; var_r28++) {
-                var_r25 = (var_r28 + 1) % var_r27;
-                var_f31 = MapIflnnerCalc(temp_f30, temp_f29, temp_f28, &arg2[arg1[var_r28]], &arg2[arg1[var_r25]], arg3);
-                if (var_f31 > 0.0f) {
-                    return 0;
-                }
-            }
-            return 1;
-        }
-    } else if (var_r27 == 4) {
-        var_f31 = MapIflnnerCalc(temp_f30, temp_f29, temp_f28, &arg2[arg1[0]], &arg2[arg1[2]], arg3);
-        if (var_f31 > 0.0f) {
-            var_f31 = MapIflnnerCalc(temp_f30, temp_f29, temp_f28, &arg2[arg1[2]], &arg2[arg1[3]], arg3);
-            if (var_f31 < 0.0f) {
-                var_r27 = 1;
-            } else {
-                var_f31 = MapIflnnerCalc(temp_f30, temp_f29, temp_f28, &arg2[arg1[3]], &arg2[arg1[0]], arg3);
-                if (var_f31 < 0.0f) {
-                    var_r27 = 1;
-                }
-            }
-        } else {
-            var_f31 = MapIflnnerCalc(temp_f30, temp_f29, temp_f28, &arg2[arg1[2]], &arg2[arg1[3]], arg3);
-            if (var_f31 > 0.0f) {
-                var_r27 = 1;
-            } else {
-                var_f31 = MapIflnnerCalc(temp_f30, temp_f29, temp_f28, &arg2[arg1[3]], &arg2[arg1[0]], arg3);
-                if (var_f31 > 0.0f) {
-                    var_r27 = 1;
-                }
-            }
-        }
-        if (var_r27 != 0) {
-            var_f31 = MapIflnnerCalc(temp_f30, temp_f29, temp_f28, &arg2[arg1[0]], &arg2[arg1[3]], arg3);
-            if (var_f31 > 0.0f) {
-                var_f31 = MapIflnnerCalc(temp_f30, temp_f29, temp_f28, &arg2[arg1[3]], &arg2[arg1[1]], arg3);
-                if (var_f31 < 0.0f) {
-                    return 0;
-                }
-                var_f31 = MapIflnnerCalc(temp_f30, temp_f29, temp_f28, &arg2[arg1[1]], &arg2[arg1[0]], arg3);
-                if (var_f31 < 0.0f) {
-                    return 0;
-                }
-            } else {
-                var_f31 = MapIflnnerCalc(temp_f30, temp_f29, temp_f28, &arg2[arg1[3]], &arg2[arg1[1]], arg3);
-                if (var_f31 > 0.0f) {
-                    return 0;
-                }
-                var_f31 = MapIflnnerCalc(temp_f30, temp_f29, temp_f28, &arg2[arg1[1]], &arg2[arg1[0]], arg3);
-                if (var_f31 > 0.0f) {
-                    return 0;
-                }
-            }
-        }
+static s32 DefIfnnerMapCircle(Vec *point, s16 *face, Vec *vertices, Vec *direction) {
+    s16 *idx = face + 1;
+    switch (*face & 0xff) {
+    case 3:
+        return InsideFaceTriangle(point, &vertices[idx[0]], &vertices[idx[1]], &vertices[idx[2]], direction);
+    case 4:
+        return InsideFaceTriangle(point, &vertices[idx[0]], &vertices[idx[2]], &vertices[idx[3]], direction)
+            || InsideFaceTriangle(point, &vertices[idx[0]], &vertices[idx[3]], &vertices[idx[1]], direction);
+    default:
+        return FALSE;
     }
-    return 0;
 }
 
 static inline void normalize_vec(Vec *vec) {
@@ -770,6 +706,29 @@ static s32 PrecalcPntToTriangle(Vec *arg0, Vec *arg1, Vec *arg2, Vec* arg3, Vec 
     float temp_f29;
     float temp_f31;
 
+    if (arg3->x == 0 && arg3->y == 0 && arg3->z == 0) {
+        /* Coincident or collinear vertices reduce the face to its longest edge. */
+        Vec origin = {0}, edge;
+        Vec *start = &origin, *end = arg1;
+        float ab = VECDotProduct(arg1, arg1), ac = VECDotProduct(arg2, arg2);
+        VECSubtract(arg2, arg1, &edge);
+        float bc = VECDotProduct(&edge, &edge);
+        if (bc >= ab && bc >= ac) {
+            start = arg1;
+            end = arg2;
+        } else if (ac > ab) {
+            end = arg2;
+        }
+        VECSubtract(end, start, &edge);
+        VECSubtract(arg4, start, &sp14);
+        float lengthSq = VECDotProduct(&edge, &edge);
+        float t = lengthSq > 0 ? VECDotProduct(&sp14, &edge) / lengthSq : 0;
+        if (t < 0) t = 0;
+        if (t > 1) t = 1;
+        VECScale(&edge, &sp8, t);
+        VECAdd(start, &sp8, arg5);
+        return 1;
+    }
     HuSetVecF(&sp14, -arg4->x, -arg4->y, -arg4->z);
     temp_f28 = 1.0f / (-(arg1->z * arg2->y * arg3->x) + arg1->y * arg2->z * arg3->x + arg1->z * arg2->x * arg3->y - arg1->x * arg2->z * arg3->y - arg1->y * arg2->x * arg3->z + arg1->x * arg2->y * arg3->z);
     temp_f30 = temp_f28 * (arg2->z * (arg3->y * sp14.x - arg3->x * sp14.y) + arg2->y * (arg3->x * sp14.z - arg3->z * sp14.x) + arg2->x * (arg3->z * sp14.y - arg3->y * sp14.z));

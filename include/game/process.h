@@ -44,6 +44,9 @@ typedef struct process {
         void *user_data; // TODO rename to property
         volatile uintptr_t user_data_u32;
     };
+#ifdef TARGET_PC
+    void (*entry)(void);
+#endif
 } Process;
 
 void HuPrcInit(void);
