@@ -11,6 +11,9 @@
 #include "game/data.h"
 #include "game/disp.h"
 #include "game/frand.h"
+#ifdef TARGET_PC
+s16 HuSysVWaitGet(s16 old);
+#endif
 #include "game/memory.h"
 #include "game/minigame_seq.h"
 #include "game/object.h"
@@ -1597,7 +1600,13 @@ void fn_1_56C4(HU3DMODEL *arg0, Mtx arg1)
         sp130[1][3] = 0.0f;
         sp130[2][3] = 0.0f;
         MTXReorder(sp130, sp100);
-        if ((omPauseChk() == 0) && (var_r31->unk_00)) {
+        /* The fire callback advances particles and tests the player's hitbox.
+         * A redraw during a network stall must reuse the last simulation. */
+        if (omPauseChk() == 0 && var_r31->unk_00
+#ifdef TARGET_PC
+            && HuSysVWaitGet(0) != 0
+#endif
+        ) {
             spC = var_r31->unk_00;
             spC(arg0, var_r31, arg1);
         }
