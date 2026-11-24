@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 namespace PartyBoardOnline {
 // Structured diagnostics only: never invitation, endpoint, nickname, disk path
 // or arbitrary engine/exception output.
@@ -19,17 +20,28 @@ sealed class Report {
     public void Write(string text,bool terminal) {
         lock(gate){if(lines>=(terminal?3008:3000))return;try{File.AppendAllText(Path.Combine(DirectoryPath,"session.txt"),DateTime.UtcNow.ToString("O")+" "+text+Environment.NewLine,Encoding.UTF8);lines++;}catch{}}
     }
-    // The newest desync report the game wrote. It lives with the game data,
-    // not with the lobby diagnostics, and it is the only file carrying the
-    // per-field values - which is what names a divergence instead of merely
-    // locating it in one of sixteen subsystems.
-    static string LatestDesyncReport() {
+    // The engine records the exact report it produced in this session's sidecar.
+    // Resolve only its generated filename inside the game's report directory.
+    static readonly Regex ReportName=new Regex(@"(?:^|[/\\])(netplay_desync_[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{6}_player[1-4]\.log)\z");
+    static string DefaultDesyncFolder() {
+        string data=Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        if(Environment.OSVersion.Platform==PlatformID.Unix) {
+            data=Environment.GetEnvironmentVariable("XDG_DATA_HOME");
+            if(String.IsNullOrEmpty(data))data=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),".local","share");
+        }
+        return Path.Combine(data,"MarioPartyRD","Party Board","netplay");
+    }
+    static string SessionDesyncReport(string sidecar,string folder) {
         try {
-            var folder=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "MarioPartyRD","Party Board","netplay");
-            if(!Directory.Exists(folder))return null;
-            return Directory.GetFiles(folder,"netplay_desync_*.log")
-                .OrderByDescending(f=>File.GetLastWriteTimeUtc(f)).FirstOrDefault();
+            if(!File.Exists(sidecar))return null;
+            string line=File.ReadLines(sidecar).FirstOrDefault();
+            if(line==null)return null;
+            int marker=line.IndexOf(" report=",StringComparison.Ordinal);
+            if(marker<0)return null;
+            var match=ReportName.Match(line.Substring(marker+8));
+            if(!match.Success)return null;
+            var path=Path.Combine(folder,match.Groups[1].Value);
+            return File.Exists(path)?path:null;
         } catch(IOException){return null;} catch(UnauthorizedAccessException){return null;}
     }
 
@@ -55,12 +67,13 @@ sealed class Report {
         catch(UnauthorizedAccessException){result.AppendLine("No data available.");}
     }
 
-    public string Read() {
+    public string Read() { return Read(DefaultDesyncFolder()); }
+    internal string Read(string desyncFolder) {
         var result=new StringBuilder("PartyBoard diagnostic v1\r\n");
         AppendSection(result,"session.txt",Path.Combine(DirectoryPath,"session.txt"),false,1024*1024);
         AppendSection(result,"native.txt",Path.Combine(DirectoryPath,"native.txt"),true,1024*1024);
         AppendSection(result,"native.txt.desync",Path.Combine(DirectoryPath,"native.txt.desync"),false,256*1024);
-        var desync=LatestDesyncReport();
+        var desync=SessionDesyncReport(NativePath+".desync",desyncFolder);
         AppendSection(result,desync==null?"netplay_desync (absent)":Path.GetFileName(desync),
             desync,false,2*1024*1024);
         return result.ToString();

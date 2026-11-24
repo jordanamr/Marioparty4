@@ -794,6 +794,12 @@ static class Tests {
             Check(TryReceive(game,2000,out arrived,out arrivedFrom) && Bridge.Packet(arrived,1),
                 "a packet authenticated as seat 1 is delivered back to the local game");
 
+            Check(SpinWait.SpinUntil(()=>relay.TransportStatus().Contains("mesh_seat1_delivered=1"),1000),
+                "mesh diagnostics count authenticated game delivery per seat");
+            string meshStatus=relay.TransportStatus();
+            Check(meshStatus.Contains("mesh_seat1_sent=1") && meshStatus.Contains("mesh_seat2_sent=1")
+                && meshStatus.Contains("mesh_seat2_received=0"),"control heartbeats do not count as game packets");
+
             // A forged seat byte cannot be produced without the key that signs
             // it; corrupting one after the fact must fail the HMAC, not just get
             // routed to the wrong leg.
@@ -1289,6 +1295,16 @@ static class Tests {
         File.WriteAllText(report.NativePath+".desync","DESYNC frame=87 localHash=111 remoteHash=222");
         Check(report.Read().Contains("DESYNC frame=87"),"desync sidecar survives capped native diagnostic export");
         Check(report.Read().Contains("native_fixture"),"combined native export");
+        var folder=report.DirectoryPath;
+        var old=Path.Combine(folder,"netplay_desync_2026-01-02_123000_player2.log");
+        var current=Path.Combine(folder,"netplay_desync_2026-01-02_120000_player2.log");
+        File.WriteAllText(old,"unrelated_report_contents");
+        File.WriteAllText(current,"current_report_contents");
+        File.SetLastWriteTimeUtc(old,DateTime.UtcNow.AddMinutes(5));
+        Check(!report.Read(folder).Contains("unrelated_report_contents"),"a previous session's desync stays out of the export");
+        File.WriteAllText(report.NativePath+".desync","DESYNC frame=87 report="+current+Environment.NewLine);
+        var exported=report.Read(folder);
+        Check(exported.Contains("current_report_contents") && !exported.Contains("unrelated_report_contents"),"export follows the session sidecar regardless of modification time");
         for(int i=0;i<3010;i++)report.Write("bounded");
         Check(File.ReadAllLines(Path.Combine(report.DirectoryPath,"session.txt")).Length==3000,"bounded diagnostic log");
     }

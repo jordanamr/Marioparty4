@@ -751,7 +751,9 @@ sealed class Session : IDisposable {
         var lobby=Lobby;
         if(disposed || lobby==null)return;
         var bridge=Bridge;
-        if(bridge!=null)Report.Write("phase="+lobby.Phase+" disk_match="+lobby.DiscMatches+" ping_ms="+PingMs+" udp_ready="+bridge.UdpReady+" local_packets="+bridge.GamePackets+" peer_packets="+bridge.PeerPackets+" "+bridge.TransportStatus);
+        var mesh=meshRelay;
+        if(mesh!=null)Report.Write("phase="+lobby.Phase+" occupied="+lobby.Occupied+"/"+maxPlayers+" disk_match="+lobby.DiscMatches+" "+RelayStatus+" "+mesh.TransportStatus());
+        else if(bridge!=null)Report.Write("phase="+lobby.Phase+" disk_match="+lobby.DiscMatches+" ping_ms="+PingMs+" udp_ready="+bridge.UdpReady+" local_packets="+bridge.GamePackets+" peer_packets="+bridge.PeerPackets+" "+bridge.TransportStatus);
         else Report.Write("phase="+lobby.Phase+" occupied="+lobby.Occupied+"/"+maxPlayers+" disk_match="+lobby.DiscMatches);
         long start=Interlocked.Read(ref committedStamp);
         if(start==0 || lobby.Phase!=LobbyPhase.Running)return;

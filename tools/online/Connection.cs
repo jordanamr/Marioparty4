@@ -315,7 +315,7 @@ sealed class Bridge : IDisposable {
     public void CommitGame(){if(closed || !ControlConnected)throw new IOException(L.T("Le salon s'est ferme avant le depart."));Volatile.Write(ref committed,1);}
     public Action<string> Diagnostic;
     long lastUdpStamp,lastPumpStamp,deliveredPackets,udpDropped;int lastUdpError;
-    static long Age(long stamp) {return stamp==0?-1:(Stopwatch.GetTimestamp()-stamp)*1000/Stopwatch.Frequency;}
+    internal static long Age(long stamp) {return stamp==0?-1:(Stopwatch.GetTimestamp()-stamp)*1000/Stopwatch.Frequency;}
     public string TransportStatus {get{return "control_connected="+ControlConnected+" udp_age_ms="+Age(Interlocked.Read(ref lastUdpStamp))+" udp_pong_age_ms="+Age(Interlocked.Read(ref lastUdpPongStamp))+" pump_age_ms="+Age(Interlocked.Read(ref lastPumpStamp))+" delivered_packets="+Interlocked.Read(ref deliveredPackets)+" udp_dropped="+Interlocked.Read(ref udpDropped)+" udp_error="+Volatile.Read(ref lastUdpError);}}
     // Every TLS write is owned by one worker. SslStream writes previously came
     // from the game relay, heartbeat, lobby and ping callback. Even though they
@@ -550,6 +550,7 @@ sealed class MeshRelay : IDisposable {
         public IPEndPoint Game;
         public readonly bool LearnPeer;
         public long LastPongStamp,LastGameStamp;
+        public long SentGamePackets,ReceivedGamePackets,DeliveredGamePackets;
         // Round trip of the last heartbeat this leg answered, -1 before the first.
         public int PingMs=-1;
         // Non-blocking from birth: a leg is usually added while Run() is already
@@ -627,10 +628,26 @@ sealed class MeshRelay : IDisposable {
         return true;
     }
 
-    void SendToLeg(Leg leg,byte[] payload) {
-        if(leg.NetworkPeer==null)return;
+    bool SendToLeg(Leg leg,byte[] payload) {
+        if(leg.NetworkPeer==null)return false;
         var packet=GameDatagram.Seal(datagramKey,localPlayer,(ulong)Interlocked.Increment(ref networkSequence),payload);
-        try{network.Send(packet,packet.Length,leg.NetworkPeer);}catch(SocketException e){if(!Recoverable(e,"mesh_send"))throw;}
+        try{network.Send(packet,packet.Length,leg.NetworkPeer);return true;}catch(SocketException e){if(!Recoverable(e,"mesh_send"))throw;return false;}
+    }
+
+    public string TransportStatus() {
+        var result=new StringBuilder("mesh_pump_age_ms=");
+        result.Append(Bridge.Age(Interlocked.Read(ref lastPumpStamp)));
+        result.Append(" mesh_udp_dropped=").Append(Interlocked.Read(ref udpDropped));
+        result.Append(" mesh_udp_error=").Append(Volatile.Read(ref lastUdpError));
+        for(int seat=0;seat<legs.Length;seat++) {
+            var leg=legs[seat];if(leg==null)continue;
+            string prefix=" mesh_seat"+seat+"_";
+            result.Append(prefix).Append("sent=").Append(Interlocked.Read(ref leg.SentGamePackets));
+            result.Append(prefix).Append("received=").Append(Interlocked.Read(ref leg.ReceivedGamePackets));
+            result.Append(prefix).Append("delivered=").Append(Interlocked.Read(ref leg.DeliveredGamePackets));
+            result.Append(prefix).Append("pong_age_ms=").Append(Bridge.Age(Interlocked.Read(ref leg.LastPongStamp)));
+        }
+        return result.ToString();
     }
 
     public bool AllPeersReady(long maxAgeMs) {
@@ -677,7 +694,7 @@ sealed class MeshRelay : IDisposable {
                             // leg's port is not the engine we already found, the same
                             // guard Bridge applies to its own single game endpoint.
                             if(leg.Game==null)leg.Game=from;else if(!leg.Game.Equals(from))continue;
-                            SendToLeg(leg,data);
+                            if(SendToLeg(leg,data))Interlocked.Increment(ref leg.SentGamePackets);
                         }catch(SocketException e){if(!Recoverable(e,"mesh_local_receive"))throw;break;}
                     }
                     // Any remote peer -> us -> that seat's own loopback leg. The
@@ -710,8 +727,9 @@ sealed class MeshRelay : IDisposable {
                         // Nowhere to deliver to until the engine has sent at least once
                         // on this leg -- the same gate Bridge applies ("if(game!=null)")
                         // before handing a decoded packet back to the local process.
+                        Interlocked.Increment(ref leg.ReceivedGamePackets);
                         if(leg.Game==null)continue;
-                        try{leg.Loopback.Send(payload,payload.Length,leg.Game);}catch(SocketException e){if(!Recoverable(e,"mesh_local_send"))throw;}
+                        try{leg.Loopback.Send(payload,payload.Length,leg.Game);Interlocked.Increment(ref leg.DeliveredGamePackets);}catch(SocketException e){if(!Recoverable(e,"mesh_local_send"))throw;}
                     }catch(SocketException e){if(!Recoverable(e,"mesh_network_receive"))throw;break;}
                     Thread.Sleep(1);
                 }
