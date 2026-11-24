@@ -38,3 +38,40 @@ Depuis la racine du projet, après compilation du port Linux avec Ninja, la comm
 ```sh
 python3 tools/test_minigame_determinism.py build/linux-clang-relwithdebinfo
 ```
+
+## Rejouer et accélérer un test sur une seule machine
+
+Depuis Linux, la campagne lance le jeu Linux natif et le jeu Windows x64 sous Wine. Chaque paire reçoit un port UDP local, deux affichages Xvfb privés et des profils de jeu indépendants. Les prérequis sont Python 3.10+, Xvfb, Wine, un GPU compatible Vulkan, un préfixe Wine capable de démarrer le jeu Windows avec Direct3D 12 et le runtime Visual C++, les deux paquets de la même révision et un disque du jeu. Le préfixe fourni est copié pour chaque paire. Le disque reste sur la machine.
+
+Pour rejouer l’entrée au deuxième tour de Koopa avec Windows hôte, placer les chemins locaux dans cette commande. Choisir un dossier de résultats neuf à chaque lancement. Omettre `--replay-input` pour piloter les menus avec le parcours intégré. La commande `--list-scenarios` liste les parcours disponibles.
+
+```sh
+python3 tools/netplay_cross_sweep.py \
+  --appimage /chemin/PartyBoard.AppImage --windows-zip /chemin/PartyBoard.zip \
+  --rom /chemin/disque.rvz --wine-prefix /chemin/prefixe-wine \
+  --output essais/koopa-01 --package-cache build/paquets-test \
+  --scenario koopa --windows-host --fast --trace-hashes \
+  --replay-input /chemin/Rejeu-Koopa-PAL.txt
+```
+
+Le mode `--fast` supprime l’attente de présentation, désactive la synchronisation verticale et utilise une petite surface. Il exécute chaque pas du jeu avec ses rappels de dessin, sa logique de plateau et ses contrôles réseau. Le jeu doit confirmer ce mode des deux côtés. Pour tester les différences de réglages graphiques, omettre `--fast` et utiliser le profil panoramique et le profil 4:3 de la campagne. Plusieurs options `--scenario` avec `--jobs 2` lancent deux paires en parallèle. Le débit dépend du parcours, du pilote et de la contention GPU.
+
+Le fichier `manifest.json` indique si chaque paire a atteint le tour demandé ou l’écran suivant les résultats. En cas de désaccord, les journaux des deux processus conservent la première trame divergente et, quand les rapports détaillés sont présents, le premier champ en désaccord. Pour comparer la cadence normale et la cadence accélérée sur les mêmes entrées, activer `--trace-hashes` dans les deux campagnes, puis comparer les traces jusqu’à la dernière trame exigée, incluse.
+
+```sh
+python3 tools/netplay_compare.py essais/normal/linux.hashes essais/rapide/linux.hashes \
+  --hash-traces --through 6000
+```
+
+Le lecteur de bandes filtre historiquement le bouton START pendant les mini-jeux. Une sortie de mini-jeu par ce bouton demande un essai en direct.
+
+Les chemins des traces figurent dans le résultat du scénario. Le comparateur vérifie la continuité des trames depuis zéro. Les rapports détaillés d’un désaccord Windows/Linux se comparent avec la même commande sans les options de trace.
+
+Pour essayer plusieurs décisions autour d’un événement, prendre la bande `inputs.txt` du scénario et modifier ses entrées sur une fenêtre précise. Ici deux variantes changent une commande du joueur 0 entre les trames 10 560 et 10 799. Le manifeste du corpus donne la graine et les modifications. Passer son répertoire à `--replay-dir` avec un seul `--scenario`.
+
+```sh
+python3 tools/generate_input.py variants inputs.txt --window 10560:10800 \
+  --seed 19 --seat 0 --hold 6 --count 2 -o essais/variantes
+```
+
+Les 25 régressions ciblées sont également exécutables sans ROM, fenêtre ni GPU avec `tools/test_minigame_determinism.py`. L’option `--jobs 8` parallélise les compilations et les essais. Ce niveau explore systématiquement les données des fonctions isolées, comme les 40 000 répartitions de passagers et d’occupants du train de Boo. Les replays complets permettent de vérifier ensuite les interactions entre ces fonctions.

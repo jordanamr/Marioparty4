@@ -59,6 +59,14 @@ USAGE
     tools/generate_input.py describe work/netplay-recordings/walk.txt
     tools/generate_input.py slice board-replay.txt --end 5961 -o prefix-w04.txt
 
+    python3 tools/generate_input.py variants walk.txt --window 5500:5700 --window 6000:6120 --seat 0 --hold 6 --seed 19 --count 16 -o work/gen/corpus
+
+Each variant changes one control per window, for up to --hold recorded game
+frames starting at a seeded position. Window starts are inclusive and ends
+exclusive. Choose windows after the menu sequence to preserve the approach.
+The manifest records each pulse and the SHA-256 of every replay. Supply the
+output folder to tools/netplay_cross_sweep.py with --replay-dir.
+
 THE APPROACH PREFIX, FOR FREE
 -----------------------------
 Getting from boot to a board takes about 5500 frames of menu navigation, and
@@ -86,6 +94,12 @@ rather than to the title screen.
 """
 
 import argparse
+from bisect import bisect_left
+import hashlib
+import json
+from pathlib import Path
+import re
+import tempfile
 import os
 import random
 import sys
@@ -432,6 +446,130 @@ def describe(path):
     return 0
 
 
+# --- windowed corpus variants ----------------------------------------------
+
+# (name, field in a replay row, bit to toggle or stick target)
+PULSES = [(name, 2, NAMED_BUTTONS[name]) for name in ("A", "B", "X", "Y", "L", "R", "Z")]
+PULSES += [("stick-left", 3, -STICK_MAX), ("stick-right", 3, STICK_MAX),
+           ("stick-down", 4, -STICK_MAX), ("stick-up", 4, STICK_MAX)]
+
+
+def frame_window(text):
+    try:
+        start, end = map(int, text.split(":"))
+        if 0 <= start < end:
+            return start, end
+    except ValueError:
+        pass
+    raise argparse.ArgumentTypeError("use START:END with 0 <= START < END (exclusive)")
+
+
+def replay_window_rows(data, windows, seats):
+    """Index effective original rows. An engine replay uses the last duplicate."""
+    starts = [start for start, _ in windows]
+    rows = [{} for _ in windows]
+    offset = 0
+    last_frame = -1
+    for line_number, line in enumerate(data.splitlines(keepends=True), 1):
+        begin, offset = offset, offset + len(line)
+        parts = line.split()
+        if not parts:
+            continue
+        # Stopped sessions can end mid-row. The engine consumes complete samples.
+        if len(parts) < 9 and offset == len(data) and not line.endswith((b"\n", b"\r")):
+            break
+        if len(parts) != 9:
+            raise ValueError(f"expected nine integers at line {line_number}")
+        try:
+            frame, seat, *_ = map(int, parts)
+        except ValueError:
+            raise ValueError(f"invalid integer at line {line_number}") from None
+        if not 0 <= frame <= 216000 or not 0 <= seat < SEATS:
+            continue
+        last_frame = max(last_frame, frame)
+        i = bisect_left(starts, frame + 1) - 1
+        if seat in seats and i >= 0 and frame < windows[i][1]:
+            rows[i].setdefault(frame, {})[seat] = (begin, offset)
+    for (start, end), available in zip(windows, rows):
+        if end > last_frame + 1:
+            raise ValueError(f"window {start}:{end} extends past frame {last_frame}")
+        if not available:
+            raise ValueError(f"window {start}:{end} has no recorded input for the selected seat(s)")
+    return rows
+
+
+def unique_choices(total, count, rng):
+    """Partial shuffle of the integer range, without materializing the product."""
+    swaps = {}
+    for last in range(total - 1, total - count - 1, -1):
+        index = rng.randrange(last + 1)
+        yield swaps.get(index, index)
+        swaps[index] = swaps.get(last, last)
+
+
+def render_variant(data, code, windows, frames, rows, hold):
+    pulses, edits = [], []
+    for (_, end), available, samples in zip(windows, frames, rows):
+        code, choice = divmod(code, len(available) * len(PULSES))
+        start_index, control = divmod(choice, len(PULSES))
+        start = available[start_index]
+        stop = min(start + hold, end)
+        name, field, target = PULSES[control]
+        pulses.append({"start": start, "end": stop, "control": name})
+        for frame in available[start_index:bisect_left(available, stop)]:
+            for begin, finish in samples[frame].values():
+                # Replace the selected token, preserving the source's whitespace.
+                token = list(re.finditer(rb"\S+", data[begin:finish]))[field]
+                before = int(token.group())
+                if field == 2:
+                    after = before ^ target
+                else:
+                    after = 0 if before == target else target
+                edits.append((begin + token.start(), begin + token.end(), str(after).encode()))
+    chunks, offset = [], 0
+    for begin, finish, replacement in sorted(edits):
+        chunks.extend((data[offset:begin], replacement))
+        offset = finish
+    chunks.append(data[offset:])
+    return b"".join(chunks), pulses
+
+
+def write_variants(source, destination, windows, seats, hold, count, seed):
+    if min(hold, count) < 1:
+        raise ValueError("--hold and --count must be positive")
+    windows = sorted(windows)
+    if any(left[1] > right[0] for left, right in zip(windows, windows[1:])):
+        raise ValueError("windows must be disjoint")
+    if destination.exists() and (not destination.is_dir() or any(destination.iterdir())):
+        raise ValueError(f"output must be an empty or new directory: {destination}")
+    data = source.read_bytes()
+    rows = replay_window_rows(data, windows, seats)
+    frames = [sorted(group) for group in rows]
+    total = 1
+    for group in frames:
+        total *= len(group) * len(PULSES)
+    if count > total:
+        raise ValueError(f"requested {count} variants, but only {total} distinct choices exist")
+    manifest = {"format": 1, "source": source.name, "source_sha256": hashlib.sha256(data).hexdigest(),
+                "seed": seed, "windows": windows, "seats": list(seats), "hold": hold, "variants": []}
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=destination.parent) as tmp:
+        corpus = Path(tmp) / "corpus"
+        corpus.mkdir()
+        for number, code in enumerate(unique_choices(total, count, random.Random(seed)), 1):
+            payload, pulses = render_variant(data, code, windows, frames, rows, hold)
+            name = f"variant-{number:04d}.txt"
+            (corpus / name).write_bytes(payload)
+            manifest["variants"].append({"file": name, "sha256": hashlib.sha256(payload).hexdigest(),
+                                         "pulses": pulses})
+        (corpus / "manifest.json").write_bytes((json.dumps(manifest, indent=2) + "\n").encode())
+        # POSIX permits replacing an empty directory, Windows requires removing it.
+        if destination.is_dir():
+            destination.rmdir()
+        corpus.rename(destination)
+    return manifest
+
+
 # --- entry point -----------------------------------------------------------
 
 def main(argv=None):
@@ -475,7 +613,26 @@ def main(argv=None):
                      help="exclusive; the frame the slice stops before")
     cut.add_argument("-o", "--output", required=True)
 
+    variants = sub.add_parser("variants", help="generate a reproducible corpus from recorded input")
+    variants.add_argument("input", type=Path)
+    variants.add_argument("--window", action="append", type=frame_window, required=True,
+                          help="START:END frame range, exclusive end; repeat for disjoint ranges")
+    variants.add_argument("--count", type=int, default=8)
+    variants.add_argument("--seed", type=int, default=1)
+    variants.add_argument("--hold", type=int, default=6, help="maximum duration of each pulse in frames")
+    variants.add_argument("--seat", choices=["0", "1", "both"], default="both")
+    variants.add_argument("-o", "--output-dir", type=Path, required=True)
+
     args = parser.parse_args(argv)
+
+    if args.command == "variants":
+        seats = range(SEATS) if args.seat == "both" else [int(args.seat)]
+        try:
+            write_variants(args.input, args.output_dir, args.window, seats, args.hold, args.count, args.seed)
+        except (OSError, ValueError) as error:
+            parser.error(str(error))
+        print(f"variants seed={args.seed} count={args.count} -> {args.output_dir}")
+        return 0
 
     if args.command == "monkey":
         if args.hold_min < 1 or args.hold_max < args.hold_min:

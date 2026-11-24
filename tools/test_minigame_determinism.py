@@ -4,6 +4,8 @@
 Usage: python3 tools/test_minigame_determinism.py build/linux-clang-relwithdebinfo
 """
 import argparse
+from concurrent.futures import ThreadPoolExecutor
+import os
 from pathlib import Path
 import re
 import shlex
@@ -14,7 +16,12 @@ import tempfile
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("build", type=Path, help="Linux CMake/Ninja directory containing libdol.so")
-    build = parser.parse_args().build.resolve()
+    parser.add_argument("--jobs", type=int, default=min(4, os.cpu_count() or 1),
+                        help="concurrent isolated test builds (default up to 4)")
+    args = parser.parse_args()
+    if args.jobs < 1:
+        parser.error("--jobs must be positive")
+    build = args.build.resolve()
     root = Path(__file__).resolve().parents[1]
     test_cases = [
         ("m403Dll", "main.c", "minigame_camera_path_test.c"),
@@ -43,8 +50,11 @@ def main():
         ("w06Dll", "fire.c", "bowser_inventory_test.c"),
         ("w06Dll", "mg_item.c", "bowser_item_choice_test.c"),
     ]
-    for module, filename, test in test_cases:
-        compile_and_run(root, build, module, filename, test)
+    with ThreadPoolExecutor(max_workers=min(args.jobs, len(test_cases))) as pool:
+        results = [pool.submit(compile_and_run, root, build, *case) for case in test_cases]
+        for result in results:
+            result.result()
+    print(f"PASS: {len(test_cases)} board and minigame regressions")
 
 
 def compile_and_run(root, build, module, filename, test):

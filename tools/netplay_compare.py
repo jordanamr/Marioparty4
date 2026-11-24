@@ -13,6 +13,7 @@ smallest gameplay difference the instrumentation can see.
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
@@ -167,6 +168,34 @@ def input_differences(a: Report, b: Report, around: int, span: int) -> List[str]
     return lines
 
 
+def compare_hash_traces(first: str, second: str, through: Optional[int]) -> int:
+    """Compare every committed frame, rejecting truncated or non-contiguous evidence."""
+    digest_line = re.compile(rb"([0-9]+) ([0-9a-fA-F]{16})\r?\n")
+    frame = 0
+    try:
+        with open(first, "rb") as a, open(second, "rb") as b:
+            while through is None or frame <= through:
+                rows = [a.readline(), b.readline()]
+                if rows == [b"", b""] and through is None and frame:
+                    break
+                digests = []
+                for path, row in zip((first, second), rows):
+                    match = digest_line.fullmatch(row)
+                    if not match or int(match[1]) != frame:
+                        print(f"INCOMPLETE: {path} is missing a valid row for frame {frame}.")
+                        return 2
+                    digests.append(match[2].lower().decode("ascii"))
+                if digests[0] != digests[1]:
+                    print(f"DESYNC at frame {frame}: {digests[0]} vs {digests[1]}")
+                    return 1
+                frame += 1
+    except OSError as error:
+        print(f"INCOMPLETE: {error}", file=sys.stderr)
+        return 2
+    print(f"PASS: all {frame} canonical hashes match through frame {frame - 1}.")
+    return 0
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("first")
@@ -177,7 +206,15 @@ def main(argv: Optional[List[str]] = None) -> int:
         default=8,
         help="frames around the divergence to check for mismatched inputs",
     )
+    parser.add_argument("--hash-traces", action="store_true",
+                        help="compare two per-frame files written by --netplay-record-hashes")
+    parser.add_argument("--through", type=int, metavar="FRAME",
+                        help="require every frame from zero through this frame inclusive")
     args = parser.parse_args(argv)
+    if args.through is not None and (not args.hash_traces or args.through < 0):
+        parser.error("--through requires --hash-traces and a non-negative frame")
+    if args.hash_traces:
+        return compare_hash_traces(args.first, args.second, args.through)
 
     a, b = parse(args.first), parse(args.second)
     print(f"peer A: {a.path} (player {a.player})")
