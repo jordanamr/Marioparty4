@@ -1147,13 +1147,18 @@ std::uint32_t runtimeConfigSignature(std::uint8_t inputDelay, std::uint8_t conte
         | (static_cast<std::uint32_t>(contextId) << 8) | inputDelay;
 }
 
-bool sendInput(std::uint32_t frame, const PartyBoardRollbackInput &input, bool requestRetransmit = false,
+enum class InputSendMode { Sample, RequestRetransmit, RetainedReply };
+
+constexpr std::uint32_t kProbeWithheldFrame = 200;
+
+bool sendInput(std::uint32_t frame, const PartyBoardRollbackInput &input, InputSendMode mode = InputSendMode::Sample,
     const StateDigest *standalone = nullptr)
 {
-    // Headless regression: drop this sample until the sender has advanced.
-    // Only the retained-history repair can then release the waiting peer.
-    if (!standalone && gRuntime.probeContext >= 0 && gRuntime.localPlayer == 0
-        && frame == 200 && gRuntime.frame <= 200) return true;
+    // Withhold one input during the headless probe. Only an explicit reply
+    // from a later tick may deliver it, independently of peer scheduling.
+    const bool withholdProbeInput = !standalone && gRuntime.probeContext >= 0 && gRuntime.localPlayer == 0;
+    if (withholdProbeInput && frame == kProbeWithheldFrame
+        && (mode != InputSendMode::RetainedReply || gRuntime.frame <= kProbeWithheldFrame)) return false;
     InputPacket outgoing {};
     outgoing.sessionId = kSessionId;
     outgoing.sequence = gRuntime.sequence++;
@@ -1161,7 +1166,7 @@ bool sendInput(std::uint32_t frame, const PartyBoardRollbackInput &input, bool r
     outgoing.player = gRuntime.localPlayer;
     outgoing.input = input;
     outgoing.type = standalone ? PacketType::State
-        : requestRetransmit ? PacketType::Retransmit : PacketType::Input;
+        : mode == InputSendMode::RequestRetransmit ? PacketType::Retransmit : PacketType::Input;
     // The state block is filled per destination below: an acknowledgement counts
     // how far one peer has agreed with us, and the digest we owe it is the oldest it
     // has not confirmed. Broadcasting one peer's numbers to three is what an
@@ -1179,12 +1184,11 @@ bool sendInput(std::uint32_t frame, const PartyBoardRollbackInput &input, bool r
     for (std::uint32_t back = 1; !standalone && back <= kInputHistory && back <= frame; ++back) {
         const InputSlot *previous = findInput(gRuntime.localHistory, frame - back);
         if (!previous || previous->captureContext != outgoing.captureContext) break;
-        // The headless drop of frame 200 above must still need the repair path.
-        if (gRuntime.probeContext >= 0 && gRuntime.localPlayer == 0
-            && frame - back == 200 && gRuntime.frame <= 200) break;
+        // History is contiguous. A later packet must never fill the probe's hole.
+        if (withholdProbeInput && frame - back == kProbeWithheldFrame) break;
         outgoing.history[outgoing.historyCount++] = previous->input;
     }
-    if (!gRuntime.transport.hasPeer()) return true;
+    if (!gRuntime.transport.hasPeer()) return false;
     bool sent = false;
     for (std::uint8_t seat = 0; seat < gRuntime.playerCount; ++seat) {
         if (seat == gRuntime.localPlayer || !gRuntime.transport.hasPeer(seat)) continue;
@@ -1210,7 +1214,7 @@ void serviceStateRepair(bool force)
     if (!state && reported.captured())
         state = reported.getLocal(reported.captured() - 1);
     if (state) {
-        sendInput(state->frame, {}, false, state);
+        sendInput(state->frame, {}, InputSendMode::Sample, state);
         if (reported.error() == StateFailure::Desync) {
             // The peer may still lack an earlier local hash. Cycle the retained
             // prefix so even loss before the mismatch cannot hide it forever.
@@ -1218,7 +1222,7 @@ void serviceStateRepair(bool force)
             if (cursor < reported.peerEqualThrough() || cursor > state->frame)
                 cursor = reported.peerEqualThrough();
             if (const auto *old = reported.getLocal(cursor++))
-                if (old->frame != state->frame) sendInput(old->frame, {}, false, old);
+                if (old->frame != state->frame) sendInput(old->frame, {}, InputSendMode::Sample, old);
         }
         gRuntime.lastStateRepairMs = now;
     }
@@ -1576,7 +1580,7 @@ bool captureCommittedState()
     publishCrashState(stamp);
     // New frames stream immediately; input traffic repairs the oldest missing
     // state in parallel. No extra round-trip barrier for each gameplay frame.
-    sendInput(frame, {}, false, &stamp);
+    sendInput(frame, {}, InputSendMode::Sample, &stamp);
     if (frame % 120 == 0) {
         char event[160];
         std::snprintf(event, sizeof(event),
@@ -1734,7 +1738,12 @@ void receivePendingPackets()
         // Always answer from immutable history, even while we are also waiting.
         if (packet.type == PacketType::Retransmit) {
             if (const auto *old = findInput(gRuntime.localHistory, packet.frame)) {
-                sendInput(packet.frame, old->input);++gRuntime.repairPackets;
+                if (sendInput(packet.frame, old->input, InputSendMode::RetainedReply)) {
+                    ++gRuntime.repairPackets;
+                    if (gRuntime.probeContext >= 0 && gRuntime.localPlayer == 0 && packet.frame == kProbeWithheldFrame) {
+                        writeDiagnostic("probe-retained-reply input_frame=200", true);
+                    }
+                }
             }
         }
         // Validate retained duplicates even after their input frame committed.
@@ -1915,7 +1924,7 @@ bool prepareRollbackTick()
             failSession("Rollback checkpoint or replay failed");
             return false;
         }
-        if (localSlot) sendInput(runtime.frame, localSlot->input, true);
+        if (localSlot) sendInput(runtime.frame, localSlot->input, InputSendMode::RequestRetransmit);
         ++runtime.stalledTicks;
         ++runtime.consecutiveStalledTicks;
         runtime.maximumStalledTicks = std::max(runtime.maximumStalledTicks,
@@ -2565,7 +2574,7 @@ extern "C" bool PartyBoard_NetplayTick(void)
             const auto missingFrame = runtime.rollbackBaseFrame
                 + runtime.rollbackSession->confirmedFrame();
             if (const auto *old = findInput(runtime.localHistory, missingFrame))
-                sendInput(missingFrame, old->input, true);
+                sendInput(missingFrame, old->input, InputSendMode::RequestRetransmit);
             ++runtime.stalledTicks;
             ++runtime.consecutiveStalledTicks;
             return false;
@@ -2861,7 +2870,7 @@ extern "C" bool PartyBoard_NetplayTick(void)
             // Bound repair traffic while retrying lost UDP requests.
             if (runtime.repairRequestFrame != runtime.frame
                 || now - runtime.lastRepairRequestMs >= 100) {
-                sendInput(runtime.frame, localSlot->input, true);
+                sendInput(runtime.frame, localSlot->input, InputSendMode::RequestRetransmit);
                 runtime.repairRequestFrame = runtime.frame;
                 runtime.lastRepairRequestMs = now;
             }
