@@ -12,6 +12,7 @@
 #include "game/board/window.h"
 #include "game/chrman.h"
 #include "game/data.h"
+#include "game/disp.h"
 #include "game/esprite.h"
 #include "game/gamework_data.h"
 #include "game/hsfex.h"
@@ -80,6 +81,7 @@ static void InitTicketPrizes(void);
 static void ExecTicketFocus(s32 arg0);
 static BOOL ScratchTicketCheckDone(ANIMBMP *arg0);
 static u16 TicketGetPixel(u16 arg0, u16 arg1, u16 arg2);
+static void RevealTicketRow(ANIMBMP *mask, u16 y);
 static s32 TicketUpdate(ANIMBMP *arg0, Vec *arg1, s32 arg2);
 static void ExecCoinPrize(void);
 static void ExecItemPrize(void);
@@ -662,6 +664,9 @@ static void ShowTicket(void)
     sp8 = GWPlayer[GWSystem.player_curr].ticket_player;
     var_r28 = (u8 *)&sp8;
     temp_r31 = HuSprGrpCreate(4);
+#ifdef TARGET_PC
+    HuSprGrpHudAnchorSet(temp_r31, HU_DISP_CENTERX);
+#endif
     BoardSpriteCreate(DATA_MAKE_NUM(DATADIR_BKUJIYA, 20), 30001, 0, &spA);
     HuSprGrpMemberSet(temp_r31, 0, spA);
     HuSprAttrSet(temp_r31, 0, 9);
@@ -1039,12 +1044,9 @@ static void ExecScratchTicket(s32 arg0)
     Vec sp24;
     Vec sp18;
     Vec spC;
-    u16 var_r29;
     u16 var_r28;
-    s16 *temp_r25;
     s32 var_r24;
     s32 temp_r27;
-    u16 var_r23;
     omObjData *var_r22;
     TicketWork *temp_r30;
     ANIMBMP *temp_r31;
@@ -1068,7 +1070,7 @@ static void ExecScratchTicket(s32 arg0)
             break;
         }
         sp24.y -= 4.0f;
-        Hu3D2Dto3D(&sp24, 1, &sp18);
+        Hu3D2Dto3DOriginal(&sp24, 1, &sp18);
         BoardModelPosSetV(lotteryMdl[4], &sp18);
     }
     comInputPos = 0;
@@ -1096,17 +1098,13 @@ static void ExecScratchTicket(s32 arg0)
             break;
         }
         sp24.y += 4.0f;
-        Hu3D2Dto3D(&sp24, 1, &sp18);
+        Hu3D2Dto3DOriginal(&sp24, 1, &sp18);
         BoardModelPosSetV(lotteryMdl[4], &sp18);
     }
     BoardModelVisibilitySet(lotteryMdl[4], 0);
     temp_r31 = temp_r30->unk08->bmp;
-    temp_r25 = temp_r31->data;
     for (var_r28 = 0; var_r28 < temp_r31->sizeY; var_r28++) {
-        for (var_r29 = 0; var_r29 < temp_r31->sizeX; var_r29++) {
-            var_r23 = TicketGetPixel(temp_r31->sizeX, var_r29, var_r28);
-            temp_r25[var_r23] = 0;
-        }
+        RevealTicketRow(temp_r31, var_r28);
         HuPrcVSleep();
     }
     KillLotteryWin();
@@ -1190,10 +1188,8 @@ static void ExecScratchSpr(omObjData *arg0)
         temp_r30->unk01--;
         return;
     }
-    sp14.x = arg0->trans.x;
-    sp14.y = arg0->trans.y;
-    sp20.x = arg0->rot.x;
-    sp20.y = arg0->rot.y;
+    sp14 = arg0->trans;
+    sp20 = arg0->rot;
     VECSubtract(&sp14, &sp20, &sp8);
     if (ABS(sp8.x) < 1.0f && ABS(sp8.y) < 1.0f) {
         sp8 = sp14;
@@ -1238,6 +1234,10 @@ static void InitScratchSpr(void)
     BoardCameraRotGet(&spC);
     temp_r28 = HuSprGrpCreate(24);
     ticketSprGrp = temp_r28;
+#ifdef TARGET_PC
+    /* The grid, both ticket layers and the selection hand share one canvas. */
+    HuSprGrpHudAnchorSet(ticketSprGrp, HU_DISP_CENTERX);
+#endif
     for (i = 0; i < 12; i++) {
         temp_r31 = omAddObjEx(boardObjMan, 0x101, 0, 0, -1, ExecScratchSpr);
         ticketObj[i] = temp_r31;
@@ -1380,6 +1380,9 @@ static void InitScratchPick(void)
     var_r31->unk00_field0 = 0;
     var_r31->unk01 = GWPlayer[GWSystem.player_curr].character;
     var_r31->unk08 = HuSprGrpCreate(1);
+#ifdef TARGET_PC
+    HuSprGrpHudAnchorSet(var_r31->unk08, HU_DISP_CENTERX);
+#endif
     BoardSpriteCreate(pickSpr[var_r31->unk01], 5000, 0, &var_r31->unk06);
     HuSprGrpMemberSet(var_r31->unk08, 0, var_r31->unk06);
     HuSprAttrSet(var_r31->unk08, 0, 8);
@@ -1466,6 +1469,30 @@ static u16 TicketGetPixel(u16 arg0, u16 arg1, u16 arg2)
     return var_r29 + (var_r28 << 2) + ((var_r31 + var_r30 * (arg0 >> 2)) << 4);
 }
 
+static void RefreshTicketMask(ANIMBMP *mask)
+{
+    DCFlushRange(mask->data, mask->sizeX * mask->sizeY * sizeof(u16));
+#ifdef TARGET_PC
+    /* Aurora caches each sampler's uploaded copy. Both scratching and the
+     * final row-by-row reveal edit this same bitmap between draws. */
+    for (s32 i = 0; i < ARRAY_COUNT(mask->texData); i++) {
+        AnimTexData *tex = &mask->texData[i];
+        if (tex->tex_initialized) {
+            GXInitTexObjData(&tex->tex_obj, mask->data);
+        }
+    }
+#endif
+}
+
+static void RevealTicketRow(ANIMBMP *mask, u16 y)
+{
+    u16 *pixels = mask->data;
+    for (u16 x = 0; x < mask->sizeX; x++) {
+        pixels[TicketGetPixel(mask->sizeX, x, y)] = 0;
+    }
+    RefreshTicketMask(mask);
+}
+
 static s32 TicketUpdate(ANIMBMP *arg0, Vec *arg1, s32 arg2)
 {
     Vec sp48;
@@ -1538,7 +1565,7 @@ static s32 TicketUpdate(ANIMBMP *arg0, Vec *arg1, s32 arg2)
         HuAudFXVolSet(arg2, 0);
     }
     *arg1 = sp3C;
-    Hu3D2Dto3D(&sp3C, 1, &sp3C);
+    Hu3D2Dto3DOriginal(&sp3C, 1, &sp3C);
     BoardModelPosSetV(lotteryMdl[4], &sp3C);
     sp3C = *arg1;
     sp3C.x -= 192.0f;
@@ -1561,23 +1588,7 @@ static s32 TicketUpdate(ANIMBMP *arg0, Vec *arg1, s32 arg2)
             }
         }
     }
-    DCFlushRange(arg0->data, (u32)(arg0->sizeX * arg0->sizeY * 2) >> 3);
-#ifdef TARGET_PC
-    /* Aurora keeps persistent GX texture objects for sprites.  The GameCube
-     * cache flush above made these CPU-side pixel edits visible to GX, but a
-     * coherent PC cache flush is otherwise a no-op.  Bump every initialized
-     * sprite texture revision so the scratched mask is uploaded again. */
-    {
-        s32 tex_slot;
-
-        for (tex_slot = 0; tex_slot < 8; tex_slot++) {
-            AnimTexData *tex_data = &arg0->texData[tex_slot];
-            if (tex_data->tex_initialized) {
-                GXInitTexObjData(&tex_data->tex_obj, arg0->data);
-            }
-        }
-    }
-#endif
+    RefreshTicketMask(arg0);
     handLastPos = *arg1;
     return 0;
 }
@@ -1943,6 +1954,11 @@ static void CreateLotteryWin(s32 arg0)
     }
     HuWinMesMaxSizeGet(1, sp8, var_r31);
     lotteryInstWin = HuWinCreate(temp_f30, var_f31, sp8[0], sp8[1], 0);
+#ifdef TARGET_PC
+    if (arg0 != 0 && lotteryInstWin >= 0) {
+        HuSprGrpHudAnchorSet(winData[lotteryInstWin].group, HU_DISP_CENTERX);
+    }
+#endif
     HuWinBGTPLvlSet(lotteryInstWin, 0.0f);
     HuWinMesSpeedSet(lotteryInstWin, 0);
     HuWinMesSet(lotteryInstWin, var_r31);
