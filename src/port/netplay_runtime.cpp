@@ -72,6 +72,7 @@ extern "C" void frand_state_set(u32 state);
 extern "C" s32 rand8_state_get(void);
 extern "C" void rand8_state_set(s32 state);
 extern "C" u32 GlobalCounter;
+extern "C" u32 partyboardParManHookRuns;
 extern "C" u32 frand(void);
 extern "C" s32 rand8(void);
 extern "C" void BoardRandInit(void);
@@ -112,8 +113,6 @@ constexpr std::uint32_t kRuntimeRollbackFlag = 0x00020000u;
 // Overlay indices of the minigame modules, from include/ovl_table.h: the
 // m3xx/m4xx entries sit between _minigameDLL/bootDll/instDll below and the
 // mode and board modules above.
-// D23: defini dans src/game/hsfanim.c, diagnostic uniquement, jamais hache.
-extern "C" u32 partyboardParManHookRuns;
 constexpr int kFirstMinigameOverlay = 4;
 constexpr int kLastMinigameOverlay = 70;
 constexpr std::uint32_t kRuntimeHookGateFlag = 0x00040000u;
