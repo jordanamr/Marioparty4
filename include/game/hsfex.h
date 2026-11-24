@@ -8,6 +8,9 @@ void CamMotionEx(s16 arg0, s16 arg1, Vec *arg2, Vec *arg3, Vec *arg4, float arg5
 float InterpolateBMLine(float *arg0, float *arg1, float arg2);
 void Hu3D2Dto3D(Vec *arg0, s16 arg1, Vec *arg2);
 void Hu3D3Dto2D(Vec *arg0, s16 arg1, Vec *arg2);
+/* For models and sprites composed together in the original centered HUD frame. */
+void Hu3D2Dto3DOriginal(Vec *screen, s16 camera, Vec *world);
+void Hu3D3Dto2DOriginal(Vec *world, s16 camera, Vec *screen);
 void Hu3DMtxTransGet(Mtx arg0, Vec *arg1);
 void Hu3DMtxRotGet(Mtx arg0, Vec *arg1);
 void Hu3DMtxScaleGet(Mtx arg0, Vec *arg1);

@@ -92,6 +92,10 @@ extern float HuSprWideShift[HUSPR_MAX];
 /* Lengthening of a sprite that ran off a side: factor, from x, to x. */
 extern float HuSprWideStretch[HUSPR_MAX][3];
 extern float HuSprDispWideShift;
+/* Explicit anchors move the whole group together in adaptive HUD layout. */
+void HuSprGrpHudAnchorSet(s16 group, float hudX);
+void HuSprGrpHudAnchorToOrigin(s16 group);
+void HuSprGrpHudAnchorReset(s16 group);
 BOOL HuSprWidescreenBackdrop(ANIMPAT *pat, float scaleX, float scaleY);
 #endif
 

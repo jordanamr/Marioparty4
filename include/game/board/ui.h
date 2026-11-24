@@ -15,6 +15,11 @@ void BoardStatusShowSet(s32 arg0, s32 arg1);
 void BoardStatusItemHideSet(s32 arg0, s32 arg1);
 void BoardStatusTargetPosSet(s32 arg0, Vec *arg1);
 void BoardStatusPosGet(s32 arg0, Vec *arg1);
+#ifdef TARGET_PC
+void BoardStatusHudAnchorSet(s32 player, float hudX);
+void BoardStatusHudAnchorToOrigin(s32 player);
+void BoardStatusHudAnchorReset(s32 player);
+#endif
 void BoardStatusPosSet(s32 arg0, Vec *arg1);
 void BoardStatusHammerCreate(s32 arg0);
 void BoardStatusHammerShowSet(s32 arg0, s32 arg1);

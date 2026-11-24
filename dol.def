@@ -620,7 +620,9 @@ EXPORTS
     GXUnknownu16
     HmfInverseMtxF3X3
     Hu3D2Dto3D
+    Hu3D2Dto3DOriginal
     Hu3D3Dto2D
+    Hu3D3Dto2DOriginal
     Hu3DAllKill
     Hu3DAnimAllKill
     Hu3DAnimAttrReset
@@ -946,6 +948,9 @@ EXPORTS
     HuSprGrpMemberKill
     HuSprGrpMemberSet
     HuSprGrpPosSet
+    HuSprGrpHudAnchorSet
+    HuSprGrpHudAnchorToOrigin
+    HuSprGrpHudAnchorReset
     HuSprGrpScaleSet
     HuSprGrpScissorSet
     HuSprGrpTPLvlSet

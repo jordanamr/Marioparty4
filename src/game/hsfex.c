@@ -419,7 +419,7 @@ float InterpolateBMLine(float *arg0, float *arg1, float arg2) {
     return ((var_f23 - var_f25) / (2.0f * (var_f24 - var_f30))) * (arg2 - var_f30) * (arg2 - var_f30) + (arg2 - var_f30) * ((var_f21 - var_f26) / (var_f24 - var_f30) - (var_f23 - var_f25) / 2) + var_f26;
 }
 
-void Hu3D2Dto3D(Vec *arg0, s16 arg1, Vec *arg2) {
+static void ScreenToWorld(Vec *arg0, s16 arg1, Vec *arg2, float pictureX, float aspect) {
     HU3DCAMERA *temp_r31;
     float temp_f31;
     float temp_f30;
@@ -437,8 +437,8 @@ void Hu3D2Dto3D(Vec *arg0, s16 arg1, Vec *arg2) {
     temp_r31 = &Hu3DCamera[i];
     temp_f30 = sind(temp_r31->fov / 2) / cosd(temp_r31->fov / 2);
     temp_f31 = temp_f30 * arg0->z * 2.0f;
-    temp_f29 = temp_f31 * PARTYBOARD_GAME_ASPECT(HU_DISP_ASPECT);
-    temp_f28 = PARTYBOARD_GAME_PICTURE_X(arg0->x) / HU_DISP_WIDTH;
+    temp_f29 = temp_f31 * aspect;
+    temp_f28 = pictureX / HU_DISP_WIDTH;
     temp_f27 = arg0->y / HU_DISP_HEIGHT;
     arg2->x = (temp_f28 - 0.5) * temp_f29;
     arg2->y = -(temp_f27 - 0.5) * temp_f31;
@@ -448,7 +448,15 @@ void Hu3D2Dto3D(Vec *arg0, s16 arg1, Vec *arg2) {
     MTXMultVec(spC, arg2, arg2);
 }
 
-void Hu3D3Dto2D(Vec *arg0, s16 arg1, Vec *arg2) {
+void Hu3D2Dto3D(Vec *screen, s16 camera, Vec *world) {
+    ScreenToWorld(screen, camera, world, PARTYBOARD_GAME_PICTURE_X(screen->x), PARTYBOARD_GAME_ASPECT(HU_DISP_ASPECT));
+}
+
+void Hu3D2Dto3DOriginal(Vec *screen, s16 camera, Vec *world) {
+    ScreenToWorld(screen, camera, world, screen->x, HU_DISP_ASPECT);
+}
+
+static void WorldToScreen(Vec *arg0, s16 arg1, Vec *arg2, float aspect) {
     Vec sp10;
     HU3DCAMERA *temp_r31;
     float temp_f31;
@@ -464,11 +472,20 @@ void Hu3D3Dto2D(Vec *arg0, s16 arg1, Vec *arg2) {
     temp_r31 = &Hu3DCamera[i];
     C_MTXLookAt(sp1C, &temp_r31->pos, &temp_r31->up, &temp_r31->target);
     MTXMultVec(sp1C, arg0, &sp10);
-    temp_f31 = (sind(temp_r31->fov / 2) / cosd(temp_r31->fov / 2)) * sp10.z * PARTYBOARD_GAME_ASPECT(HU_DISP_ASPECT);
+    temp_f31 = (sind(temp_r31->fov / 2) / cosd(temp_r31->fov / 2)) * sp10.z * aspect;
     temp_f30 = (sind(temp_r31->fov / 2) / cosd(temp_r31->fov / 2)) * sp10.z;
-    arg2->x = PARTYBOARD_GAME_HUD_X(DISP_HALF_W + sp10.x * (DISP_HALF_W / -temp_f31));
+    arg2->x = DISP_HALF_W + sp10.x * (DISP_HALF_W / -temp_f31);
     arg2->y = DISP_HALF_H + sp10.y * (DISP_HALF_H / temp_f30);
     arg2->z = 0.0f;
+}
+
+void Hu3D3Dto2D(Vec *world, s16 camera, Vec *screen) {
+    WorldToScreen(world, camera, screen, PARTYBOARD_GAME_ASPECT(HU_DISP_ASPECT));
+    screen->x = PARTYBOARD_GAME_HUD_X(screen->x);
+}
+
+void Hu3D3Dto2DOriginal(Vec *world, s16 camera, Vec *screen) {
+    WorldToScreen(world, camera, screen, HU_DISP_ASPECT);
 }
 
 void Hu3DMtxTransGet(Mtx arg0, Vec *arg1) {

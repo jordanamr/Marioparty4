@@ -367,6 +367,9 @@ static void ResultCreate(void)
     anim4 = HuSprAnimReadFile(DATA_MAKE_NUM(DATADIR_RESULT, 0x3E));
     for (i = 0; i < 4; i++) {
         resultCoinAddGrpId[i] = HuSprGrpCreate(5);
+#ifdef TARGET_PC
+        HuSprGrpHudAnchorSet(resultCoinAddGrpId[i], HU_DISP_CENTERX);
+#endif
         if (coinNum[resultOrder[i]] < 100) {
             resultCoinAddSprId[i][0] = HuSprCreate(anim, 10, 0);
             HuSprGrpMemberSet(resultCoinAddGrpId[i], 0, resultCoinAddSprId[i][0]);

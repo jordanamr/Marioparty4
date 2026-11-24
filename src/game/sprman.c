@@ -101,6 +101,33 @@ float HuSprWideShift[HUSPR_MAX];
 float HuSprWideStretch[HUSPR_MAX][3];
 float HuSprDispWideShift;
 
+static struct {
+    enum { HUD_ANCHOR_AUTO, HUD_ANCHOR_FIXED, HUD_ANCHOR_ORIGIN } mode;
+    float x;
+} hudAnchors[HUSPR_GRP_MAX];
+
+void HuSprGrpHudAnchorSet(s16 group, float hudX)
+{
+    if ((u16)group < HUSPR_GRP_MAX) {
+        hudAnchors[group].mode = HUD_ANCHOR_FIXED;
+        hudAnchors[group].x = hudX;
+    }
+}
+
+void HuSprGrpHudAnchorToOrigin(s16 group)
+{
+    if ((u16)group < HUSPR_GRP_MAX) {
+        hudAnchors[group].mode = HUD_ANCHOR_ORIGIN;
+    }
+}
+
+void HuSprGrpHudAnchorReset(s16 group)
+{
+    if ((u16)group < HUSPR_GRP_MAX) {
+        hudAnchors[group].mode = HUD_ANCHOR_AUTO;
+    }
+}
+
 typedef struct {
     float x0, x1, y0, y1;
     float x;
@@ -176,6 +203,16 @@ static void HuSprWidescreenLayout(void)
     for(i=0, group=HuSprGrpData; i<HUSPR_GRP_MAX; i++, group++) {
         mtx0 = HuSprRenderMtx[i][0];
         mtx1 = HuSprRenderMtx[i][1];
+        if (group->capacity && hudAnchors[i].mode != HUD_ANCHOR_AUTO) {
+            float anchor = hudAnchors[i].mode == HUD_ANCHOR_ORIGIN ? mtx0[3] : hudAnchors[i].x;
+            float shift = PartyBoard_WidescreenHudShift(anchor);
+            for (j = 0; j < group->capacity; j++) {
+                if (group->members[j] != HUSPR_NONE) {
+                    HuSprWideShift[group->members[j]] = shift;
+                }
+            }
+            continue;
+        }
         for(j=0; j<group->capacity && n<HUSPR_MAX; j++) {
             if(group->members[j] == -1) {
                 continue;
@@ -587,6 +624,7 @@ s16 HuSprGrpCreate(s16 capacity)
     group->pos.x = group->pos.y = group->zRot = group->center.x = group->center.y = 0.0f;
     group->scale.x = group->scale.y = 1.0f;
 #ifdef TARGET_PC
+    HuSprGrpHudAnchorReset(i);
     PartyBoard_FrameInterpolationInvalidateSpriteGroup(i);
 #endif
     return i;
@@ -602,6 +640,9 @@ s16 HuSprGrpCopy(s16 group)
         return HUSPR_GRP_NONE;
     }
     new_group_ptr = &HuSprGrpData[new_group];
+#ifdef TARGET_PC
+    hudAnchors[new_group] = hudAnchors[group];
+#endif
     new_group_ptr->pos.x = group_ptr->pos.x;
     new_group_ptr->pos.y = group_ptr->pos.y;
     new_group_ptr->zRot = group_ptr->zRot;

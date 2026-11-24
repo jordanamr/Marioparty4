@@ -1,6 +1,7 @@
 #include "types.h"
 #include "game/board/mg_setup.h"
 #include "game/audio.h"
+#include "game/disp.h"
 #include "game/objsub.h"
 #include "game/wipe.h"
 #include "game/flag.h"
@@ -25,7 +26,7 @@ typedef struct structActiveMG {
 } structActiveMG;
 
 typedef struct unkSubstructR31 {
-    s16 unk_00[13];
+    s16 unk_00[14]; /* Group followed by its thirteen sprite IDs. */
     Vec unk_1C[2][13];
 } unkSubstructR31;
 
@@ -137,6 +138,11 @@ void BoardMGSetupExec(void) {
 }
 
 static void DestroyMGSetup(void) {
+#ifdef TARGET_PC
+    for (s32 player = 0; player < ARRAY_COUNT(GWPlayer); player++) {
+        BoardStatusHudAnchorReset(player);
+    }
+#endif
     GWSystem.player_curr = 0;
     mgSetupProc = NULL;
 }
@@ -648,6 +654,9 @@ static void CreateMGSetup(void) {
         temp_r31->unk_1C[0][var_r30].x = temp_r31->unk_1C[0][var_r30].y = temp_r31->unk_1C[0][var_r30].z = 0.0f;
         temp_r31->unk_1C[1][var_r30].x = temp_r31->unk_1C[1][var_r30].y = temp_r31->unk_1C[1][var_r30].z = 0.0f;
     }
+#ifdef TARGET_PC
+    HuSprGrpHudAnchorSet(temp_r31->unk_00[0], HU_DISP_CENTERX);
+#endif
     HuSprGrpPosSet(temp_r31->unk_00[0], 288.0f, 240.0f);
 }
 
@@ -705,6 +714,11 @@ static void CenterStatus(bitcopy* arg0, omObjData* arg1) {
 
     if (arg0->unk_02 == 0) {
         for (var_r31 = 0; var_r31 < 4; var_r31++) {
+#ifdef TARGET_PC
+            /* Keep the portrait, bar and digits together as they move from
+             * the board corners into the central matchup and back offscreen. */
+            BoardStatusHudAnchorToOrigin(var_r31);
+#endif
             BoardStatusItemHideSet(var_r31, 0);
             BoardStatusTargetPosSet(var_r31, &statusLayout4P[var_r31]);
         }

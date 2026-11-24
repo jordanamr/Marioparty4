@@ -138,8 +138,9 @@ static void CreatePickerWindow(UnkUiWork01 *arg0, s32 arg1);
 static void KillPickerWindow(UnkUiWork01 *arg0);
 
 static s16 itemMdlId[4][ARRAY_COUNT(GWPlayer->items)];
-static Vec pickerPos[4];
-static Vec itemPosTemp[6];
+enum { ITEM_PICKER_SLOTS = 2 * ARRAY_COUNT(GWPlayer[0].items) };
+static Vec pickerPos[ITEM_PICKER_SLOTS];
+static Vec itemPosTemp[ITEM_PICKER_SLOTS];
 
 static s8 itemTeam;
 static s8 itemTeamF;
@@ -337,6 +338,29 @@ void BoardStatusTargetPosSet(s32 arg0, Vec *arg1)
     temp_r31->unk10.y = arg1->y;
     temp_r31->unk00_bit2 = 1;
 }
+
+#ifdef TARGET_PC
+void BoardStatusHudAnchorSet(s32 player, float hudX)
+{
+    if ((u32)player < ARRAY_COUNT(uiStatus) && uiStatus[player].unk00_bit0) {
+        HuSprGrpHudAnchorSet(uiStatus[player].unk02, hudX);
+    }
+}
+
+void BoardStatusHudAnchorToOrigin(s32 player)
+{
+    if ((u32)player < ARRAY_COUNT(uiStatus) && uiStatus[player].unk00_bit0) {
+        HuSprGrpHudAnchorToOrigin(uiStatus[player].unk02);
+    }
+}
+
+void BoardStatusHudAnchorReset(s32 player)
+{
+    if ((u32)player < ARRAY_COUNT(uiStatus) && uiStatus[player].unk00_bit0) {
+        HuSprGrpHudAnchorReset(uiStatus[player].unk02);
+    }
+}
+#endif
 
 void BoardStatusPosGet(s32 arg0, Vec *arg1)
 {
@@ -1216,7 +1240,7 @@ static inline void ExecItemPickInlineFunc01(Vec (*arg0)[6])
                 sp28.x = arg0[i][j + 2].x;
                 sp28.y = arg0[i][j + 2].y;
                 sp28.z = 4000.0f;
-                Hu3D2Dto3D(&sp28, 1, &sp34);
+                Hu3D2Dto3DOriginal(&sp28, 1, &sp34);
                 BoardModelPosSetV(temp_r24, &sp34);
                 BoardModelLayerSet(temp_r24, 5);
                 BoardModelRotSet(temp_r24, sp1C.x, 0.0f, 0.0f);
@@ -1234,6 +1258,9 @@ static inline void ExecItemPickInlineFunc02(s32 arg0, s8 arg1, s32 arg2)
     UnkUiWork03 *sp10;
 
     BoardPickerCreate(arg0, arg1, itemPosTemp, arg2);
+#ifdef TARGET_PC
+    HuSprGrpHudAnchorSet(OM_GET_WORK_PTR(pickerObj, UnkUiWork01)->unk04, HU_DISP_CENTERX);
+#endif
     CreateItemWindow(arg0, arg1);
     sp10 = OM_GET_WORK_PTR(pickerObj, UnkUiWork03);
     pickerObj->func = UpdateItemPickGfx;
@@ -1273,6 +1300,11 @@ static void ExecItemPick(void)
     BoardStatusItemHideSet(3, 0);
     temp_r28 = (void *)temp_r27->unk04;
     for (var_r22 = i = 0; i < 4; i++) {
+#ifdef TARGET_PC
+        // The inventory composites 3D items onto the panels. Keep both, and the
+        // hand that travels between them, in the same centered coordinate space.
+        BoardStatusHudAnchorSet(i, HU_DISP_CENTERX);
+#endif
         if (itemTeamF != 0) {
             if (itemTeam == GWPlayerTeamGet(i)) {
                 if (itemPlayer == i) {
@@ -1308,7 +1340,7 @@ static void ExecItemPick(void)
         }
     }
     ExecItemPickInlineFunc01((void *)temp_r27->unk04);
-    memset(itemPosTemp, 0, 0x48);
+    memset(itemPosTemp, 0, sizeof(itemPosTemp));
     var_r23 = BoardPlayerItemCount(itemPlayer);
     ItemGetPos(itemPlayer, &itemPosTemp[0]);
     if (GWTeamGet()) {
@@ -1336,6 +1368,9 @@ static void UpdateItemPick(omObjData *arg0)
 
     if (temp_r28->unk00_bit0 || BoardIsKill()) {
         for (i = 0; i < 4; i++) {
+#ifdef TARGET_PC
+            BoardStatusHudAnchorReset(i);
+#endif
             for (j = 0; j < 3; j++) {
                 if (itemMdlId[i][j] != -1) {
                     BoardModelKill(itemMdlId[i][j]);
@@ -1386,7 +1421,7 @@ static void UpdateItemPick(omObjData *arg0)
                     sp14.x = temp_r27[i][j + 2].x;
                     sp14.y = temp_r27[i][j + 2].y;
                     sp14.z = 4000.0f;
-                    Hu3D2Dto3D(&sp14, 1, &sp8);
+                    Hu3D2Dto3DOriginal(&sp14, 1, &sp8);
                     BoardModelPosSetV(itemMdlId[i][j], &sp8);
                 }
             }
@@ -1705,7 +1740,7 @@ static void UpdateItemPickup(omObjData *arg0)
                     sp50.x = arg0->trans.x;
                     sp50.y = arg0->trans.y;
                     sp50.z = 3200.0f;
-                    Hu3D2Dto3D(&sp50, 1, &sp50);
+                    Hu3D2Dto3DOriginal(&sp50, 1, &sp50);
                     BoardModelPosSetV(itemPickupMdlId, &sp50);
                     itemPickupPos = 4.0f;
                     temp_r31->unk00_bit3 = 4;
@@ -1726,7 +1761,7 @@ static void UpdateItemPickup(omObjData *arg0)
                     sp50.x = arg0->trans.x;
                     sp50.y = arg0->trans.y;
                     sp50.z = 3200.0f;
-                    Hu3D2Dto3D(&sp50, 1, &sp50);
+                    Hu3D2Dto3DOriginal(&sp50, 1, &sp50);
                     BoardModelPosSetV(itemPickupMdlId, &sp50);
                 }
                 break;
@@ -1734,7 +1769,7 @@ static void UpdateItemPickup(omObjData *arg0)
                 BoardPlayerPosGet(temp_r31->unk00_bit5, &sp2C);
                 sp2C.y += 300.0f;
                 sp8 = sp2C;
-                Hu3D3Dto2D(&sp2C, 1, &sp2C);
+                Hu3D3Dto2DOriginal(&sp2C, 1, &sp2C);
                 sp20.x = arg0->trans.x;
                 sp20.y = arg0->trans.y;
                 VECSubtract(&sp2C, &sp20, &sp14);
@@ -1748,7 +1783,7 @@ static void UpdateItemPickup(omObjData *arg0)
                     sp50.z = 3200.0f;
                     arg0->trans.x = sp50.x;
                     arg0->trans.y = sp50.y;
-                    Hu3D2Dto3D(&sp50, 1, &sp50);
+                    Hu3D2Dto3DOriginal(&sp50, 1, &sp50);
                     BoardModelPosSetV(itemPickupMdlId, &sp50);
                 }
                 break;
@@ -1783,6 +1818,18 @@ static void HideItemWindow(void)
         temp_r31 = OM_GET_WORK_PTR(pickerObj, UnkUiWork01);
         temp_r31->unk00_bit0 = 1;
     }
+}
+
+// An inventory page parks just beyond the original picture. Move its windows
+// and preview together outside the widest supported display once fully parked.
+static float ItemPageRenderX(float x)
+{
+#ifdef TARGET_PC
+    if (x >= HU_DISP_WIDTHF || x <= -HU_DISP_WIDTHF) {
+        return x * 4.0f;
+    }
+#endif
+    return x;
 }
 
 static void CreateItemWindow(s32 arg0, s32 arg1)
@@ -1831,20 +1878,29 @@ static void CreateItemWindow(s32 arg0, s32 arg1)
             temp_r31->unk74[i].y = var_f30 + HU_DISP_CENTERY;
             temp_r31->unk74[i].z = 0.0f;
             temp_r31->unk2C[i] = temp_r31->unk74[i];
-            temp_r31->unk12[i] = HuWinCreate(temp_r31->unk2C[i].x, temp_r31->unk2C[i].y, 0x1F8, 0x60, 0);
+            float renderX = ItemPageRenderX(temp_r31->unk2C[i].x);
+            temp_r31->unk12[i] = HuWinCreate(renderX, temp_r31->unk2C[i].y, 0x1F8, 0x60, 0);
             HuWinDrawNoSet(temp_r31->unk12[i], 0x40);
             HuWinCenterPosSet(temp_r31->unk12[i], 0.0f, 48.0f);
             HuWinMesSpeedSet(temp_r31->unk12[i], 0);
             HuWinMesSet(temp_r31->unk12[i], BoardItemNameGet(temp_r28));
             HuWinMesMaxSizeGet(1, sp8, temp_r28 + MAKE_MESSID(0x08, 0x0E));
-            temp_r31->unk1E[i] = HuWinCreate(temp_r31->unk2C[i].x, temp_r31->unk2C[i].y - (-94.0f), sp8[0], sp8[1], 0);
+            temp_r31->unk1E[i] = HuWinCreate(renderX, temp_r31->unk2C[i].y - (-94.0f), sp8[0], sp8[1], 0);
+#ifdef TARGET_PC
+            if (temp_r31->unk12[i] >= 0) {
+                HuSprGrpHudAnchorSet(winData[temp_r31->unk12[i]].group, HU_DISP_CENTERX);
+            }
+            if (temp_r31->unk1E[i] >= 0) {
+                HuSprGrpHudAnchorSet(winData[temp_r31->unk1E[i]].group, HU_DISP_CENTERX);
+            }
+#endif
             HuWinDrawNoSet(temp_r31->unk1E[i], 0x40);
             HuWinMesSpeedSet(temp_r31->unk1E[i], 0);
             HuWinMesSet(temp_r31->unk1E[i], temp_r28 + MAKE_MESSID(0x08, 0x0E));
-            sp10.x = temp_r31->unk2C[i].x + 48.0f;
+            sp10.x = renderX + 48.0f;
             sp10.y = temp_r31->unk2C[i].y;
             sp10.z = 400.0f;
-            Hu3D2Dto3D(&sp10, 1, &sp10);
+            Hu3D2Dto3DOriginal(&sp10, 1, &sp10);
             temp_r31->unk06[i] = BoardModelCreate(BoardItemModelGet(temp_r28), NULL, 0);
             BoardModelLayerSet(temp_r31->unk06[i], 6);
             BoardModelPosSetV(temp_r31->unk06[i], &sp10);
@@ -1943,15 +1999,16 @@ static void UpdateItemWindow(omObjData *arg0)
                     VECAdd(&sp20, &temp_r31->unk2C[i], &temp_r31->unk2C[i]);
                     var_r27 = 1;
                 }
-                HuWinPosSet(temp_r31->unk12[i], temp_r31->unk2C[i].x, temp_r31->unk2C[i].y);
-                HuWinPosSet(temp_r31->unk1E[i], temp_r31->unk2C[i].x, temp_r31->unk2C[i].y + (-94.0f));
-                sp14.x = temp_r31->unk2C[i].x + 48.0f;
+                float renderX = ItemPageRenderX(temp_r31->unk2C[i].x);
+                HuWinPosSet(temp_r31->unk12[i], renderX, temp_r31->unk2C[i].y);
+                HuWinPosSet(temp_r31->unk1E[i], renderX, temp_r31->unk2C[i].y + (-94.0f));
+                sp14.x = renderX + 48.0f;
                 sp14.y = temp_r31->unk2C[i].y;
                 sp14.z = 400.0f;
                 if (temp_r31->unk00[i] == 5) {
                     sp14.y += 35.0f;
                 }
-                Hu3D2Dto3D(&sp14, 1, &sp14);
+                Hu3D2Dto3DOriginal(&sp14, 1, &sp14);
                 BoardModelPosSetV(temp_r31->unk06[i], &sp14);
                 BoardCameraRotGet(&sp8);
                 MTXRotRad(sp2C, 'y', MTXDegToRad(arg0->trans.x));

@@ -3,6 +3,7 @@
 
 #include "game/armem.h"
 #include "game/audio.h"
+#include "game/disp.h"
 #include "game/chrman.h"
 #include "game/frand.h"
 #ifndef __MWERKS__
@@ -291,6 +292,9 @@ static void ResultBattleCreate(void)
             xOfs = coinNumXOfs[0];
         }
         coinNumGrpId[i] = HuSprGrpCreate(5);
+#ifdef TARGET_PC
+        HuSprGrpHudAnchorSet(coinNumGrpId[i], HU_DISP_CENTERX);
+#endif
         coinNumSprId[i][0] = HuSprCreate(anim, 10, 0);
         HuSprGrpMemberSet(coinNumGrpId[i], 0, coinNumSprId[i][0]);
         HuSprPosSet(coinNumGrpId[i], 0, 17, -32);
@@ -505,7 +509,11 @@ static void ResultBattleCoinAddShow(void)
             pos3D.y = playerPosTbl[resultBattleRank[i]].y + coinBlankYOfs[GWPlayerCfg[resultBattleOrder[i]].character];
         }
         pos3D.z = 0;
+#ifdef TARGET_PC
+        Hu3D3Dto2DOriginal(&pos3D, 1, &pos2D);
+#else
         Hu3D3Dto2D(&pos3D, 1, &pos2D);
+#endif
         HuSprGrpPosSet(coinNumGrpId[i], pos2D.x, pos2D.y);
     }
     speed = (resultFastF) ? 3 : 10;
