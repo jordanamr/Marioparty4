@@ -95,21 +95,33 @@ index 5b88284..1e26ef5 100644
  
  void GXSetNumTevStages(u8 num) {
 diff --git a/lib/dolphin/mtx/mtx.c b/lib/dolphin/mtx/mtx.c
-index ba2796d..d7287bc 100644
+index ba2796d..55beeb3 100644
 --- a/lib/dolphin/mtx/mtx.c
 +++ b/lib/dolphin/mtx/mtx.c
-@@ -409,5 +409,10 @@ void C_MTXRotRad(Mtx m, char axis, f32 rad) {
-   assert(m && "MTXRotRad():  NULL MtxPtr 'm' ");
+@@ -405,1 +405,11 @@ void C_MTXScaleApply(const Mtx src, Mtx dst, f32 xS, f32 yS, f32 zS) {
++static inline void RotationSinCos(f32 rad, f32* sine, f32* cosine) {
 +#ifdef PARTYBOARD_ROTATION_MATH
 +  extern void PartyBoard_RotationSinCos(float radians, float* sine, float* cosine);
-+  PartyBoard_RotationSinCos(rad, &sinA, &cosA);
++  PartyBoard_RotationSinCos(rad, sine, cosine);
 +#else
-   sinA = sinf(rad);
-   cosA = cosf(rad);
++  *sine = sinf(rad);
++  *cosine = cosf(rad);
 +#endif
++}
++
+ void C_MTXRotRad(Mtx m, char axis, f32 rad) {
+@@ -409,4 +419,3 @@ void C_MTXRotRad(Mtx m, char axis, f32 rad) {
+   assert(m && "MTXRotRad():  NULL MtxPtr 'm' ");
+-  sinA = sinf(rad);
+-  cosA = cosf(rad);
++  RotationSinCos(rad, &sinA, &cosA);
    C_MTXRotTrig(m, axis, sinA, cosA);
- }
-@@ -531,6 +536,30 @@ void C_MTXLookAt(Mtx m, const Point3d* camPos, const Vec* camUp, const Point3d*
+@@ -484,3 +493,2 @@ void C_MTXRotAxisRad(Mtx m, const Vec* axis, f32 rad) {
+-  s = sinf(rad);
+-  c = cosf(rad);
++  RotationSinCos(rad, &s, &c);
+   t = 1 - c;
+@@ -531,6 +539,30 @@ void C_MTXLookAt(Mtx m, const Point3d* camPos, const Vec* camUp, const Point3d*
    vLook.z = camPos->z - target->z;
    VECNormalize(&vLook, &vLook);
    VECCrossProduct(camUp, &vLook, &vRight);

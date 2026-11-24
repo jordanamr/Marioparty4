@@ -775,6 +775,9 @@ void ObjectSetup(void)
      s16 i;
      s16 choice;
      float temp;
+#ifdef TARGET_PC
+     const BOOL allowLanguageChoice = !PartyBoard_NetplayEnabled();
+#endif
  repeat:
      Hu3DModelAttrReset(titleMdlId[0], HU3D_ATTR_DISPOFF);
      Hu3DModelAttrReset(titleMdlId[1], HU3D_ATTR_DISPOFF);
@@ -815,7 +818,9 @@ void ObjectSetup(void)
             languageMemberNo = GwLanguage+8-1;
         }
         HuSprAttrReset(bootGrpId, pressStartMemberNo, HUSPR_ATTR_DISPOFF);
-        HuSprAttrReset(bootGrpId, languageMemberNo, HUSPR_ATTR_DISPOFF);
+        if (allowLanguageChoice) {
+            HuSprAttrReset(bootGrpId, languageMemberNo, HUSPR_ATTR_DISPOFF);
+        }
         for(i=1; i<=20; i++) {
             scale = sind(i*4.5);
             HuSprScaleSet(bootGrpId, pressStartMemberNo, scale, scale);
@@ -874,7 +879,7 @@ void ObjectSetup(void)
      #endif
 #ifdef TARGET_PC
          if (partyboard_version_is_pal()) {
-             if((choice == 0 && (HuPadDStkRep[0] & PAD_BUTTON_DOWN)) || (choice != 0 && (HuPadDStkRep[0] & PAD_BUTTON_UP))) {
+             if(allowLanguageChoice && ((choice == 0 && (HuPadDStkRep[0] & PAD_BUTTON_DOWN)) || (choice != 0 && (HuPadDStkRep[0] & PAD_BUTTON_UP)))) {
                  HuAudFXPlay(0);
                  for(i=1; i<=10; i++) {
                      scale = ((1-(i/10.0))*(((cosd(scale_time)*0.1)+0.9)-0.7))+0.7;

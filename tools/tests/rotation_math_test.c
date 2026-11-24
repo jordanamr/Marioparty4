@@ -28,6 +28,19 @@ int main(void)
             return 1;
         }
     }
+    // Sky Dive tilts its player model about a vector with MTXRotAxisDeg.
+    // Check the matrix entry that contributes to the resulting Z position.
+    const Vec axis = {1.0f, 0.0f, 0.0f};
+    const uint32_t tilt = 0x41e96e41, expectedSin = 0x3ef99e79, expectedCos = 0x3f5f83a1;
+    float degrees;
+    Mtx rotation;
+    memcpy(&degrees, &tilt, sizeof(degrees));
+    MTXRotAxisDeg(rotation, &axis, degrees);
+    if (memcmp(&rotation[2][1], &expectedSin, sizeof(float)) ||
+        memcmp(&rotation[1][1], &expectedCos, sizeof(float))) {
+        fputs("Sky Dive axis rotation mismatch\n", stderr);
+        return 1;
+    }
     puts("Desktop matrix rotation tests passed");
     return 0;
 }
