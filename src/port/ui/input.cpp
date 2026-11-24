@@ -8,6 +8,7 @@
 #include <SDL3/SDL_gamepad.h>
 #include <SDL3/SDL_timer.h>
 #include <SDL3/SDL_touch.h>
+#include <SDL3/SDL_video.h>
 #include <aurora/rmlui.hpp>
 #include <dolphin/pad.h>
 
@@ -52,6 +53,14 @@ namespace {
         bool candidate = false;
         bool failed = false;
     };
+
+    LobbyPadOwner sLobbyPadOwner = LobbyPadOwner::Launcher;
+
+    bool accepts_gamepad_navigation() noexcept
+    {
+        return sLobbyPadOwner == LobbyPadOwner::Launcher
+            || (sLobbyPadOwner == LobbyPadOwner::ForegroundLobby && SDL_GetKeyboardFocus() != nullptr);
+    }
 
     bool sPadInputBlocked = false;
     std::array<GamepadRepeatState, SDL_GAMEPAD_BUTTON_COUNT> sGamepadButtonRepeats;
@@ -675,6 +684,14 @@ namespace {
 
 } // namespace
 
+void set_lobby_pad_owner(LobbyPadOwner owner) noexcept
+{
+    if (owner != sLobbyPadOwner) {
+        clear_gamepad_repeats();
+        sLobbyPadOwner = owner;
+    }
+}
+
 void sync_input_block() noexcept
 {
     const bool shouldBlock = any_document_visible();
@@ -751,6 +768,10 @@ void handle_event(const SDL_Event &event) noexcept
         return;
     }
 
+    if (!accepts_gamepad_navigation()) {
+        return;
+    }
+
     if (event.type == SDL_EVENT_GAMEPAD_AXIS_MOTION) {
         process_axis_direction(*context, event.gaxis, AXIS_SIGN_POSITIVE);
         process_axis_direction(*context, event.gaxis, AXIS_SIGN_NEGATIVE);
@@ -805,6 +826,9 @@ void handle_event(const SDL_Event &event) noexcept
 
 void update_input() noexcept
 {
+    if (!accepts_gamepad_navigation()) {
+        return;
+    }
     auto *context = aurora::rmlui::get_context();
     if (context != nullptr) {
         const double now = now_seconds();

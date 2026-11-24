@@ -1,5 +1,6 @@
 #if defined(__linux__) && !defined(__ANDROID__)
 #include "online.hpp"
+#include "input.hpp"
 #include "localization.hpp"
 #include "prelaunch.hpp"
 #include "port/config.hpp"
@@ -17,6 +18,7 @@ namespace partyboard::ui {
 OnlineWindow::~OnlineWindow()
 {
     if (mCompanion) {
+        input::set_lobby_pad_owner(input::LobbyPadOwner::Launcher);
         // Closing the application can skip the normal Leave/acknowledgement path.
         send_room_request("close", "launcher_shutdown");
         SDL_DestroyProcess(mCompanion);
@@ -29,6 +31,7 @@ OnlineWindow::~OnlineWindow()
 void OnlineWindow::reset_linux_room()
 {
     if (mCompanion) {
+        input::set_lobby_pad_owner(input::LobbyPadOwner::Launcher);
         SDL_DestroyProcess(mCompanion);
         mCompanion = nullptr;
     }
@@ -84,6 +87,7 @@ void OnlineWindow::open_linux_room(bool host)
         set_status("Could not start PartyBoardOnline. Check the game installation.");
         return;
     }
+    input::set_lobby_pad_owner(input::LobbyPadOwner::ForegroundLobby);
     mRefreshRoom = true;
     set_status("Verifying disc and opening lobby…");
 }
@@ -144,6 +148,11 @@ void OnlineWindow::update()
             mCanStart = canStart;
             mHostInvitation = invitation;
             const auto phase = room.value("state", std::string());
+            // Both processes receive SDL controller events. Once the online game
+            // launches, only it should turn those events into button presses.
+            if (phase == "preparing" || phase == "playing") {
+                input::set_lobby_pad_owner(input::LobbyPadOwner::OnlineGame);
+            }
             gotFinalStatus = phase == "error" || phase == "closed";
             auto message = room.value("message", std::string());
             const auto players = room.find("players");

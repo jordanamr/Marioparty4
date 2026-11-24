@@ -6,6 +6,10 @@ union SDL_Event;
 
 namespace partyboard::ui::input {
 
+// The Linux lobby stays open while a separate process runs the online game.
+enum class LobbyPadOwner { Launcher, ForegroundLobby, OnlineGame };
+void set_lobby_pad_owner(LobbyPadOwner owner) noexcept;
+
 void handle_event(const SDL_Event &event) noexcept;
 void update_input() noexcept;
 void reset_input_state() noexcept;
