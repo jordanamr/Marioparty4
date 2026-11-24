@@ -58,6 +58,8 @@ def main():
         ("m415Dll", "main.c", "stamp_out_ai_test.c"),
         ("m427Dll", "player.c", "course_height_test.c"),
         ("m427Dll", "map.c", "boat_water_grid_test.c"),
+        ("dol", "game/mapspace.c", "map_wall_vertices_test.c"),
+        ("instDll", "font.c", "minigame_font_table_test.c"),
         ("m423Dll", "main.c", "minigame_collision_output_test.c"),
         ("m428Dll", "map.c", "collision_quad_test.c"),
         ("m431Dll", "main.c", "minigame_smoke_target_test.c"),

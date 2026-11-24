@@ -30,6 +30,21 @@ static s32 FontCharFile[0xC6] = {
 };
 #endif
 
+static s32 FontGlyphFile(const s32 *files, s32 count, u8 ch, u8 suffix, BOOL ntsc)
+{
+    int index = ch;
+    if (ntsc && suffix == 0x80) {
+        if (ch >= 0x96 && ch <= 0xA4) index += 0x6A;
+        else if (ch >= 0xAA && ch <= 0xAE) index += 0x65;
+        else if (ch >= 0xD6 && ch <= 0xE4) index += 0x43;
+        else if (ch >= 0xEA && ch <= 0xEE) index += 0x3E;
+    } else if (ntsc && suffix == 0x81) {
+        if (ch >= 0xAA && ch <= 0xAE) index += 0x6A;
+        else if (ch >= 0xEA && ch <= 0xEE) index += 0x43;
+    }
+    return index < count ? files[index] : DATA_MAKE_NUM(DATADIR_INST, 0x25);
+}
+
 s32 FontCreate(SeqWork *work, char *mess, s16 jp_flag)
 {
 #ifdef TARGET_PC
@@ -41,6 +56,8 @@ s32 FontCreate(SeqWork *work, char *mess, s16 jp_flag)
     s16 *posY;
     s16 charNum;
     s32 *fileTbl;
+    s32 glyphCount = sizeof(FontCharFile) / sizeof(FontCharFile[0]);
+    BOOL ntsc = VERSION_NTSC;
     s16 i;
     s16 grpNo;
     s16 *posX;
@@ -51,8 +68,10 @@ s32 FontCreate(SeqWork *work, char *mess, s16 jp_flag)
 
     fileTbl = FontCharFile;
 #ifdef TARGET_PC
+    ntsc = VERSION_RT_NTSC;
     if (VERSION_RT_PAL) {
         fileTbl = FontCharFilePal;
+        glyphCount = sizeof(FontCharFilePal) / sizeof(FontCharFilePal[0]);
     }
 #endif
     for (grpNo = 0; grpNo < 0x10; grpNo++) {
@@ -77,73 +96,11 @@ s32 FontCreate(SeqWork *work, char *mess, s16 jp_flag)
         }
         else if (str[0] < 0x30) {
         }
-#ifdef TARGET_PC
-        // NTSC messages mark voiced kana with a 0x80/0x81 suffix, PAL messages have no suffix
-        else if (VERSION_RT_NTSC && str[0] == 0x80) {
-        }
-        else if (VERSION_RT_NTSC && str[0] == 0x81) {
+        else if (ntsc && ((u8)str[0] == 0x80 || (u8)str[0] == 0x81)) {
         }
         else {
-            if (VERSION_RT_NTSC && str[1] == 0x80) {
-                if ((str[0] >= 0x96) && (str[0] <= 0xA4)) {
-                    file = fileTbl[str[0] + 0x6A];
-                }
-                else if ((str[0] >= 0xAA) && (str[0] <= 0xAE)) {
-                    file = fileTbl[str[0] + 0x65];
-                }
-                else if ((str[0] >= 0xD6) && (str[0] <= 0xE4)) {
-                    file = fileTbl[str[0] + 0x43];
-                }
-                else if ((str[0] >= 0xEA) && (str[0] <= 0xEE)) {
-                    file = fileTbl[str[0] + 0x3E];
-                }
-            }
-            else if (VERSION_RT_NTSC && str[1] == 0x81) {
-                if ((str[0] >= 0xAA) && (str[0] <= 0xAE)) {
-                    file = fileTbl[str[0] + 0x6A];
-                }
-                else if ((str[0] >= 0xEA) && (str[0] <= 0xEE)) {
-                    file = fileTbl[str[0] + 0x43];
-                }
-            }
-            else {
-                file = fileTbl[str[0]];
-            }
-#elif VERSION_NTSC
-        else if (str[0] == 0x80) {
-        }
-        else if (str[0] == 0x81) {
-        }
-        else {
-            if (str[1] == 0x80) {
-                if ((str[0] >= 0x96) && (str[0] <= 0xA4)) {
-                    file = fileTbl[str[0] + 0x6A];
-                }
-                else if ((str[0] >= 0xAA) && (str[0] <= 0xAE)) {
-                    file = fileTbl[str[0] + 0x65];
-                }
-                else if ((str[0] >= 0xD6) && (str[0] <= 0xE4)) {
-                    file = fileTbl[str[0] + 0x43];
-                }
-                else if ((str[0] >= 0xEA) && (str[0] <= 0xEE)) {
-                    file = fileTbl[str[0] + 0x3E];
-                }
-            }
-            else if (str[1] == 0x81) {
-                if ((str[0] >= 0xAA) && (str[0] <= 0xAE)) {
-                    file = fileTbl[str[0] + 0x6A];
-                }
-                else if ((str[0] >= 0xEA) && (str[0] <= 0xEE)) {
-                    file = fileTbl[str[0] + 0x43];
-                }
-            }
-            else {
-                file = fileTbl[str[0]];
-            }
-#else
-        else {
-            file = fileTbl[str[0]];
-#endif
+            if (charNum == FONT_CHAR_MAX) break;
+            file = FontGlyphFile(fileTbl, glyphCount, (u8)str[0], (u8)str[1], ntsc);
             animP[charNum] = HuSprAnimReadFile(file);
             posX[charNum] = len;
             if ((str[0] >= 0x61) && (str[0] <= 0x7A)) {

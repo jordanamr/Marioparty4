@@ -162,7 +162,7 @@ float MapPos(float arg0, float arg1, float arg2, float arg3, Vec *arg4) {
     if (var_f31 == -100000.0f) {
         arg4->x = 0.0f;
         arg4->y = 1.0f;
-        arg4->x = 0.0f;
+        arg4->z = 0.0f;
         return arg1;
     } else {
         return var_f31;
@@ -533,6 +533,16 @@ static inline float xz_scalar_cross_from_origin(float x_org, float z_org, Vec *v
     return cross_prod_2d;
 }
 
+static void StoreFloorTriangle(s32 a, s32 b, s32 c) {
+    /* MapCalcPoint always consumes the most recent hit. */
+    if (ColisionCount < sizeof(ColisionIdx) / sizeof(ColisionIdx[0])) {
+        ++ColisionCount;
+    }
+    ColisionIdx[ColisionCount - 1][0] = a;
+    ColisionIdx[ColisionCount - 1][1] = b;
+    ColisionIdx[ColisionCount - 1][2] = c;
+}
+
 static s32 MapIflnnerTriangle(float x_org, float y_org, u16 *arg2, Vec *arg3) {
     Vec normal;
     float var_f29;
@@ -562,10 +572,7 @@ static s32 MapIflnnerTriangle(float x_org, float y_org, u16 *arg2, Vec *arg3) {
             }
         }
     }
-    ColisionIdx[ColisionCount][0] = arg2[0];
-    ColisionIdx[ColisionCount][1] = arg2[1];
-    ColisionIdx[ColisionCount][2] = arg2[2];
-    ColisionCount++;
+    StoreFloorTriangle(arg2[0], arg2[1], arg2[2]);
     return 1;
 }
 
@@ -603,10 +610,7 @@ static s32 MapIflnnerQuadrangle(float arg0, float arg1, u16 *arg2, Vec *arg3) {
         }
     }
     if (var_r28 == 0) {
-        ColisionIdx[ColisionCount][0] = arg2[0];
-        ColisionIdx[ColisionCount][1] = arg2[3];
-        ColisionIdx[ColisionCount][2] = arg2[2];
-        ColisionCount++;
+        StoreFloorTriangle(arg2[0], arg2[3], arg2[2]);
         return 1;
     }
     var_f31 = xz_scalar_cross_from_origin(arg0, arg1, &arg3[arg2[0]], &arg3[arg2[1]]);
@@ -629,10 +633,7 @@ static s32 MapIflnnerQuadrangle(float arg0, float arg1, u16 *arg2, Vec *arg3) {
             return 0;
         }
     }
-    ColisionIdx[ColisionCount][0] = arg2[0];
-    ColisionIdx[ColisionCount][1] = arg2[1];
-    ColisionIdx[ColisionCount][2] = arg2[3];
-    ColisionCount++;
+    StoreFloorTriangle(arg2[0], arg2[1], arg2[3]);
     return 1;
 }
 
@@ -723,18 +724,15 @@ static BOOL GetPolygonCircleMtx(s16 *arg0, Vec *arg1, float *arg2, float *arg3) 
         spD0[1] = arg2[1];
         spD0[2] = arg2[2] + AddZ;
         MTXMultVec(MapMT, &spC4, &spC4);
-        DefSetHitFace(spC4.x, spC4.y, spC4.z);
-        temp_r29 = &HitFaceVec[HitFaceCount];
-#ifdef NON_MATCHING
-        compute_tri_normal(temp_r29, &arg1[arg0[0] & 0x7FFF], &arg1[arg0[1]], &arg1[arg0[2]]);
-#else
-        compute_tri_normal(temp_r29, &arg1[arg0[0]], &arg1[arg0[1]], &arg1[arg0[2]]);
-#endif
+        if (HitFaceCount < sizeof(HitFace) / sizeof(HitFace[0])) {
+            DefSetHitFace(spC4.x, spC4.y, spC4.z);
+            temp_r29 = &HitFaceVec[HitFaceCount++];
+            compute_tri_normal(temp_r29, &arg1[temp_r31[0]], &arg1[temp_r31[1]], &arg1[temp_r31[2]]);
+        }
         temp_f31 = spC4.x - spD0[0];
         spA4 = spC4.y - spD0[1];
         temp_f30 = spC4.z - spD0[2];
         scale = spE0[3] - sqrtf(temp_f31 * temp_f31 + temp_f30 * temp_f30);
-        HitFaceCount++;
         if (spA0 > 0) {
             spE0[0] = OldXYZ.x;
             spE0[1] = OldXYZ.y;
@@ -745,7 +743,7 @@ static BOOL GetPolygonCircleMtx(s16 *arg0, Vec *arg1, float *arg2, float *arg3) 
                 spB8.y = spE0[1] - spD0[1];
                 spB8.z = spE0[2] - spD0[2];
                 normalize_vec(&spB8);
-                if (DefIfnnerMapCircle((Vec*) spD0, arg0 - 1, arg1, &spB8) == 1) {
+                if (DefIfnnerMapCircle((Vec*) spD0, arg0, arg1, &spB8) == 1) {
                     scale = spE0[3] + sqrtf(temp_f31 * temp_f31 + temp_f30 * temp_f30);
                 }
             } else {
@@ -781,10 +779,10 @@ static s32 PrecalcPntToTriangle(Vec *arg0, Vec *arg1, Vec *arg2, Vec* arg3, Vec 
         VECSubtract(arg4, arg1, &sp8);
         temp_f31 = VECDotProduct(&sp14, &sp8) / VECDotProduct(&sp14, &sp14);
         if (temp_f31 <= 0.0f) {
-            arg5 = arg1;
+            *arg5 = *arg1;
         } else {
             if (temp_f31 >= 1.0f) {
-                arg5 = arg2;
+                *arg5 = *arg2;
             } else {
                 VECScale(&sp14, &sp8, temp_f31);
                 VECAdd(arg1, &sp8, arg5);
@@ -796,7 +794,7 @@ static s32 PrecalcPntToTriangle(Vec *arg0, Vec *arg1, Vec *arg2, Vec* arg3, Vec 
             HuSetVecF(arg5, 0.0, 0.0, 0.0);
         } else {
             if (temp_f31 >= 1.0f) {
-                arg5 = arg1;
+                *arg5 = *arg1;
             } else {
                 VECScale(arg1, arg5, temp_f31);
             }
@@ -807,7 +805,7 @@ static s32 PrecalcPntToTriangle(Vec *arg0, Vec *arg1, Vec *arg2, Vec* arg3, Vec 
             HuSetVecF(arg5, 0.0, 0.0, 0.0);
         } else {
             if (temp_f31 >= 1.0f) {
-                arg5 = arg2;
+                *arg5 = *arg2;
             } else {
                 VECScale(arg2, arg5, temp_f31);
             }
@@ -867,6 +865,7 @@ BOOL Hitcheck_Quadrangle_with_Sphere(Vec *arg0, Vec *arg1, float arg2, Vec *arg3
     VECSubtract(arg1, &arg0[0], &sp30);
     PrecalcPntToTriangle(&sp6C, &sp60, &sp54, &sp3C, &sp30, &sp24);
     VECAdd(&sp24, &sp6C, &sp18);
+    VECCrossProduct(&sp54, &sp48, &sp3C);
     PrecalcPntToTriangle(&sp6C, &sp54, &sp48, &sp3C, &sp30, &sp24);
     VECAdd(&sp24, &sp6C, &spC);
     var_f31 = VECDistance(&sp18, arg1);

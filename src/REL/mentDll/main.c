@@ -1502,7 +1502,8 @@ loop_3:
     lbl_1_bss_35BC[1].unk_04 = (MentDllUnkFunc)fn_1_19C98;
 loop_4:
     fn_1_4D8();
-    if ((var_r27 != lbl_1_bss_35BC[1].unk_08[0]) || var_r26 != lbl_1_bss_35BC[1].unk_1C[lbl_1_bss_35BC[1].unk_08[0]]) {
+    if ((unsigned)lbl_1_bss_35BC[1].unk_08[0] < 5 &&
+        (var_r27 != lbl_1_bss_35BC[1].unk_08[0] || var_r26 != lbl_1_bss_35BC[1].unk_1C[lbl_1_bss_35BC[1].unk_08[0]])) {
         var_r27 = lbl_1_bss_35BC[1].unk_08[0];
         var_r26 = lbl_1_bss_35BC[1].unk_1C[lbl_1_bss_35BC[1].unk_08[0]];
         switch (lbl_1_bss_35BC[1].unk_08[0]) {
@@ -2280,7 +2281,8 @@ s32 fn_1_CF8C(void)
         lbl_1_bss_35BC[0].unk_04 = (MentDllUnkFunc)fn_1_1E8A4;
         while (1) {
             fn_1_4D8();
-            if ((var_r28 != lbl_1_bss_35BC[0].unk_08[0]) || (var_r27 != lbl_1_bss_35BC[0].unk_1C[lbl_1_bss_35BC[0].unk_08[0] - 1])) {
+            if (lbl_1_bss_35BC[0].unk_08[0] >= 1 && lbl_1_bss_35BC[0].unk_08[0] <= 2 &&
+                (var_r28 != lbl_1_bss_35BC[0].unk_08[0] || var_r27 != lbl_1_bss_35BC[0].unk_1C[lbl_1_bss_35BC[0].unk_08[0] - 1])) {
                 var_r28 = lbl_1_bss_35BC[0].unk_08[0];
                 var_r27 = lbl_1_bss_35BC[0].unk_1C[lbl_1_bss_35BC[0].unk_08[0] - 1];
                 switch (lbl_1_bss_35BC[0].unk_08[0]) {
