@@ -77,6 +77,21 @@ void fn_1_424(omObjData *object);
 void fn_1_A44(omObjData *object);
 void fn_1_2110(omObjData *object);
 
+#ifdef TARGET_PC
+/* The smoke hides targets on its second animation frame. Advance it after the
+ * players' updates so every peer changes the target on the same game tick. */
+static void M431UpdateView(omObjData *object)
+{
+    s16 modelId = lbl_1_bss_30->model[0];
+    omOutView(object);
+    if (!omPauseChk() && modelId != HU3D_MODELID_NONE) {
+        HU3DMODEL *model = &Hu3DData[modelId];
+        Work72B4 *smoke = model->hookData;
+        smoke->unkC(model, smoke, NULL);
+    }
+}
+#endif
+
 void ObjectSetup(void)
 {
     Vec sp2C;
@@ -102,7 +117,11 @@ void ObjectSetup(void)
     HuAudSndGrpSet(56);
     Hu3DCameraCreate(1);
     Hu3DCameraPerspectiveSet(1, 41.5, 5, 5000, 1.2f);
+#ifdef TARGET_PC
+    omAddObjEx(temp_r31, 32730, 0, 0, -1, M431UpdateView);
+#else
     omAddObjEx(temp_r31, 32730, 0, 0, -1, omOutView);
+#endif
     temp_r29 = &Hu3DCamera[0];
     temp_r29->fov = -1;
     sp14.x = 0;
@@ -148,6 +167,9 @@ void fn_1_49C(omObjData *object)
         return;
     }
     fn_1_71B8(lbl_1_bss_30->model[0]);
+#ifdef TARGET_PC
+    lbl_1_bss_30->model[0] = HU3D_MODELID_NONE;
+#endif
     for (i = 0; i < 6; i++) {
         fn_1_71B8(lbl_1_bss_5C.unk0[i]);
     }
@@ -2046,7 +2068,6 @@ void fn_1_72B4(HU3DMODEL *model, Mtx mtx)
     HuVec2f *temp_r27;
     s16 temp_r26;
     s16 temp_r25;
-    unkHook72B4 temp_r23;
     temp_r30 = model->hookData;
     GXLoadPosMtxImm(mtx, GX_PNMTX0);
     GXSetNumTevStages(1);
@@ -2099,10 +2120,11 @@ void fn_1_72B4(HU3DMODEL *model, Mtx mtx)
     GXSETARRAY(GX_VA_TEX0, temp_r30->unk20, temp_r30->unk0 * sizeof(HuVec2f) * 4, sizeof(HuVec2f), TRUE);
     fn_1_79FC(mtx, sp128);
     MTXReorder(sp128, spF8);
+#ifndef TARGET_PC
     if (!omPauseChk() && temp_r30->unkC) {
-        temp_r23 = temp_r30->unkC;
-        temp_r23(model, temp_r30, mtx);
+        temp_r30->unkC(model, temp_r30, mtx);
     }
+#endif
     temp_r29 = temp_r30->unk18;
     temp_r31 = temp_r30->unk1C;
     temp_r27 = temp_r30->unk20;

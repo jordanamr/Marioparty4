@@ -449,7 +449,9 @@ void fn_1_3AF8(void)
 #ifdef TARGET_PC
         {
             int slot = PartyBoard_ExtraRoomSlot(PartyBoard_NetplaySpecialGame());
-            if (slot >= 0) lbl_1_bss_3B0.unk_08 = slot == 10 ? 2 : slot >= 4;
+            if (slot >= 0 && lbl_1_bss_180[slot]) {
+                lbl_1_bss_3B0.unk_08 = slot == 10 ? 2 : slot >= 4;
+            }
         }
 #endif
         lbl_1_bss_3B0.unk_04 = (MpexDllUnkFunc2)fn_1_11FC0;

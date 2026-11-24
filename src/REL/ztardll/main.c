@@ -877,7 +877,7 @@ void fn_1_33B0(void)
 
 void fn_1_40E4(void)
 {
-    s16 sp14[4];
+    s16 opponents[8];
     s16 spC[4];
     s16 sp8[2];
     s16 var_r31;
@@ -893,18 +893,18 @@ void fn_1_40E4(void)
     var_r30 = 0;
     for (var_r31 = var_r30; var_r31 < 8; var_r31++) {
         if ((var_r31 != GWPlayerCfg[spC[0]].character) && (var_r31 != GWPlayerCfg[spC[1]].character)) {
-            sp14[var_r30++] = var_r31;
+            opponents[var_r30++] = var_r31;
         }
     }
     for (var_r31 = 0; var_r31 < 0x1E; var_r31++) {
         var_r30 = frandmod(6);
         var_r29 = frandmod(6);
-        var_r28 = sp14[var_r30];
-        sp14[var_r30] = sp14[var_r29];
-        sp14[var_r29] = var_r28;
+        var_r28 = opponents[var_r30];
+        opponents[var_r30] = opponents[var_r29];
+        opponents[var_r29] = var_r28;
     }
     for (var_r31 = 0; var_r31 < 6; var_r31++) {
-        mgIndexList[var_r31] = sp14[var_r31];
+        mgIndexList[var_r31] = opponents[var_r31];
     }
     mgIndexList[6] = 0xC;
     mgIndexList[7] = 9;

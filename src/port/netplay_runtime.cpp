@@ -2759,7 +2759,11 @@ extern "C" bool PartyBoard_NetplayTick(void)
                 // The minigame mode is a vertical list, not a horizontal one.
                 const bool minigameList = runtime.walkPlan
                     && context == static_cast<int>(MenuProbeOverlay::mgmodedll);
-                if (runtime.specialGame && (context == static_cast<int>(MenuProbeOverlay::mpexDll)
+                if (runtime.specialGame == 444 && context == static_cast<int>(MenuProbeOverlay::m444dll)) {
+                    // Charge the Fortune pinball plunger before pressing A to release it.
+                    runtime.pendingLocal.stickY = -72;
+                    if (beat % 120 < 2) runtime.pendingLocal.buttons = PAD_BUTTON_A;
+                } else if (runtime.specialGame && (context == static_cast<int>(MenuProbeOverlay::mpexDll)
                     || context == static_cast<int>(MenuProbeOverlay::ztardll)
                     || context == static_cast<int>(MenuProbeOverlay::subchrselDll))) {
                     if (beat % 24 < 2) {
