@@ -282,13 +282,10 @@ s32 BoardComItemWeightGet(s32 player, s32 item) {
 s32 BoardComUseItemSlotGet(s32 player) {
     PARTYBOARD_BOARD_COVERAGE("CPU");
     s32 slot;
-    s32 item;
+    s32 item = itemUse;
 
     if (!GWPlayer[player].com) {
         return -1;
-    }
-    if (itemUse != -1) {
-        item = itemUse;
     }
     if (boardTutorialUseItem >= 0 && boardTutorialUseItem <= 13) {
         item = boardTutorialUseItem;

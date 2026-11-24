@@ -35,6 +35,7 @@ void fn_1_1B834(void);
 void fn_1_1B9F4(void);
 void fn_1_1BA78(u32 arg0, s32 arg1, s32 arg2);
 void fn_1_1BB4C(u32 arg0, s32 arg1);
+void MpexInsertText(const char *text, s16 slot);
 s32 fn_1_1BBA4(s32 arg0);
 void fn_1_1BD00(u32 arg0, s32 arg1);
 void fn_1_1BF1C(u32 arg0);

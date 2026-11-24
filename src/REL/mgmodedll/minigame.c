@@ -60,7 +60,7 @@ void fn_1_26C54(s16 layer)
     Mtx44 proj;
     Mtx modelview;
     Vec pos, target, up;
-    GXColor color;
+    GXColor color = { 0, 0, 0, 255 };
     HU3DCAMERA *camera = &Hu3DCamera[0];
     MTXPerspective(proj, camera->fov, PARTYBOARD_RENDER_ASPECT(camera->aspect), camera->nnear, camera->ffar);
     GXSetProjection(proj, GX_PERSPECTIVE);
@@ -69,7 +69,6 @@ void fn_1_26C54(s16 layer)
     GXClearVtxDesc();
     GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
     GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
-    color.a = 255;
     GXSetTevColor(GX_TEVREG0, color);
     GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD_NULL, GX_TEXMAP_NULL, GX_COLOR0A0);
     GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_C0);

@@ -1311,7 +1311,7 @@ static void ExecScratchPick(omObjData *arg0)
     }
     var_r25 = var_r24 = 0;
     var_r26 = ExecStratchPickInlineFunc(temp_r29);
-    if (var_r26 == 0x100) {
+    if (var_r26 & PAD_BUTTON_A) {
         currPrize = (temp_r29->unk02 + (temp_r29->unk03 * 4));
         temp_r29->unk00_field0 = 1;
         HuAudFXPlay(2);

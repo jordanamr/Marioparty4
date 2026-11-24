@@ -1013,7 +1013,7 @@ static void fn_1_5018(void)
         if (var_f29 < 900.0f && lbl_1_bss_B2[lbl_1_bss_BA[i]] == 0) {
             temp_r3 = HuPrcChildCreate(fn_1_4848, 0x2003, 0x2000, 0, boardMainProc);
             lbl_1_bss_D4[lbl_1_bss_BA[i]] = temp_r3;
-            temp_r3->user_data = (u8 *)lbl_1_bss_BA[i];
+            temp_r3->user_data_u32 = lbl_1_bss_BA[i];
             lbl_1_bss_B2[lbl_1_bss_BA[i]] = 1;
         }
     }
@@ -1027,7 +1027,8 @@ static void fn_1_52A0(s16 arg0, Vec *arg1)
     BoardSpace *var_r29;
     BoardSpace *var_r28;
     s16 sp8[4];
-    s32 var_r27;
+    u32 arriving = 1u << GWSystem.player_curr;
+    s32 nextCorner = 0;
     s32 i;
 
     OSReport("Landing Pos Get\n");
@@ -1056,19 +1057,26 @@ static void fn_1_52A0(s16 arg0, Vec *arg1)
             HuPrcVSleep();
         }
     }
-    var_r27 = 0;
+    for (i = 0; i < 4; i++) {
+        var_r30 = fn_1_2FBC(i);
+        if (var_r30->unk08 >= 0) {
+            arriving |= 1u << var_r30->unk08;
+        }
+    }
     for (i = 0; i < 4; i++) {
         BoardPlayerPosGet(i, &sp40[i]);
         BoardPlayerRotGet(i, &sp10[i]);
         sp8[i] = GWPlayer[i].space_curr;
-        if (lbl_1_bss_B0 == sp8[i]) {
-            var_r27 += 1;
+        if (lbl_1_bss_B0 == sp8[i] && !(arriving & (1u << i))) {
+            nextCorner++;
         }
     }
+    arriving &= ~(1u << GWSystem.player_curr);
     for (i = 0; i < 4; i++) {
         var_r30 = fn_1_2FBC(i);
-        if (var_r30->unk08 != -1 && var_r30->unk08 != GWSystem.player_curr) {
-            BoardSpaceCornerPosGet(lbl_1_bss_B0, var_r27++, &arg1[var_r30->unk08]);
+        if (var_r30->unk08 >= 0 && (arriving & (1u << var_r30->unk08))) {
+            arriving &= ~(1u << var_r30->unk08);
+            BoardSpaceCornerPosGet(lbl_1_bss_B0, nextCorner++, &arg1[var_r30->unk08]);
         }
     }
     for (i = 0; i < 4; i++) {

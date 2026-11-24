@@ -2573,6 +2573,18 @@ static void ExecItemBagShow(void)
     }
 }
 
+static BOOL ItemBagJumpPressed(s32 player, s16 *comDelay)
+{
+    if (!GWPlayer[player].com) {
+        return (HuPadBtnDown[GWPlayer[player].port] & PAD_BUTTON_A) != 0;
+    }
+    if (--*comDelay != 0) {
+        return FALSE;
+    }
+    *comDelay = frandmod(40) + 30;
+    return TRUE;
+}
+
 static void ExecItemBag(void)
 {
     UnkItemShowProcStruct sp3C;
@@ -2586,9 +2598,7 @@ static void ExecItemBag(void)
     s16 temp_r27;
     s16 var_r26;
     s16 var_r30;
-    s16 temp_r23;
     s16 i;
-    u16 var_r25;
     Process *temp_r29;
     Process *temp_r24;
 
@@ -2597,7 +2607,6 @@ static void ExecItemBag(void)
             itemBagItems[i] = rand8() % 13;
         }
     }
-    temp_r23 = GWPlayer[currItemRestore].port;
     suitMdl = BoardModelCreate(itemMdlTbl[currItem], NULL, 1);
     BoardModelLayerSet(suitMdl, 2);
     BoardCameraRotGet(&sp18);
@@ -2632,16 +2641,7 @@ static void ExecItemBag(void)
     var_r30 = 0;
     sp24.x = sp24.y = sp24.z = 0.0f;
     while (var_r30 < temp_r27) {
-        if (GWPlayerCfg[currItemRestore].iscom == 1) {
-            if (--var_r26 == 0) {
-                var_r25 = 0x100;
-                var_r26 = frandmod(40) + 30;
-            }
-        }
-        else {
-            var_r25 = HuPadBtnDown[temp_r23];
-        }
-        if (!(var_r25 & 0x100)) {
+        if (!ItemBagJumpPressed(currItemRestore, &var_r26)) {
             HuPrcVSleep();
         }
         else {

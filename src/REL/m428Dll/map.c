@@ -71,8 +71,7 @@ typedef struct M433DllUnkStruct {
 
 typedef struct M433DllUnkStruct4 {
     Vec unk_00;
-    s32 unk_0C[3];
-    s8 unk_18[4];
+    s32 unk_0C[4];
     s8 unk_1C;
     float unk_20;
     float unk_24;
@@ -401,9 +400,9 @@ u8 fn_1_5370(M433DllUnkStruct2 *arg0, Vec *arg1)
         var_f30 = VECMag(&sp20);
         if (!(var_f30 > (400.0f + var_r31->unk_20)) && (var_r31->unk_2C != 0.0f)) {
             var_r24 = 0;
-            for (var_r28 = 0; var_r28 < 3; var_r28++) {
+            for (var_r28 = 0; var_r28 < var_r31->unk_1C; var_r28++) {
                 var_r26 = var_r28 + 1;
-                if (var_r26 == 3) {
+                if (var_r26 == var_r31->unk_1C) {
                     var_r26 = 0;
                 }
                 var_r23 = &arg0->unk_00[var_r31->unk_0C[var_r28]];
@@ -499,7 +498,9 @@ void fn_1_5684(HSFDATA *arg0, HSFOBJECT *arg1)
                 var_r31->unk_1C = 4;
                 var_r31->unk_00.x = var_r31->unk_00.y = var_r31->unk_00.z = 0.0f;
                 for (var_r28 = 0; var_r28 < 4; var_r28++) {
-                    var_r31->unk_0C[var_r28] = var_r30->indices[var_r28][0];
+                    // HSF stores quads in strip order. Walk their perimeter for collision tests.
+                    static const u8 perimeter[4] = { 0, 1, 3, 2 };
+                    var_r31->unk_0C[var_r28] = var_r30->indices[perimeter[var_r28]][0];
                     var_r31->unk_00.x += ((Vec *)var_r29->data)[var_r30->indices[var_r28][0]].x;
                     var_r31->unk_00.y += ((Vec *)var_r29->data)[var_r30->indices[var_r28][0]].y;
                     var_r31->unk_00.z += ((Vec *)var_r29->data)[var_r30->indices[var_r28][0]].z;

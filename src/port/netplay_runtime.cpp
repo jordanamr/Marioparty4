@@ -3214,6 +3214,8 @@ extern "C" bool PartyBoard_NetplayRuntimeRunSelfTest(void)
     const bool enabled = gRuntime.enabled;
     auto &unlock = partyboard::getSettings().game.unlockAllMinigames;
     const auto savedUnlock = unlock;
+    auto &unlockBowser = partyboard::getSettings().game.unlockBowsersGnarlyParty;
+    const auto savedUnlockBowser = unlockBowser;
     const auto savedStat = GWGameStat;
     bool availabilityPassed = true;
     auto &skipBoot = partyboard::getSettings().backend.skipBootSequence;
@@ -3231,6 +3233,13 @@ extern "C" bool PartyBoard_NetplayRuntimeRunSelfTest(void)
         gRuntime.enabled = online;
         for (const bool cheat : {false, true}) {
             unlock.setValue(cheat);
+            unlockBowser.setValue(cheat);
+            availabilityPassed &= partyboard_settings_unlock_bowsers_gnarly_party() == (online || cheat)
+                && unlockBowser.getValue() == cheat;
+            for (int id = 397; id <= 400; ++id) {
+                availabilityPassed &= GWMGAvailGet(id) == 0;
+            }
+            availabilityPassed &= GWMGAvailGet(465) == 0;
             for (const u32 savedBits : {0u, 0x55555555u, 0xffffffffu}) {
                 GWGameStat.mg_avail[0] = savedBits;
                 GWGameStat.mg_avail[1] = ~savedBits;
@@ -3246,8 +3255,9 @@ extern "C" bool PartyBoard_NetplayRuntimeRunSelfTest(void)
     }
     GWGameStat = savedStat;
     unlock = savedUnlock;
+    unlockBowser = savedUnlockBowser;
     gRuntime.enabled = enabled;
-    OSReport("Netplay minigame availability: %s (768 checks, offline preferences preserved)\n",
+    OSReport("Netplay minigame availability: %s (768 catalogue checks, custom headings, Bowser board, offline preferences preserved)\n",
         availabilityPassed ? "PASS" : "FAIL");
     const bool topologyPassed = HuPrcSnapshotTopologySelfTest();
     const bool gamePassed = PartyBoard_RollbackGameSelfTest();

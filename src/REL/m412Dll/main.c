@@ -1278,6 +1278,7 @@ void fn_1_5838(unkStruct3 *arg0)
 
     var_r24 = fn_1_561C(arg0, &sp68);
     if (var_r24 != -1) {
+        var_r30 = &lbl_1_bss_4D4[var_r24];
         var_f20 = fn_1_1D08(atan2d((arg0->unk40.x - arg0->unk4C.x), (arg0->unk40.z - arg0->unk4C.y)));
         sp58 = var_f27 = arg0->unk4C.x;
         sp54 = var_f26 = arg0->unk4C.y;
@@ -1292,18 +1293,20 @@ void fn_1_5838(unkStruct3 *arg0)
             for (var_r29 = 0; var_r29 < 4; var_r29++) {
                 if (var_r29 == arg0->unk24)
                     continue;
-                var_r30 = &lbl_1_bss_4D4[var_r29];
-                HuSetVecF(&sp9C, var_r30->unk40.x, var_r30->unk40.y, var_r30->unk40.z);
+                temp_r27 = &lbl_1_bss_4D4[var_r29];
+                HuSetVecF(&sp9C, temp_r27->unk40.x, temp_r27->unk40.y, temp_r27->unk40.z);
                 HuSubVecF(&sp90, &spA8, &sp9C);
-                if (sqrtf((sp90.z * sp90.z) + ((sp90.x * sp90.x) + (sp90.y * sp90.y))) < (arg0->unk60.x + var_r30->unk60.x))
+                if (sqrtf((sp90.z * sp90.z) + ((sp90.x * sp90.x) + (sp90.y * sp90.y))) < (arg0->unk60.x + temp_r27->unk60.x)) {
+                    var_r30 = temp_r27;
                     break;
+                }
             }
             if (var_r29 < 4)
                 break;
             AddX = 0.0f;
             AddZ = 0.0f;
             MapWall(arg0->unk60.x, var_f27, arg0->unk40.y + arg0->unk60.x, var_f26);
-            if ((AddX + AddZ) != 0.0f)
+            if (AddX != 0.0f || AddZ != 0.0f)
                 goto end;
             sp58 = var_f27;
             sp54 = var_f26;
@@ -1344,7 +1347,7 @@ void fn_1_5838(unkStruct3 *arg0)
             AddX = 0.0f;
             AddZ = 0.0f;
             MapWall(arg0->unk60.x, var_f27, arg0->unk40.y + arg0->unk60.x, var_f26);
-            if ((AddX + AddZ) != 0.0f)
+            if (AddX != 0.0f || AddZ != 0.0f)
                 break;
             sp58 = var_f27;
             sp54 = var_f26;

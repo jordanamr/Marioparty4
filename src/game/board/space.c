@@ -36,7 +36,7 @@ extern void BoardMushroomExec(s32 player, s32 space); // wrong
 extern void BoardBooHouseExec(s32 player, s32 space); // wrong
 extern void BoardBlockHouseExec(s32 player, s32 space); // wrong
 
-static BoardSpace spaceData[2][256];
+static BoardSpace spaceData[2][BOARD_SPACE_MAX];
 s16 boardSpaceStarTbl[8];
 static GXTexObj spaceHiliteTex;
 static GXTexObj spaceTex;
@@ -170,21 +170,20 @@ void BoardSpaceCornerPosGet(s32 index, s32 corner, Vec *pos)
     Vec corner_ofs;
     Vec rot;
     s8 corner_pos[4][2] = { { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } };
-    BoardSpaceRotGet(0, index, &rot);
-    BoardSpacePosGet(0, index, pos);
-#ifdef TARGET_PC
-    // Detection only: `corner` is not bounded anywhere, and boo_event.c:1060 can
-    // pass up to 7 against a table of 4 (defect D1 in
-    // docs/netplay_defect_register.md). Whether that path is ever taken in a
-    // real game is unproven, so this records it instead of changing the
-    // arithmetic; the correction belongs in its own commit, after the evidence.
-    if (corner < 0 || corner >= 4) {
-        PartyBoard_CrashBreadcrumb(PARTYBOARD_CRASH_CAT_BOARD,
-            "D1 BoardSpaceCornerPosGet out-of-range corner=%d space=%d (table holds 4)",
-            corner, index);
-        OSReport("D1> BoardSpaceCornerPosGet corner=%d out of range for space %d\n", corner, index);
+    BoardSpace *space = BoardSpaceGet(0, index);
+    if (!space) {
+        pos->x = pos->y = pos->z = 0.0f;
+        return;
     }
+    rot = space->rot;
+    *pos = space->pos;
+    if (corner < 0 || corner >= 4) {
+#ifdef TARGET_PC
+        PartyBoard_CrashBreadcrumb(PARTYBOARD_CRASH_CAT_BOARD,
+            "BoardSpaceCornerPosGet invalid corner=%d space=%d", corner, index);
 #endif
+        return;
+    }
     corner_ofs.x = corner_pos[corner][0] * 80.0f;
     corner_ofs.y = 0;
     corner_ofs.z = corner_pos[corner][1] * 80.0f;
@@ -334,8 +333,9 @@ void BoardSpaceHostSet(s32 space)
     Vec pos;
     BoardSpaceTypeSet(0, space, 8);
     host_space = BoardSpaceLinkFlagSearch(0, space, 0x04000000);
-    BoardSpacePosGet(0, host_space, &pos);
-    BoardModelPosSetV(BoardStarHostMdlGet(), &pos);
+    if (BoardSpacePosGet(0, host_space, &pos) == 0) {
+        BoardModelPosSetV(BoardStarHostMdlGet(), &pos);
+    }
 }
 
 static inline s16 StarPlatGetMdl(void)
@@ -348,22 +348,25 @@ static inline s32 BoardStarSpaceTypeGet(s16 index)
     return BoardSpaceTypeGet(0, BoardSpaceStarGet(index));
 }
 
+static void PlaceStarPlatform(void)
+{
+    s32 id = BoardSpaceLinkFlagSearch(0, BoardSpaceStarGetCurr(), 0x04000000);
+    BoardSpace *space = BoardSpaceGet(0, id);
+    if (space) {
+        BoardModelPosSetV(StarPlatGetMdl(), &space->pos);
+        BoardModelRotYSet(StarPlatGetMdl(), space->rot.y);
+    }
+    BoardModelVisibilitySet(StarPlatGetMdl(), space != NULL);
+}
+
 void BoardSpaceStarSetIndex(s32 index)
 {
-    Vec pos;
-    Vec rot;
-    s16 space;
     if (_CheckFlag(FLAG_ID_MAKE(1, 1))) {
         BoardSpaceTypeSet(0, boardSpaceStarTbl[GWSystem.star_pos], 1);
     }
     GWSystem.star_pos = index & 0x7;
     BoardSpaceHostSet(BoardSpaceStarGetCurr());
-    space = BoardSpaceLinkFlagSearch(0, BoardSpaceStarGetCurr(), 0x04000000);
-    BoardSpacePosGet(0, space, &pos);
-    BoardModelPosSetV(StarPlatGetMdl(), &pos);
-    BoardSpaceRotGet(0, space, &rot);
-    BoardModelRotYSet(StarPlatGetMdl(), rot.y);
-    BoardModelVisibilitySet(StarPlatGetMdl(), 1);
+    PlaceStarPlatform();
 }
 
 s32 BoardSpaceStarGetNext(void)
@@ -1167,18 +1170,9 @@ void BoardSpaceInit(s32 data_num)
         BoardModelMotionStart(starPlatMdl, 0, 0x40000001);
         BoardModelVisibilitySet(starPlatMdl, 0);
         if (_CheckFlag(FLAG_ID_MAKE(1, 1))) {
-            Vec pos;
-            Vec rot;
-            BoardModelVisibilitySet(starPlatMdl, 1);
             GWSystem.star_flag |= (u8)(1 << GWSystem.star_pos);
             BoardSpaceTypeSet(0, boardSpaceStarTbl[GWSystem.star_pos], 8);
-            {
-                int space = BoardSpaceLinkFlagSearch(0, BoardSpaceStarGetCurr(), 0x04000000);
-                BoardSpacePosGet(0, space, &pos);
-                BoardModelPosSetV(StarPlatGetMdl(), &pos);
-                BoardSpaceRotGet(0, space, &rot);
-                BoardModelRotYSet(StarPlatGetMdl(), rot.y);
-            }
+            PlaceStarPlatform();
         }
     }
     spaceDrawF = 1;

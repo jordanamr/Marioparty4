@@ -1889,6 +1889,12 @@ s32 fn_1_155E0(float arg8, float arg9, float argA, float *arg0)
     s32 var_r30;
     M427DllBss590Struct *var_r29;
 
+    if (arg0 != NULL) {
+        *arg0 = 0.0f;
+    }
+    if (lbl_1_bss_580 > 0 && argA >= lbl_1_bss_590[0].unk_80->z) {
+        return 0;
+    }
     for (var_r30 = 0; var_r30 < (lbl_1_bss_580 - 1); var_r30++) {
         var_r31 = &lbl_1_bss_590[var_r30];
         var_r29 = &lbl_1_bss_590[var_r30 + 1];

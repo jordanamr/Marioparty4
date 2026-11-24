@@ -1433,7 +1433,7 @@ void fn_1_2F5C(omObjData *object, float *arg1, float *arg2, s32 *arg3)
                         }
                     }
                     if (var_r31->unk_18 < var_r28->unk_18) {
-                        for (var_r30 = 0; var_r30 < 6; var_r30++) {
+                        for (var_r30 = 0; var_r30 < var_r27; var_r30++) {
                             if (sp14[var_r30] == 3) {
                                 sp14[var_r30] = -1;
                             }

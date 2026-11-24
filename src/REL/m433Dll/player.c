@@ -2655,7 +2655,6 @@ void fn_1_DD70(Vec *arg0)
     HU3DPARTICLE *var_r31 = Hu3DData[lbl_1_bss_7CC->model[8]].hookData;
     Hu3DModelAttrReset(lbl_1_bss_7CC->model[8], HU3D_ATTR_DISPOFF);
     var_r30 = var_r31->data;
-    var_r31->dataCnt = 0;
     var_r31->emitCnt = REFRESH_RATE;
     var_r30->scale = 100.0f;
     var_r30->pos = *arg0;
@@ -2665,17 +2664,10 @@ void fn_1_DE28(HU3DMODEL *var_r27, HU3DPARTICLE *var_r31, Mtx matrix)
 {
     HU3DPARTICLEDATA *var_r30;
     s32 var_r29;
-    s8 var_r28;
+    u8 alpha = (var_r31->emitCnt * 255) / REFRESH_RATE;
 
-    if (var_r31->dataCnt == 0) {
-        var_r31->dataCnt = 1;
-        for (var_r30 = (HU3DPARTICLEDATA *)&var_r31->data, var_r29 = 0; var_r29 < var_r31->maxCnt; var_r29++, var_r30++) {
-            var_r30->scale = 0.0f;
-        }
-    }
-    var_r28 = (1.0f/REFRESH_RATE) * (var_r31->emitCnt * 0xFF);
     for (var_r30 = var_r31->data, var_r29 = 0; var_r29 < var_r31->maxCnt; var_r29++, var_r30++) {
-        var_r30->color.a = var_r28;
+        var_r30->color.a = alpha;
     }
     if (--var_r31->emitCnt == 0) {
         var_r27->attr |= 1;

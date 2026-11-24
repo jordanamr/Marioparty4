@@ -896,8 +896,6 @@ static void fn_1_B8E0(omObjData *arg0) {
         omDelObjEx(HuPrcCurrentGet(), arg0);
         return;
     }
-    // Bug? Likely to be "%=" instead.
-    temp_r30->unk0C % 360;
     OSs16tof32(&temp_r30->unk0C, &temp_f30);
     temp_f30 = 0.5 * sind(temp_f30);
     BoardModelPosGet(lbl_1_data_49A, &sp8);
@@ -913,7 +911,7 @@ static void fn_1_B8E0(omObjData *arg0) {
         Hu3DMtxTransGet(sp14, &sp8);
         BoardModelPosSetV(lbl_1_data_49E, &sp8);
     }
-    temp_r30->unk0C += 4;
+    temp_r30->unk0C = (temp_r30->unk0C + 4) % 360;
 }
 
 static void fn_1_BB10(s32 arg0) {

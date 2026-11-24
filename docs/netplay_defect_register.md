@@ -15,7 +15,7 @@ crash.
 **Classification : confirmed unbounded array index, producing an out-of-bounds
 read of an 8-byte stack array.**
 
-**Statut : non corrigé. Détection instrumentée, correction différée.**
+**Corrigé.** L’arrivée du train réserve une seule position par joueur. Les voyageurs et le joueur courant sont exclus du décompte des occupants déjà sur la case. Le calcul partagé renvoie le centre si un appelant demande un coin invalide. L’analyse ci-dessous décrit le code d’origine.
 
 ### Le code
 
@@ -129,14 +129,6 @@ d'événements du rapport de crash, sans modifier l'arithmétique.
 jour. C'est un chiffre, pas une impression, et c'est la raison pour laquelle la
 correction reste différée : corriger maintenant serait spéculatif au sens exact
 du mot.
-
-### Correction envisagée, volontairement différée
-
-Borner `corner` dans `BoardSpaceCornerPosGet`, et corriger le comptage dans
-`fn_1_52A0` pour qu'il ne puisse pas dépasser le nombre de coins. Ce correctif
-appartient à un commit distinct du rapporteur de crash et de l'instrumentation
-de pile, et ne doit pas être appliqué avant que la détection ait dit si le
-chemin est vivant.
 
 ---
 

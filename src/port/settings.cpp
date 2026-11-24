@@ -203,7 +203,8 @@ bool partyboard_settings_unlock_all_minigames(void)
 
 bool partyboard_settings_unlock_bowsers_gnarly_party(void)
 {
-    return partyboard::getSettings().game.unlockBowsersGnarlyParty.getValue();
+    return PartyBoard_NetplayEnabled()
+        || partyboard::getSettings().game.unlockBowsersGnarlyParty.getValue();
 }
 
 bool partyboard_settings_use_local_display(void)

@@ -4,6 +4,7 @@
 #include "dolphin.h"
 
 #define BOARD_SPACE_LINKMAX 4
+#define BOARD_SPACE_MAX 256
 
 typedef s32 (*BoardSpaceEventFunc)(void);
 

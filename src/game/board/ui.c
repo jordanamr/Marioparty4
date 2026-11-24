@@ -824,12 +824,12 @@ static BOOL CheckPickerButton(UnkUiWork01 *arg0, omObjData *arg1, u32 arg2)
 {
     BOOL var_r30 = FALSE;
 
-    if (arg2 == 0x100) {
+    if (arg2 & PAD_BUTTON_A) {
         pickerChoice = arg0->unk02;
         HuAudFXPlay(2);
         var_r30 = TRUE;
     }
-    else if (arg2 == 0x200 && pickerBackF == 0) {
+    else if ((arg2 & PAD_BUTTON_B) && pickerBackF == 0) {
         arg0->unk00_bit0 = 1;
         arg0->unk00_bit7 = 1;
         pickerChoice = -1;

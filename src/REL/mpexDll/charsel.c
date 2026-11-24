@@ -2913,11 +2913,17 @@ void fn_1_1BA78(u32 arg0, s32 arg1, s32 arg2)
     }
 }
 
-// TODO PC this function can get both a ptr and a message id
 void fn_1_1BB4C(u32 arg0, s32 arg1)
 {
     if (lbl_1_data_77C != -1) {
         HuWinInsertMesSet(lbl_1_data_77C, arg0, arg1);
+    }
+}
+
+void MpexInsertText(const char *text, s16 slot)
+{
+    if (lbl_1_data_77C != -1) {
+        HU_WIN_INSERT_MES_SET_PTR(lbl_1_data_77C, MAKE_MESSID_PTR(text), slot);
     }
 }
 

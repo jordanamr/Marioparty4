@@ -57,7 +57,7 @@ void fn_1_C164(unkStruct8 *arg0)
     Mtx sp8C;
     Mtx sp5C;
     Mtx sp2C;
-    GXColor sp28;
+    GXColor sp28 = {0};
     s16 sp8;
     GXColorSrc var_r25;
     s32 var_r26;

@@ -433,10 +433,8 @@ void fn_1_5794(s32 arg0, s32 arg1, Vec *arg2)
     f32 var_f27;
     f32 var_f23;
     f32 var_f28;
-    omObjData *temp_r27;
-    omObjData *var_r26;
-    omObjData *temp_r25;
-    omObjData *var_r24;
+    omObjData *wakeLeft;
+    omObjData *wakeRight;
     s32 var_r28;
     s32 var_r29;
     s32 var_r30;
@@ -468,8 +466,8 @@ void fn_1_5794(s32 arg0, s32 arg1, Vec *arg2)
     var_r30 = 0;
     var_r28 = HuAudFXPlay(0x47F);
     BoardModelPosGet(lbl_1_bss_64, &sp1C);
-    temp_r27 = fn_1_66C0(4, &sp1C);
-    temp_r25 = fn_1_66C0(5, &sp1C);
+    wakeLeft = fn_1_66C0(4, &sp1C);
+    wakeRight = fn_1_66C0(5, &sp1C);
 
     while (1) {
         sp18 = BoardModelRotYGet(lbl_1_bss_64);
@@ -495,8 +493,9 @@ void fn_1_5794(s32 arg0, s32 arg1, Vec *arg2)
                 }
 
                 if (var_r30 == 0) {
-                    temp_r27->work[1] = 1;
-                    temp_r25->work[1] = 1;
+                    wakeLeft->work[1] = 1;
+                    wakeRight->work[1] = 1;
+                    wakeLeft = wakeRight = NULL;
                     var_r30++;
                 }
                 else if (var_r30 == 1 && var_f28 < -180.0f) {
@@ -515,8 +514,8 @@ void fn_1_5794(s32 arg0, s32 arg1, Vec *arg2)
                 else if ((var_r30 == 3) && (-540.0f == var_f28)) {
                     var_r30++;
                     BoardModelPosGet(lbl_1_bss_64, &sp1C);
-                    var_r26 = fn_1_66C0(4, &sp1C);
-                    var_r24 = fn_1_66C0(5, &sp1C);
+                    wakeLeft = fn_1_66C0(4, &sp1C);
+                    wakeRight = fn_1_66C0(5, &sp1C);
                 }
             }
             else {
@@ -535,8 +534,10 @@ void fn_1_5794(s32 arg0, s32 arg1, Vec *arg2)
         }
     }
     HuAudFXStop(var_r28);
-    var_r26->work[1] = 1;
-    var_r24->work[1] = 1;
+    if (wakeLeft) {
+        wakeLeft->work[1] = 1;
+        wakeRight->work[1] = 1;
+    }
     BoardCameraMoveSet(1);
     BoardCameraTargetPlayerSet(lbl_1_bss_68);
     BoardPlayerIdleSet(lbl_1_bss_68);

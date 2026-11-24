@@ -131,34 +131,35 @@ Vec lbl_1_data_9C = { 0.0f, 0.0f, 0.0f };
 Vec lbl_1_data_A8 = { -1.0f, -2.0f, -1.0f };
 GXColor lbl_1_data_B4 = { 0xFF, 0xFF, 0xFF, 0xFF };
 
+static void SetTeams(void)
+{
+    s32 counts[2] = { 0, 0 };
+    s32 player;
+    for (player = 0; player < 4; player++) {
+        s32 team = GWPlayerCfg[player].group != 0;
+        s32 slot;
+        if (counts[team] == 2) {
+            break;
+        }
+        slot = 2 * team + counts[team]++;
+        lbl_1_bss_50[slot] = player;
+        lbl_1_bss_48[slot] = GWPlayerCfg[player].character;
+    }
+    if (player < 4) {
+        for (player = 0; player < 4; player++) {
+            lbl_1_bss_50[player] = player;
+            lbl_1_bss_48[player] = GWPlayerCfg[player].character;
+        }
+    }
+}
+
 void fn_1_2B8(omObjData *var_r27)
 {
-    s32 var_r31;
-    s32 var_r30;
-    s32 var_r29;
     s32 var_r28;
-
     var_r28 = Hu3DGLightCreateV(&lbl_1_data_9C, &lbl_1_data_A8, &lbl_1_data_B4);
     Hu3DGLightStaticSet(var_r28, 1);
     Hu3DGLightInfinitytSet(var_r28);
-    for (var_r31 = 0, var_r30 = 0, var_r29 = 0; var_r31 < 4; var_r31++) {
-        if (GWPlayerCfg[var_r31].group == 0) {
-            lbl_1_bss_50[var_r30] = var_r31;
-            lbl_1_bss_48[var_r30] = GWPlayerCfg[var_r31].character;
-            var_r30++;
-        }
-        else {
-            lbl_1_bss_50[var_r29 + 2] = var_r31;
-            lbl_1_bss_48[var_r29 + 2] = GWPlayerCfg[var_r31].character;
-            var_r29++;
-        }
-    }
-    if ((var_r30 != 2) || (var_r29 != 2)) {
-        for (var_r31 = 0; var_r31 < 4; var_r31++) {
-            lbl_1_bss_50[var_r31] = var_r31;
-            lbl_1_bss_48[var_r31] = GWPlayerCfg[var_r31].character;
-        }
-    }
+    SetTeams();
     fn_1_43C8(lbl_1_bss_88);
     fn_1_9F5C(lbl_1_bss_88);
     var_r27->func = fn_1_478;

@@ -131,8 +131,7 @@ typedef struct _unkStruct8 {
     unkStruct11 unk0[3];
     s16 unk18[3];
     s16 unk1E;
-    unkStruct11 unk20[3];
-    char unk38[0x30];
+    unkStruct11 unk20[9];
     float unk68[5];
     Vec unk7C;
     Vec unk88;

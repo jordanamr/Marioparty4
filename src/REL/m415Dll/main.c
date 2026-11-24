@@ -1134,8 +1134,8 @@ void fn_1_4660(omObjData *object)
     unkStruct3 *temp_r31;
     s32 var_r30;
     s32 var_r29;
-    u8 temp_r28;
-    u8 temp_r27;
+    s32 temp_r28;
+    s32 temp_r27;
     s32 var_r26;
     s32 var_r25;
     s16 var_r24;
@@ -1221,7 +1221,7 @@ void fn_1_4660(omObjData *object)
                 }
             }
             temp_r28 = (((0.5f * (600.0f + temp_r31->unk2C.x)) - (150.0f * temp_r31->unk60s)) / 50.0f);
-            temp_r27 = (((0.5f * (600.0f + temp_r31->unk2C.x)) - (150.0f * temp_r31->unk62s)) / 50.0f);
+            temp_r27 = (((0.5f * (600.0f + temp_r31->unk2C.z)) - (150.0f * temp_r31->unk62s)) / 50.0f);
             var_r25 = 0;
             for (var_r30 = temp_r28 - 1; var_r30 <= (temp_r28 + 1); var_r30++) {
                 if (var_r30 >= 0) {

@@ -1598,7 +1598,7 @@ void fn_1_4FC8(void)
     M459DllBss4CStruct *var_r31;
     s32 var_r30;
     s32 var_r29;
-    s32 var_r28;
+    BOOL growing = TRUE;
 
     var_r31 = &lbl_1_bss_4C;
     var_r31->unk_0C = 0;
@@ -1620,12 +1620,12 @@ void fn_1_4FC8(void)
     var_f31 = 1.0f;
     while (TRUE) {
         if (var_r31->unk_14 != 0) {
-            if (var_r28 != 0) {
+            if (growing) {
                 var_f31 += 0.02;
                 var_f31 = var_f31;
                 if (var_f31 >= 1.2f) {
                     var_f31 = 1.2f;
-                    var_r28 = 0;
+                    growing = FALSE;
                 }
             }
             else {
@@ -1633,7 +1633,7 @@ void fn_1_4FC8(void)
                 var_f31 = var_f31;
                 if (var_f31 <= 1.0f) {
                     var_f31 = 1.0f;
-                    var_r28 = 1;
+                    growing = TRUE;
                 }
             }
             espScaleSet(var_r31->unk_00[4], var_f31, var_f31);
@@ -1683,14 +1683,11 @@ M459DllData70Struct lbl_1_data_70 = { { 0.0f, 300.0f, 0.0f }, { 0.0f, -300.0f, -
 
 void fn_1_535C(void)
 {
-    HU3DLIGHT *sp8;
-    s16 *var_r31;
+    s16 light;
 
-    var_r31 = lbl_1_bss_48;
     Hu3DLighInit();
-    var_r31[1] = Hu3DGLightCreateV(&lbl_1_data_70.unk_00, &lbl_1_data_70.unk_0C, &lbl_1_data_70.unk_18);
-    Hu3DGLightInfinitytSet(var_r31[1]);
-    sp8 = &Hu3DGlobalLight[var_r31[1]];
+    light = Hu3DGLightCreateV(&lbl_1_data_70.unk_00, &lbl_1_data_70.unk_0C, &lbl_1_data_70.unk_18);
+    Hu3DGLightInfinitytSet(light);
     {
         Vec sp24 = { 0.0f, 3000.0f, 1.0f };
         Vec sp18 = { 0.0f, 1.0f, 0.0f };
@@ -1700,7 +1697,7 @@ void fn_1_535C(void)
         Hu3DShadowPosSet(&sp24, &sp18, &spC);
     }
     Hu3DShadowTPLvlSet(0.3f);
-    Hu3DModelAttrSet(var_r31[0], HU3D_MOTATTR_LOOP);
+    Hu3DModelAttrSet(lbl_1_bss_48[0], HU3D_MOTATTR_LOOP);
     while (TRUE) {
         HuPrcVSleep();
     }

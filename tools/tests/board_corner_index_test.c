@@ -1,3 +1,5 @@
+/* Historical reproducer of the original arithmetic. The current production
+ * event is exercised by boo_train_landing_test.c. */
 /*
  * D1 — can `corner` actually reach 4 or more?
  *

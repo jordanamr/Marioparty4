@@ -1496,7 +1496,7 @@ static s32 ExecJunction(s32 arg0, s16 *arg1)
 {
     f32 spE4[10];
     s16 spD0[10];
-    Vec spC4;
+    Vec spC4 = { 0 };
     Vec spB8;
     Vec spAC;
     s32 sp8C;
@@ -1560,7 +1560,7 @@ static s32 ExecJunction(s32 arg0, s16 *arg1)
     BoardPlayerIdleSet(arg0);
     HuPrcSleep(10);
     while (1) {
-
+        var_r20 = 0;
         if ((_CheckFlag(FLAG_ID_MAKE(1, 11)) != 0) && (boardTutorialDirInputTime != -1)) {
             if (boardTutorialDirInputTime > 0) {
                 spC4.x = boardTutorialDirInputX;
@@ -1574,7 +1574,6 @@ static s32 ExecJunction(s32 arg0, s16 *arg1)
         else if (GWPlayer[arg0].com != 0) {
             if (sp8 == 0) {
                 BoardComJunctionInputGet(arg0, &spC4, var_r21, &spE4[0]);
-                var_r20 = 0;
             }
             else if (sp8 > 6U) {
                 var_r20 = 0x100;
@@ -2146,7 +2145,7 @@ void BoardRollDispSet(s32 arg0)
 static void UpdateRollSprite(omObjData *arg0)
 {
     Vec sp1C;
-    s32 sp14[2];
+    s32 sp14[2] = { 0, 0 };
     f32 spC[2] = { HU_DISP_CENTERX + 32, HU_DISP_CENTERX - 32 };
     s32 var_r30;
     s32 temp_r29;

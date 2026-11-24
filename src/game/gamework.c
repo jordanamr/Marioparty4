@@ -449,22 +449,17 @@ void GWBoardWinCountSet(s32 character, s32 board, s32 value)
 
 s32 GWMGAvailGet(s32 id)
 {
-    s32 word;
-    s32 bit;
-    id -= 401;
+    // The custom list also contains category headings (IDs 397 through 400).
+    u32 index = (u32)id - 401U;
+    if (index >= 64U) {
+        return 0;
+    }
 #ifdef TARGET_PC
-    if ((u32)id < 64U && partyboard_settings_unlock_all_minigames()) {
+    if (partyboard_settings_unlock_all_minigames()) {
         return 1;
     }
 #endif
-    word = id >> 5;
-    bit = id % 32;
-    if (GWGameStat.mg_avail[word] & (1 << bit)) {
-        return 1;
-    }
-    else {
-        return 0;
-    }
+    return (GWGameStat.mg_avail[index / 32] & (1U << (index % 32))) != 0;
 }
 
 void GWMGAvailSet(s32 id)

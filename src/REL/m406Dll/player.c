@@ -1935,6 +1935,7 @@ s32 fn_1_13C10(Vec *arg0, Vec *arg1)
     Vec sp24;
     Vec sp18;
     Vec spC;
+    Vec distance;
     HSFBUFFER *sp8;
 
     float var_f31;
@@ -1956,23 +1957,14 @@ s32 fn_1_13C10(Vec *arg0, Vec *arg1)
 
     var_r20 = omGetGroupMemberListEx(lbl_1_bss_1C8, 2);
     var_r21 = arg0->z / -10000.0f;
-    if (var_r21 >= 6) {
-#ifdef NON_MATCHING
-        // TODO NON_MATCHING is this right?
-        return 1;
-#else
-        return;
-#endif
+    if (var_r21 < 0 || var_r21 >= 6) {
+        return 0;
     }
     var_r19 = &Hu3DData[(*var_r20)->model[var_r21]];
     var_f29 = 100000.0f;
     var_r27 = var_r19->hsf->root;
     if (var_r27->type != 2) {
-#ifdef NON_MATCHING
-        return 1;
-#else
-        return;
-#endif
+        return 0;
     }
     var_r24 = var_r27->mesh.face;
     var_r26 = var_r27->mesh.vertex;
@@ -2025,10 +2017,10 @@ s32 fn_1_13C10(Vec *arg0, Vec *arg1)
                     var_f30 = (arg0->y - sp48[var_r29]->y) / sp3C.y;
                     if ((var_f30 >= 0.0f) && (var_f30 < 1.0f)) {
                         spC.x = sp48[var_r29]->x + (var_f30 * sp3C.x);
+                        spC.y = arg0->y;
                         spC.z = sp48[var_r29]->z + (var_f30 * sp3C.z);
-                        VECSubtract(&spC, arg0, &sp3C);
-                        sp3C.y = 0.0f;
-                        var_f31 = VECMag(&sp3C);
+                        VECSubtract(&spC, arg0, &distance);
+                        var_f31 = VECMag(&distance);
                         if (var_f31 < var_f29) {
                             var_f29 = var_f31;
                             sp18 = spC;
@@ -2061,8 +2053,7 @@ s32 fn_1_13C10(Vec *arg0, Vec *arg1)
                     var_f31 = VECMag(&sp3C);
                     if (var_f31 < var_f29) {
                         var_f29 = var_f31;
-                        sp18.x = sp48[var_r29]->x;
-                        sp18.z = sp48[var_r29]->z;
+                        sp18 = *sp48[var_r29];
                         var_r28 = var_r31;
                     }
                 }
@@ -2090,7 +2081,6 @@ float fn_1_143F4(Vec *arg0, UnkM406PlayerStruct2 *arg1)
     Vec sp1C;
     Vec sp10;
     HSFBUFFER *spC;
-    float sp8; // ! - uninitialized
 
     float var_f31;
     float var_f30;
@@ -2105,15 +2095,11 @@ float fn_1_143F4(Vec *arg0, UnkM406PlayerStruct2 *arg1)
     HU3DMODEL *var_r22;
     s32 var_r21;
 
-#ifdef NON_MATCHING
-    sp8 = -5.0f; // TODO NON_MATCHING is this right?
-#endif
-
     arg1->unk_00 = NULL;
     var_r23 = omGetGroupMemberListEx(lbl_1_bss_1C8, 2);
     var_r27 = arg0->z / -10000.0f;
-    if (var_r27 >= 6) {
-        return sp8;
+    if (var_r27 < 0 || var_r27 >= 6) {
+        return -100000.0f;
     }
     var_r22 = &Hu3DData[var_r23[0]->model[var_r27]];
     var_r30 = var_r22->hsf->root;

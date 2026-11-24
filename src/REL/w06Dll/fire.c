@@ -392,7 +392,7 @@ static s32 fn_1_7944(s32 arg0) {
         return -1;
     }
     if (itemCount == 1) {
-        return 0;
+        return sp8[0];
     }
     temp_r27 = BoardRandMod(100);
     if (lbl_1_data_26D[spB[0]] > lbl_1_data_26D[spB[1]]) {

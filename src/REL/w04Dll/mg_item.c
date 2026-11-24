@@ -196,6 +196,19 @@ static void fn_1_A71C(void) {
     }
 }
 
+static u16 ItemCpuInput(s16 *delay, s16 *moves) {
+    if (*delay != 0) {
+        (*delay)--;
+        return 0;
+    }
+    *delay = frandmod(30) + 15;
+    if (frandBool() || *moves == 3) {
+        return PAD_BUTTON_A;
+    }
+    (*moves)++;
+    return frandBool() ? PAD_BUTTON_LEFT : PAD_BUTTON_RIGHT;
+}
+
 static void fn_1_A7E8(void) {
     Vec sp54[3];
     Vec sp48;
@@ -260,21 +273,7 @@ static void fn_1_A7E8(void) {
             MGSeqParamSet(var_r25, 1, var_r24);
         }
         if (GWPlayer[lbl_1_bss_2AC].com) {
-            if (var_r22 != 0) {
-                var_r22--;
-            } else {
-                var_r22 = frandmod(30) + 15;
-                if (frandBool() || var_r19 == 3) {
-                    var_r17 = 0x100;
-                } else {
-                    if (frandBool()) {
-                        var_r23 = 1;
-                    } else {
-                        var_r23 = 2;
-                    }
-                    var_r19++;
-                }
-            }
+            var_r17 = var_r23 = ItemCpuInput(&var_r22, &var_r19);
         } else {
             var_r17 = HuPadBtnDown[temp_r18];
             var_r23 = HuPadDStkRep[temp_r18];

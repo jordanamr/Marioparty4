@@ -352,12 +352,11 @@ s32 fn_1_1834(u32 arg0, s32 arg1) {
 
     if (arg1 == 0) {
         HuWinMesMaxSizeGet(1, sp8, arg0);
-    }
-    var_f31 = sp8[0];
-    var_f30 = sp8[1];
-    var_f29 = (576.0f - var_f31) / 2;
-    var_f28 = 445.0f - var_f30;
-    if (arg1 != 0) {
+        var_f31 = sp8[0];
+        var_f30 = sp8[1];
+        var_f29 = (576.0f - var_f31) / 2;
+        var_f28 = 445.0f - var_f30;
+    } else {
         var_f31 = 352.0f;
         var_f30 = 94.0f;
         var_f29 = 550.0f - var_f31;

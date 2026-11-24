@@ -479,7 +479,6 @@ void fn_1_C1D4(omObjData *arg0, unkObjStruct *arg1)
 
 void fn_1_C944(omObjData *arg0, unkObjStruct *arg1)
 {
-    s16 sp8;
     f32 var_f26;
     f32 var_f25;
     f32 var_f28;
@@ -497,10 +496,7 @@ void fn_1_C944(omObjData *arg0, unkObjStruct *arg1)
         HuPadTrigR[arg1->unk6] = 0x96;
         HuPadBtn[arg1->unk6] = 0x20;
     }
-    else {
-        var_r29 = HuPadStkX[arg1->unk6];
-        sp8 = HuPadStkY[arg1->unk6];
-    }
+    var_r29 = HuPadStkX[arg1->unk6];
     if ((arg1->unk48 & 8) == 0) {
         var_r30 = -1;
         if (ABS(var_r29) < 7) {

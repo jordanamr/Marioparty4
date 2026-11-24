@@ -706,13 +706,13 @@ static s32 fn_1_2A1C(s32 arg0)
     var_r28 = lbl_1_data_1C5[lbl_1_data_1AA[1]];
     var_r30 = lbl_1_data_1C5[lbl_1_data_1AA[2]];
     if (lbl_1_bss_30[0] != 0) {
-        var_r29 = 0;
+        var_r29 = -1;
     }
     if (lbl_1_bss_30[1] != 0) {
-        var_r28 = 0;
+        var_r28 = -1;
     }
     if (lbl_1_bss_30[2] != 0) {
-        var_r30 = 0;
+        var_r30 = -1;
     }
     if (var_r29 > var_r28) {
         if (var_r29 > var_r30) {
@@ -839,7 +839,7 @@ static void fn_1_2EF4(omObjData *arg0)
     switch (temp_r30->unk01) {
         case 2:
             var_r29 = fn_1_2E18(temp_r30);
-            if (var_r29 == 0x100 || lbl_1_bss_1C != 0) {
+            if ((var_r29 & PAD_BUTTON_A) || lbl_1_bss_1C != 0) {
                 if (lbl_1_bss_30[temp_r30->unk02] == 0) {
                     HuAudFXPlay(2);
                     lbl_1_bss_33 = temp_r30->unk02;
@@ -851,21 +851,14 @@ static void fn_1_2EF4(omObjData *arg0)
                     break;
                 }
                 if (temp_r30->unk02 == 1) {
-                    if (lbl_1_bss_30[0] == 0 && lbl_1_bss_30[1] == 0) {
-                        if (BoardRandMod(100) < 50) {
-                            var_r29 = 1;
-                        }
-                        else {
-                            var_r29 = 2;
-                        }
+                    if (!lbl_1_bss_30[0] && !lbl_1_bss_30[2]) {
+                        var_r29 = BoardRandMod(100) < 50 ? PAD_BUTTON_LEFT : PAD_BUTTON_RIGHT;
+                    }
+                    else if (!lbl_1_bss_30[0]) {
+                        var_r29 = PAD_BUTTON_LEFT;
                     }
                     else {
-                        if (lbl_1_bss_30[0] == 0) {
-                            var_r29 = 2;
-                        }
-                        else if (lbl_1_bss_30[1] == 0) {
-                            var_r29 = 1;
-                        }
+                        var_r29 = PAD_BUTTON_RIGHT;
                     }
                 }
                 if (temp_r30->unk02 == 0) {

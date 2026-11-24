@@ -536,7 +536,7 @@ void fn_1_1E10(StructBss70 *arg0)
     float spB0;
     float spAC;
     float spA0;
-    StructBss70 *var_r30;
+    StructBss70 *var_r30 = NULL;
     StructBss70 *temp_r28;
     s32 temp_r19;
     s32 var_r21;
@@ -557,14 +557,15 @@ void fn_1_1E10(StructBss70 *arg0)
             if (i == arg0->unk0C) {
                 continue;
             }
-            var_r30 = &lbl_1_bss_70[i];
-            HuSetVecF(&spF8, var_r30->unk14.x, var_r30->unk14.y, var_r30->unk14.z);
+            StructBss70 *candidate = &lbl_1_bss_70[i];
+            HuSetVecF(&spF8, candidate->unk14.x, candidate->unk14.y, candidate->unk14.z);
             HuSubVecF(&spEC, &sp104, &spF8);
-            if (VECMagXYZ(&spEC) < arg0->unk30 + var_r30->unk30) {
+            if (VECMagXYZ(&spEC) < arg0->unk30 + candidate->unk30) {
+                var_r30 = candidate;
                 break;
             }
         }
-        if (i < 10) {
+        if (var_r30) {
             break;
         }
         if (fn_1_1BD4(arg0)) {
@@ -574,6 +575,11 @@ void fn_1_1E10(StructBss70 *arg0)
         spB4 = temp_f20;
     }
     var_f19 = fn_1_14B4(atan2d(arg0->unk14.x - arg0->unk24, arg0->unk14.z - arg0->unk28));
+    // The proximity check also sees the player. Only steer around a creature
+    // when the movement sweep actually touched one.
+    if (!var_r30) {
+        return;
+    }
     var_f26 = fn_1_14B4(atan2d(var_r30->unk14.x - arg0->unk24, var_r30->unk14.z - arg0->unk28));
     spC0 = var_f19 - var_f26;
     if (spC0 > 0.0f) {

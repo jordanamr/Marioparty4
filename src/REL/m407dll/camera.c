@@ -107,9 +107,10 @@ void fn_1_1DB0(Vec *arg0, Vec *arg1, f32 *arg2, s32 arg3, s32 arg4)
     temp_r31->unk_24 = Center;
     temp_r31->unk_30 = CRot;
     temp_r31->unk_3C = CZoom;
-    temp_r31->unk_40 = arg3;
+    // The opening camera cut takes effect on the next update.
+    temp_r31->unk_40 = arg3 > 0 ? arg3 : 1;
     temp_r31->unk_44 = 0.0f;
-    temp_r31->unk_48 = 1.0f / arg3;
+    temp_r31->unk_48 = 1.0f / temp_r31->unk_40;
     temp_r31->unk_04 = 1;
 }
 

@@ -1378,10 +1378,8 @@ void fn_1_794C(M427DllMapSubstruct3 *arg0, s16 arg1)
                 var_r28->lLightId[1] = arg0->unk34[var_r30];
                 arg0->unk24[var_r30] = 0.0f;
                 arg0->unk44[arg1] = var_r30;
+                sp14 = lbl_1_data_144[arg1 + 1];
                 if (var_r28->lLightId[1] != -1) {
-                    sp14.x = lbl_1_data_144[arg1 + 1].x;
-                    sp14.y = lbl_1_data_144[arg1 + 1].y;
-                    sp14.z = lbl_1_data_144[arg1 + 1].z;
                     Hu3DLLightPointSet(arg0->unk2[arg1], 1, 400.0f, 0.5f, 3);
                     Hu3DLLightPosSetV(arg0->unk2[arg1], 1, &sp14, &sp8);
                 }
@@ -2305,6 +2303,9 @@ void fn_1_B194(M427DllMapStruct6 *arg0, float arg8, Vec *arg1)
     float var_f31;
     s16 var_r31;
 
+    if (arg8 > arg0->unk_04[0].z) {
+        arg8 = arg0->unk_04[0].z;
+    }
     for (var_r31 = lbl_1_bss_580; var_r31 != 0;) {
         var_r31--;
         if (arg0->unk_04[var_r31].z >= arg8) {

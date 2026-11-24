@@ -1119,7 +1119,7 @@ static void MoveShopItemChoice(omObjData *arg0, ItemChoiceWork *arg1)
         temp_r29 = GWPlayer[arg1->unk00_field1].port;
         sp8 = HuPadDStkRep[temp_r29] | HuPadBtnDown[temp_r29];
     }
-    if (sp8 == 0x100) {
+    if (sp8 & PAD_BUTTON_A) {
         if (choiceEnableTbl[arg1->unk02] == 0) {
             HuAudFXPlay(4);
             return;
@@ -1136,15 +1136,16 @@ static void MoveShopItemChoice(omObjData *arg0, ItemChoiceWork *arg1)
         }
         return;
     }
-    if (sp8 == 0x200) {
+    if (sp8 & PAD_BUTTON_B) {
         itemChoice = 0x7F;
         arg1->unk05 = 5;
         HuAudFXPlay(3);
+        return;
     }
-    if (sp8 == 4) {
+    if (sp8 & PAD_BUTTON_DOWN) {
         arg1->unk02++;
     }
-    if (sp8 == 8) {
+    if (sp8 & PAD_BUTTON_UP) {
         arg1->unk02--;
     }
     if (arg1->unk02 < 0) {

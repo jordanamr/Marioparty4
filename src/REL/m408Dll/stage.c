@@ -1144,13 +1144,13 @@ void fn_1_10830(HU3DMODEL *arg0, HSFBITMAP *arg1, HSFATTRIBUTE *arg2, s16 arg3)
         GXSetTevColor(reg, color_var);                                                                                                               \
     }
 
-SHARED_SYM extern u32 texMtxTbl[];
+SHARED_SYM extern u8 texMtxTbl[];
 
 void fn_1_10B60(UnkFn10484 *arg0, HSFMATERIAL *arg1)
 {
-    GXColor sp28;
-    GXColor sp24;
-    GXColor sp20;
+    GXColor sp28 = {0};
+    GXColor sp24 = {0};
+    GXColor sp20 = {0};
     u16 temp_r31;
     HSFATTRIBUTE *temp_r29;
     u16 temp_r28;
@@ -1246,6 +1246,7 @@ void fn_1_10B60(UnkFn10484 *arg0, HSFMATERIAL *arg1)
                 temp_r22 = 1;
             }
             else {
+                temp_r20 = GX_TEXCOORD0;
                 if (temp_r29->animWorkP) {
                     temp_r26 = temp_r29->animWorkP;
                     if (temp_r26->attr & 0x2) {
@@ -1254,9 +1255,6 @@ void fn_1_10B60(UnkFn10484 *arg0, HSFMATERIAL *arg1)
                         temp_r20 = (u16)temp_r28;
                         temp_r28++;
                     }
-                }
-                else {
-                    temp_r20 = 0;
                 }
                 GXSetTevOrder(temp_r31, temp_r20, temp_r25, GX_COLOR0A0);
                 if (temp_r25 == 0) {

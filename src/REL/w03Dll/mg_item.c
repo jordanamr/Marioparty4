@@ -165,7 +165,7 @@ void fn_1_9B30(void)
     fn_1_BDAC();
 
     if (lbl_1_bss_188) {
-        lbl_1_bss_188;
+        OM_GET_WORK_PTR(lbl_1_bss_188, someBits)->unk00_bit0 = 1;
     }
 
     if (lbl_1_bss_184) {
@@ -538,7 +538,7 @@ void fn_1_AB18(omObjData *arg0, someBits *arg1)
     else {
         var_r31 = HuPadBtnDown[GWPlayer[arg1->unk00_bit4].port];
     }
-    if (var_r31 == 0x100) {
+    if (var_r31 & PAD_BUTTON_A) {
         fn_1_ACD8(2);
     }
 }

@@ -2228,11 +2228,7 @@ void fn_1_125C4(void)
 
 void fn_1_129CC(void)
 {
-#ifdef NON_MATCHING
-    s32 sp8[6];
-#else
-    s32 sp8[4];
-#endif
+    s32 sp8[2];
     float var_f31;
     float var_f30;
     float var_f29;
@@ -2267,15 +2263,15 @@ void fn_1_129CC(void)
                 if (var_r30 < 2) {
                     var_f30 = (var_r31->unk_00 + var_r31->unk_B8) + (var_r31->unk_70[var_r30][0] * var_f31);
                     var_f29 = (var_r31->unk_04 + var_r31->unk_BC) + (var_r31->unk_70[var_r30][1] * var_f31);
+                    if (sp8[var_r30] < 0) {
+                        sp8[var_r30] = 0;
+                    }
                     espBankSet(var_r31->unk_10[var_r30], sp8[var_r30]);
                     espScaleSet(var_r31->unk_10[var_r30], var_f31, var_f31);
                 }
                 else {
                     var_f30 = var_r31->unk_00 + var_r31->unk_28[var_r30][0];
                     var_f29 = var_r31->unk_04 + var_r31->unk_28[var_r30][1];
-                }
-                if (sp8[var_r30] < 0) {
-                    sp8[var_r30] = 0;
                 }
                 espPosSet(var_r31->unk_10[var_r30], var_f30, var_f29);
             }

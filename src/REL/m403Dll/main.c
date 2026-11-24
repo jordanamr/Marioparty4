@@ -34,13 +34,9 @@ typedef struct {
     /* 0x040 */ Vec unk40;
     /* 0x04C */ Vec unk4C;
     /* 0x058 */ Vec unk58;
-    /* 0x064 */ Vec unk64;
-    /* 0x070 */ Vec unk70;
-    /* 0x07C */ Vec unk7C;
+    /* 0x064 */ Vec centerPath[3];
     /* 0x088 */ float unk88[3][3];
-    /* 0x0AC */ Vec unkAC;
-    /* 0x0B8 */ Vec unkB8;
-    /* 0x0C4 */ Vec unkC4;
+    /* 0x0AC */ Vec rotationPath[3];
     /* 0x0D0 */ float unkD0[3][3];
     /* 0x0F4 */ float unkF4[3];
     /* 0x100 */ float unk100[3];
@@ -587,8 +583,8 @@ static void fn_1_17DC(omObjData *arg0)
             temp_r31->unk130 = temp_r31->unk134 + temp_f31 * (temp_r31->unk138 - temp_r31->unk134);
         }
         else {
-            fn_1_57E0(2.0f * temp_f31, &temp_r31->unk04, temp_r31->unkF4, &temp_r31->unk64, temp_r31->unk88, 3);
-            fn_1_57E0(2.0f * temp_f31, &temp_r31->unk10, temp_r31->unk100, &temp_r31->unkAC, temp_r31->unkD0, 3);
+            fn_1_57E0(2.0f * temp_f31, &temp_r31->unk04, temp_r31->unkF4, temp_r31->centerPath, temp_r31->unk88, 3);
+            fn_1_57E0(2.0f * temp_f31, &temp_r31->unk10, temp_r31->unk100, temp_r31->rotationPath, temp_r31->unkD0, 3);
             temp_r31->unk130 = fn_1_52AC(2.0f * temp_f31, temp_r31->unk124, temp_r31->unk10C, temp_r31->unk118, 3);
         }
     }
@@ -645,20 +641,20 @@ static void fn_1_1AF0(float arg0, Vec *arg1, Vec *arg2, float arg3, Vec *arg4, V
     temp_r31->unk134 = temp_r31->unk130;
     temp_r31->unk138 = arg3;
     temp_r31->unk13C = arg6;
-    temp_r31->unk64 = temp_r31->unk1C;
-    temp_r31->unk70 = temp_r31->unk4C;
-    temp_r31->unk7C = temp_r31->unk34;
-    temp_r31->unkAC = temp_r31->unk28;
-    temp_r31->unkB8 = temp_r31->unk58;
-    temp_r31->unkC4 = temp_r31->unk40;
+    temp_r31->centerPath[0] = temp_r31->unk1C;
+    temp_r31->centerPath[1] = temp_r31->unk4C;
+    temp_r31->centerPath[2] = temp_r31->unk34;
+    temp_r31->rotationPath[0] = temp_r31->unk28;
+    temp_r31->rotationPath[1] = temp_r31->unk58;
+    temp_r31->rotationPath[2] = temp_r31->unk40;
     temp_r31->unk10C[0] = temp_r31->unk134;
     temp_r31->unk10C[1] = temp_r31->unk13C;
     temp_r31->unk10C[2] = temp_r31->unk138;
     temp_r31->unk124[0] = 0.0f;
     temp_r31->unk124[1] = ABS(temp_r31->unk10C[1] - temp_r31->unk10C[0]);
     temp_r31->unk124[2] = ABS(temp_r31->unk10C[2] - temp_r31->unk10C[1]) + temp_r31->unk124[1];
-    fn_1_5400(temp_r31->unkF4, &temp_r31->unk64, temp_r31->unk88, 3);
-    fn_1_5400(temp_r31->unk100, &temp_r31->unkAC, temp_r31->unkD0, 3);
+    fn_1_5400(temp_r31->unkF4, temp_r31->centerPath, temp_r31->unk88, 3);
+    fn_1_5400(temp_r31->unk100, temp_r31->rotationPath, temp_r31->unkD0, 3);
     fn_1_4FF4(temp_r31->unk124, temp_r31->unk10C, temp_r31->unk118, 3);
 }
 
@@ -1523,17 +1519,20 @@ static float fn_1_52AC(float arg0, float *arg1, float *arg2, float *arg3, s32 ar
     float var_f29;
     s32 temp_r31;
 
+    if (arg0 >= arg4 - 1) {
+        return arg2[arg4 - 1];
+    }
     temp_r31 = arg0;
     arg0 -= temp_r31;
     temp_f31 = arg1[temp_r31 + 1] - arg1[temp_r31];
+    if (temp_f31 == 0.0f) {
+        return arg2[temp_r31];
+    }
     temp_f30 = temp_f31 * arg0;
     var_f29 = arg2[temp_r31]
         + temp_f30
             * (temp_f30 * (3.0f * arg3[temp_r31] + temp_f30 * (arg3[temp_r31 + 1] - arg3[temp_r31]) / temp_f31)
                 + ((arg2[temp_r31 + 1] - arg2[temp_r31]) / temp_f31 - temp_f31 * (2.0f * arg3[temp_r31] + arg3[temp_r31 + 1])));
-    if (temp_f31 == 0.0f) {
-        var_f29 = arg2[temp_r31];
-    }
     return var_f29;
 }
 
