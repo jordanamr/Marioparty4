@@ -966,6 +966,9 @@ void fn_1_1C64(void)
         temp_r31->unk34 = 0;
         HuPrcVSleep();
     }
+    /* Each target is a HuPrc child. The end of the round leaves its loop,
+     * so hand its stack back to the scheduler. */
+    HuPrcEnd();
 }
 
 // identical to m411Dll/main.c::fn_1_5D58
