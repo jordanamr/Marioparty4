@@ -1,11 +1,15 @@
 """Recordings and live evidence used by the local two-engine campaign driver."""
+from contextlib import ExitStack
+import os
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 import sys
 import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from netplay_cross_sweep import LiveEvidence, SCENARIOS, finalize_recording, free_play_failure, linux_startup_stalled, scenario_definition, scenario_name, verify_hash_traces
+from netplay_cross_sweep import LiveEvidence, SCENARIOS, finalize_recording, free_play_failure, launch, linux_startup_stalled, scenario_definition, scenario_name, verify_hash_traces
 
 
 class CampaignEvidenceTest(unittest.TestCase):
@@ -15,6 +19,18 @@ class CampaignEvidenceTest(unittest.TestCase):
         self.directory = Path(temp.name)
         self.path = self.directory / "inputs.txt"
         self.pair = b"0 0 256 -128 127 0 0 255 0\n0 1 0 0 0 0 0 0 0\n"
+
+    def test_replay_children_ignore_physical_gamepads_on_both_systems(self):
+        args = SimpleNamespace(rom=self.path, linux_dir=self.directory, windows_dir=self.directory,
+                               fast=True, compact_video=True, wine_prefix=self.directory,
+                               trace_hashes=False, record=False)
+        worker = (self.directory / "wine", {"linux": ":1", "win": ":2"})
+        hint = "SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT"
+        with patch.dict(os.environ, {hint: "0x054c/0x09cc"}), patch("subprocess.Popen") as spawn, ExitStack() as stack:
+            for peer in ("linux", "win"):
+                launch(peer, "win", 1234, SCENARIOS["koopa"], self.path, self.directory, worker, args, stack)
+                self.assertEqual(spawn.call_args.kwargs["env"][hint], "0xffff/0xffff")
+            self.assertEqual(os.environ[hint], "0x054c/0x09cc")
 
     def test_partial_last_pair_is_removed(self):
         first = b"1 0 0 0 0 0 0 0 0\n"

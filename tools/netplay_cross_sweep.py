@@ -298,7 +298,10 @@ def launch(peer, host, port, scenario, replay, directory, worker, args, stack, s
               "video.enableAdaptiveWidescreen": linux and not args.compact_video, "video.keepOriginalHud": linux,
               "game.internalResolutionScale": 1 if (args.compact_video or linux) else 3, "audio.masterVolume": 0}
     (profile / "config.json").write_text(json.dumps(config), encoding="utf-8")
-    env = dict(os.environ, DISPLAY=displays[peer], XDG_DATA_HOME=str(directory / peer),
+    # The input tape drives the game, but the desktop menus also receive real
+    # SDL gamepad events. Restrict these test processes to an unused USB ID.
+    env = dict(os.environ, SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT="0xffff/0xffff",
+               DISPLAY=displays[peer], XDG_DATA_HOME=str(directory / peer),
                XDG_CONFIG_HOME=str(directory / peer / "config"), XDG_CACHE_HOME=str(prefix.parent / "cache"),
                SDL_AUDIODRIVER="dummy", PARTYBOARD_NET_DIAGNOSTIC=path(directory / f"{peer}.native"),
                PARTYBOARD_NETPLAY_TEST_PROFILE=path(profile), PARTYBOARD_CRASH_DIR=path(profile))
