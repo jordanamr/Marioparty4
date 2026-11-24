@@ -154,7 +154,7 @@ struct Runtime {
     bool desyncProbe = false;
     bool menuProbe = false;
     std::uint64_t lastStateRepairMs = 0;
-    std::uint32_t stateRepairCursor = 0;
+    std::array<std::uint32_t, rollback::kMaxPlayers> stateRepairCursor {};
     std::string error;
     bool disconnectProbe = false;
     bool contextMismatchProbe = false;
@@ -285,6 +285,9 @@ struct Runtime {
 
 Runtime gRuntime;
 
+using PeerInputSlots = std::array<const InputSlot *, rollback::kMaxPlayers>;
+std::uint8_t collectPeerInputs(const Runtime &runtime, std::uint32_t frame, PeerInputSlots &slots);
+
 // The seat the single remote occupies. It exists so every call site names a
 // seat instead of writing "the other one", which is what has to become a loop
 // when playerCount goes past two. Asserting the assumption here means the day
@@ -338,6 +341,8 @@ void writeDiagnostic(const char *event, bool force = false)
     gRuntime.lastDiagnosticMs = now;
     const auto &local = gRuntime.localHistory[gRuntime.frame % kHistorySize];
     const auto &remote = gRuntime.peerHistory[soleRemoteSeat()][gRuntime.frame % kHistorySize];
+    PeerInputSlots slots;
+    const auto missingSeats = collectPeerInputs(gRuntime, gRuntime.frame, slots);
     const auto utc = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     PartyBoardRollbackClock clock {};
     PartyBoard_RollbackClockSave(&clock);
@@ -350,9 +355,9 @@ void writeDiagnostic(const char *event, bool force = false)
     u32 available[2] {};
     for (unsigned i = 0; i < 64; ++i)
         if (GWMGAvailGet(401 + i)) available[i / 32] |= 1u << (i % 32);
-    std::fprintf(file, "utc_ms=%lld event=%s player=%u frame=%u context=%d wire_frame=%u local_ready=%d remote_ready=%d local_context=%u remote_context=%u received=%u rejected=%u repaired=%u send_errors=%u packet_age_ms=%llu rng_sync=%d seeds=%08x/%08x mismatch=%d context_skew=%u live_rng=%08x/%08x global_counter=%u tx_sequence=%u mg_available=%08x/%08x mg_next=%d language=%d message_speed=%d rollback_active=%d rollback_base=%u rollback_current=%u rollback_confirmed=%u rollback_count=%u rollback_replayed=%u rollback_max=%u rollback_predicted=%u rollback_late=%u parman_runs=%u rendered=%u turn=%d max_turn=%d board=%d\n",
+    std::fprintf(file, "utc_ms=%lld event=%s player=%u frame=%u context=%d wire_frame=%u local_ready=%d remote_ready=%d missing_seats=0x%x local_context=%u remote_context=%u received=%u rejected=%u repaired=%u send_errors=%u packet_age_ms=%llu rng_sync=%d seeds=%08x/%08x mismatch=%d context_skew=%u live_rng=%08x/%08x global_counter=%u tx_sequence=%u mg_available=%08x/%08x mg_next=%d language=%d message_speed=%d rollback_active=%d rollback_base=%u rollback_current=%u rollback_confirmed=%u rollback_count=%u rollback_replayed=%u rollback_max=%u rollback_predicted=%u rollback_late=%u parman_runs=%u rendered=%u turn=%d max_turn=%d board=%d\n",
         static_cast<long long>(utc), event, gRuntime.localPlayer, gRuntime.frame, gRuntime.observedContext,
-        gRuntime.lastWireFrame, local.valid && local.frame == gRuntime.frame, remote.valid && remote.frame == gRuntime.frame,
+        gRuntime.lastWireFrame, local.valid && local.frame == gRuntime.frame, missingSeats == 0, static_cast<unsigned>(missingSeats),
         local.captureContext, remote.captureContext, gRuntime.receivedPackets, gRuntime.rejectedPackets,
         gRuntime.repairPackets, gRuntime.sendFailures, static_cast<unsigned long long>(gRuntime.lastPacketMs ? now-gRuntime.lastPacketMs : 0),
         gRuntime.randomSynchronized, gRuntime.sessionFrandSeed, gRuntime.sessionRand8Seed, gRuntime.configMismatch,
@@ -513,6 +518,7 @@ void resetOverlayTimeline(std::uint8_t contextId)
     PartyBoard_NetplayRandomCountersReset();
     gRuntime.lockstepPrepared = false;
     gRuntime.lastStateRepairMs = 0;
+    gRuntime.stateRepairCursor = {};
     gRuntime.localHistory = {};
     gRuntime.peerHistory = {};
     gRuntime.lastPeer = {};
@@ -1130,18 +1136,18 @@ const InputSlot *findInput(const std::array<InputSlot, kHistorySize> &history, s
 //
 // Every seat but the local one must have an input. A missing seat is not a slow
 // seat -- in lockstep there is no difference, and advancing without it is the
-// one mistake that produces a desync instead of a stall.
-bool collectPeerInputs(const Runtime &runtime, std::uint32_t frame,
-    std::array<const InputSlot *, rollback::kMaxPlayers> &slots)
+// one mistake that produces a desync instead of a stall. Return the bitmask
+// of seats to ask when one or more samples are missing.
+std::uint8_t collectPeerInputs(const Runtime &runtime, std::uint32_t frame, PeerInputSlots &slots)
 {
     slots = {};
-    bool everyPeerReady = true;
+    std::uint8_t missingSeats = 0;
     for (std::uint8_t seat = 0; seat < runtime.playerCount; ++seat) {
         if (seat == runtime.localPlayer || runtime.idle.kicked(seat)) continue;
         slots[seat] = findInput(runtime.peerHistory[seat], frame);
-        if (slots[seat] == nullptr) everyPeerReady = false;
+        if (slots[seat] == nullptr) missingSeats |= 1u << seat;
     }
-    return everyPeerReady;
+    return missingSeats;
 }
 
 
@@ -1156,10 +1162,11 @@ std::uint32_t runtimeConfigSignature(std::uint8_t inputDelay, std::uint8_t conte
 
 enum class InputSendMode { Sample, RequestRetransmit, RetainedReply };
 
+constexpr unsigned kAllSeats = (1u << rollback::kMaxPlayers) - 1;
 constexpr std::uint32_t kProbeWithheldFrame = 200;
 
 bool sendInput(std::uint32_t frame, const PartyBoardRollbackInput &input, InputSendMode mode = InputSendMode::Sample,
-    const StateDigest *standalone = nullptr)
+    const StateDigest *standalone = nullptr, unsigned recipients = kAllSeats)
 {
     // Withhold one input during the headless probe. Only an explicit reply
     // from a later tick may deliver it, independently of peer scheduling.
@@ -1198,7 +1205,7 @@ bool sendInput(std::uint32_t frame, const PartyBoardRollbackInput &input, InputS
     if (!gRuntime.transport.hasPeer()) return false;
     bool sent = false;
     for (std::uint8_t seat = 0; seat < gRuntime.playerCount; ++seat) {
-        if (seat == gRuntime.localPlayer || !gRuntime.transport.hasPeer(seat)) continue;
+        if ((recipients & (1u << seat)) == 0 || seat == gRuntime.localPlayer || !gRuntime.transport.hasPeer(seat)) continue;
         if (!gRuntime.rollbackRequested) {
             outgoing.hashAckNext = gRuntime.states[seat].equalThrough();
             const auto *state = standalone ? standalone : gRuntime.states[seat].pending();
@@ -1210,29 +1217,39 @@ bool sendInput(std::uint32_t frame, const PartyBoardRollbackInput &input, InputS
     return sent;
 }
 
+// Each stream has its own acknowledgment. A missing digest for seat 2 can
+// precede the last digest by several frames even when seat 1 is fully caught up.
+template <typename Send>
+void sendPendingStates(Runtime &runtime, Send send)
+{
+    for (std::uint8_t seat = 0; seat < runtime.playerCount; ++seat) {
+        if (seat == runtime.localPlayer || runtime.idle.kicked(seat)) continue;
+        const auto &stream = runtime.states[seat];
+        const auto *state = stream.error() != StateFailure::None
+            ? stream.getLocal(stream.errorFrame()) : stream.pending();
+        if (!state && stream.captured()) state = stream.getLocal(stream.captured() - 1);
+        if (!state) continue;
+        send(seat, *state);
+        if (stream.error() == StateFailure::Desync) {
+            // Recover this peer's missing prefix before the failed digest.
+            auto &cursor = runtime.stateRepairCursor[seat];
+            if (cursor < stream.peerEqualThrough() || cursor > state->frame)
+                cursor = stream.peerEqualThrough();
+            if (const auto *old = stream.getLocal(cursor++))
+                if (old->frame != state->frame) send(seat, *old);
+        }
+    }
+}
+
 void serviceStateRepair(bool force)
 {
     if (gRuntime.rollbackRequested) return;
     const auto now = monotonicMs();
     if (!force && now - gRuntime.lastStateRepairMs < 100) return;
-    StateHistory &reported = reportedStates();
-    const auto *state = reported.error() != StateFailure::None
-        ? reported.getLocal(reported.errorFrame()) : reported.pending();
-    if (!state && reported.captured())
-        state = reported.getLocal(reported.captured() - 1);
-    if (state) {
-        sendInput(state->frame, {}, InputSendMode::Sample, state);
-        if (reported.error() == StateFailure::Desync) {
-            // The peer may still lack an earlier local hash. Cycle the retained
-            // prefix so even loss before the mismatch cannot hide it forever.
-            auto &cursor = gRuntime.stateRepairCursor;
-            if (cursor < reported.peerEqualThrough() || cursor > state->frame)
-                cursor = reported.peerEqualThrough();
-            if (const auto *old = reported.getLocal(cursor++))
-                if (old->frame != state->frame) sendInput(old->frame, {}, InputSendMode::Sample, old);
-        }
-        gRuntime.lastStateRepairMs = now;
-    }
+    sendPendingStates(gRuntime, [](std::uint8_t seat, const StateDigest &state) {
+        sendInput(state.frame, {}, InputSendMode::Sample, &state, 1u << seat);
+    });
+    gRuntime.lastStateRepairMs = now;
 }
 
 #include "netplay_report.inc"
@@ -1757,7 +1774,7 @@ void receivePendingPackets()
         // Always answer from immutable history, even while we are also waiting.
         if (packet.type == PacketType::Retransmit) {
             if (const auto *old = findInput(gRuntime.localHistory, packet.frame)) {
-                if (sendInput(packet.frame, old->input, InputSendMode::RetainedReply)) {
+                if (sendInput(packet.frame, old->input, InputSendMode::RetainedReply, nullptr, 1u << packet.player)) {
                     ++gRuntime.repairPackets;
                     if (gRuntime.probeContext >= 0 && gRuntime.localPlayer == 0 && packet.frame == kProbeWithheldFrame) {
                         writeDiagnostic("probe-retained-reply input_frame=200", true);
@@ -1989,7 +2006,8 @@ bool seatReadinessSelfTest()
             std::array<const InputSlot *, rollback::kMaxPlayers> slots {};
 
             // Nobody has spoken: never ready, whatever the seat count.
-            if (collectPeerInputs(probe, 10, slots)) return false;
+            const auto peers = ((1u << count) - 1) & ~(1u << localSeat);
+            if (collectPeerInputs(probe, 10, slots) != peers) return false;
 
             // Every peer but the last: still not ready. This is the case that
             // separates "all seats" from "any seat", and the one a two-player
@@ -2003,12 +2021,14 @@ bool seatReadinessSelfTest()
                 if (seat == localSeat || seat == last) continue;
                 probe.peerHistory[seat][10 % kHistorySize] = { 10, {}, true };
             }
-            if (count > 2 && collectPeerInputs(probe, 10, slots)) return false;
+            // A stale entry at the same ring index must still request this seat.
+            probe.peerHistory[last][10] = { 10 + kHistorySize, {}, true };
+            if (collectPeerInputs(probe, 10, slots) != (1u << last)) return false;
 
             // The last peer speaks: ready, and every peer slot is populated while
             // the local seat stays empty -- the tick reads its own input elsewhere.
             probe.peerHistory[last][10 % kHistorySize] = { 10, {}, true };
-            if (!collectPeerInputs(probe, 10, slots)) return false;
+            if (collectPeerInputs(probe, 10, slots) != 0) return false;
             if (slots[localSeat] != nullptr) return false;
             for (std::uint8_t seat = 0; seat < count; ++seat) {
                 if (seat == localSeat) continue;
@@ -2022,7 +2042,7 @@ bool seatReadinessSelfTest()
             }
 
             // Another frame is independent: readiness is per frame, not sticky.
-            if (collectPeerInputs(probe, 11, slots)) return false;
+            if (collectPeerInputs(probe, 11, slots) != peers) return false;
 
             // A peer replaced for inactivity is never waited for again.
             if (last != rollback::kMaxPlayers) {
@@ -2031,15 +2051,37 @@ bool seatReadinessSelfTest()
                 for (std::uint8_t seat = 0; seat < count; ++seat) {
                     if (seat != localSeat && seat != last) probe.peerHistory[seat][12 % kHistorySize] = { 12, {}, true };
                 }
-                if (collectPeerInputs(probe, 12, slots)) return false;
+                if (collectPeerInputs(probe, 12, slots) != (1u << last)) return false;
                 while (probe.idle.observe(last, false) < 0) {}
-                const bool ready = collectPeerInputs(probe, 12, slots) && slots[last] == nullptr;
+                const bool ready = collectPeerInputs(probe, 12, slots) == 0 && slots[last] == nullptr;
                 probe.idle = {};
                 if (!ready) return false;
             }
         }
     }
     return true;
+}
+
+// At the end of a four-seat session, only standalone repairs are still sent.
+bool stateRepairRoutingSelfTest()
+{
+    Runtime probe;
+    probe.localPlayer = 0;
+    probe.playerCount = 4;
+    for (std::uint8_t seat = 1; seat < 4; ++seat) {
+        for (std::uint32_t frame = 0; frame < 3; ++frame) {
+            StateDigest state {};
+            state.frame = frame;
+            if (!probe.states[seat].capture(state)) return false;
+        }
+    }
+    probe.states[1].acknowledge(3);  // Fully caught up; repeat the last digest for its ACK.
+    probe.states[2].acknowledge(1);  // Still needs frame 1.
+    std::array<std::uint32_t, 4> delivered {kNoHashFrame, kNoHashFrame, kNoHashFrame, kNoHashFrame};
+    sendPendingStates(probe, [&](std::uint8_t seat, const StateDigest &state) {
+        delivered[seat] = state.frame;
+    });
+    return delivered == std::array<std::uint32_t, 4>{kNoHashFrame, 2, 1, 0};
 }
 
 // The inactivity rule on its own: grace, countdown, reset by input and by a
@@ -2941,10 +2983,10 @@ extern "C" bool PartyBoard_NetplayTick(void)
     // A frame advances when every seat has spoken, not when one has. With two
     // players this is the same test written once more; with four it is the whole
     // difference between lockstep and a game that runs ahead of a silent peer.
-    std::array<const InputSlot *, partyboard::rollback::kMaxPlayers> peerSlot {};
-    bool everyPeerReady = collectPeerInputs(runtime, runtime.frame, peerSlot);
+    PeerInputSlots peerSlot {};
+    auto missingSeats = collectPeerInputs(runtime, runtime.frame, peerSlot);
     const bool startupFrame = runtime.frame < runtime.inputDelay;
-    bool frameReady = startupFrame || (localSlot != nullptr && everyPeerReady);
+    bool frameReady = startupFrame || (localSlot != nullptr && missingSeats == 0);
     if (!frameReady && localSlot != nullptr && runtime.transport.waitReadable(kLateInputWaitMs)) {
         // The peer's input is often only a few milliseconds late. Waiting for
         // it here keeps this tick instead of losing all of it.
@@ -2955,8 +2997,8 @@ extern "C" bool PartyBoard_NetplayTick(void)
             ++runtime.stalledTicks;
             return false;
         }
-        everyPeerReady = collectPeerInputs(runtime, runtime.frame, peerSlot);
-        frameReady = everyPeerReady;
+        missingSeats = collectPeerInputs(runtime, runtime.frame, peerSlot);
+        frameReady = missingSeats == 0;
     }
     if (!frameReady) {
         // Once a packet is lost, retransmit the exact frame the peer is also
@@ -2966,7 +3008,7 @@ extern "C" bool PartyBoard_NetplayTick(void)
             // Bound repair traffic while retrying lost UDP requests.
             if (runtime.repairRequestFrame != runtime.frame
                 || now - runtime.lastRepairRequestMs >= 100) {
-                sendInput(runtime.frame, localSlot->input, InputSendMode::RequestRetransmit);
+                sendInput(runtime.frame, localSlot->input, InputSendMode::RequestRetransmit, nullptr, missingSeats);
                 runtime.repairRequestFrame = runtime.frame;
                 runtime.lastRepairRequestMs = now;
             }
@@ -3386,6 +3428,7 @@ extern "C" bool PartyBoard_NetplayRuntimeRunSelfTest(void)
     };
     check("canonical-state", runCanonicalStateSelfTest());
     check("seat-readiness", partyboard::netplay::seatReadinessSelfTest());
+    check("state-repair-routing", partyboard::netplay::stateRepairRoutingSelfTest());
     check("idle-watch", partyboard::netplay::idleWatchSelfTest());
     check("timeline", partyboard::netplay::timelineSelfTest());
     check("progress", partyboard::netplay::progressSelfTest());
