@@ -164,6 +164,8 @@ static void ExecMGSetup(void) {
     bitcopy* temp_r26;
     bitcopy* temp_r25;
 
+    const s32 lastPlayer = GWSystem.player_curr;
+
     luckyF = 0;
     mgNext = 0;
     GWSystem.player_curr = -1;
@@ -172,7 +174,9 @@ static void ExecMGSetup(void) {
         activeMG[var_r31].unk_00 = -1;
         activeMG[var_r31].unk_04 = 0;
     }
-    BoardPlayerMoveAwayStartCurr(GWPlayer[GWSystem.player_curr].space_curr, 1);
+    if (lastPlayer >= 0 && lastPlayer < ARRAY_COUNT(GWPlayer)) {
+        BoardPlayerMoveAwayStart(lastPlayer, GWPlayer[lastPlayer].space_curr, 1);
+    }
     BoardCameraMoveSet(0);
     BoardCameraTargetSpaceSet(BoardSpaceStarGetCurr());
     sp54.x = 0.0f;
