@@ -2763,6 +2763,12 @@ extern "C" bool PartyBoard_NetplayTick(void)
                     // Charge the Fortune pinball plunger before pressing A to release it.
                     runtime.pendingLocal.stickY = -72;
                     if (beat % 120 < 2) runtime.pendingLocal.buttons = PAD_BUTTON_A;
+                } else if (runtime.specialGame == 460 && context == static_cast<int>(MenuProbeOverlay::m460Dll)) {
+                    // Doors of Doom reads the analog triggers to choose a door.
+                    if (beat % 60 < 6) {
+                        if ((beat / 60) % 2 == 0) runtime.pendingLocal.triggerLeft = 180;
+                        else runtime.pendingLocal.triggerRight = 180;
+                    }
                 } else if (runtime.specialGame && (context == static_cast<int>(MenuProbeOverlay::mpexDll)
                     || context == static_cast<int>(MenuProbeOverlay::ztardll)
                     || context == static_cast<int>(MenuProbeOverlay::subchrselDll))) {
