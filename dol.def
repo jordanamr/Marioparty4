@@ -8,6 +8,7 @@ EXPORTS
     PartyBoard_NetplayEnabled
     PartyBoard_NetplayTrace
     PartyBoard_NetplayWalkMenu
+    PartyBoard_NetplaySpecialGame
     PartyBoard_HookTickGateEnabled
     PartyBoard_NetplayMaxTurnsOverride
     PartyBoard_OnlineCheckDisc
