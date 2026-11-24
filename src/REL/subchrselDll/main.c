@@ -69,8 +69,9 @@ static void SubchrMain()
     int ext_character[4];
     int i, cursor_pos;
     for(i=0; i<4; i++) {
-        character[i] = GWPlayerCfg[i].character;
-        ext_character[i] = 0;
+        int selected = GWPlayerCfg[i].character;
+        character[i] = (unsigned)selected < 8 ? selected : i;
+        ext_character[i] = selected >= 8 && selected <= 13 ? selected - 7 : 0;
         dirPlayer[i] = 0;
     }
     cursor_pos = 0;
@@ -97,9 +98,7 @@ static void SubchrMain()
         }
         if(GetBtns() & PAD_BUTTON_START) {
             for(i=0; i<4; i++) {
-                if(ext_character[i] != 0) {
-                    GWPlayerCfg[i].character = ext_character[i]+7;
-                }
+                GWPlayerCfg[i].character = ext_character[i] ? ext_character[i]+7 : character[i];
             }
             HuAudFadeOut(30);
             WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_NORMAL, -1);

@@ -23,10 +23,8 @@ typedef struct mgInterface {
 } mgInterface;
 
 typedef struct mgPic {
-	/* 0x00 */ ANIMDATA *unk_00[2];
-	/* 0x08 */ s32 unk08[9];
-	/* 0x2C */ s16 unk_2C;
-	/* 0x2E */ s32 unk2E[4];
+	/* 0x00 */ ANIMDATA *unk_00[14];
+	/* 0x38 */ s32 pad38[2];
 	/* 0x40 */ s16 unk_40;
 	/* 0x44 */ s32 unk44[2];
 	/* 0x4C */ s32 unk_4C;
@@ -42,10 +40,8 @@ typedef struct mgSelect {
 	/* 0x22 */ s16 unk22;
 	/* 0x24 */ s32 unk24[2];
 	/* 0x2C */ s16 unk_2C;
-	/* 0x2E */ s16 unk_2E[4];
-	/* 0x36 */ s16 unk36;
-	/* 0x38 */ s16 unk_38[4];
-	/* 0x40 */ s16 unk40;
+	/* 0x2E */ s16 unk_2E[5];
+	/* 0x38 */ s16 unk_38[5];
 	/* 0x42 */ s16 unk_42;
 	/* 0x44 */ s16 unk_44;
 	/* 0x46 */ s16 unk_46;

@@ -931,35 +931,22 @@ void fn_1_AED0(void)
 
 s16 fn_1_B5A8(s16 *arg0, s16 *arg1)
 {
-    s16 mgNo = GWSystem.mg_next;
-    s16 mgType = mgInfoTbl[mgNo].type;
-    s16 ret;
-    s16 i;
-    for (i = ret = 0; i < lbl_1_bss_316; i++) {
-        if (mgType == lbl_1_bss_318[i][0]) {
-            ret = i;
-            break;
+    s16 tab, row;
+    *arg0 = *arg1 = 0;
+    for (tab = 0; tab < lbl_1_bss_316; ++tab) {
+        s16 type = lbl_1_bss_318[tab][0];
+        s16 count = lbl_1_bss_2638[type];
+        for (row = 0; row < count; ++row) {
+            if (lbl_1_bss_264C[type][row] == GWSystem.mg_next) {
+                s16 top = row > 3 ? row - 3 : 0;
+                if (top + 7 > count) top = count > 7 ? count - 7 : 0;
+                *arg0 = top;
+                *arg1 = row - top;
+                return tab;
+            }
         }
     }
-    for (i = 0; i < lbl_1_bss_2638[mgType]; i++) {
-        if (mgNo == lbl_1_bss_264C[mgType][i]) {
-            break;
-        }
-    }
-    *arg1 = i;
-    i = i - 3;
-    if (i < 0) {
-        i = 0;
-    }
-    if (lbl_1_bss_2638[mgType] >= 7 && i + 7 >= lbl_1_bss_2638[mgType]) {
-        i = lbl_1_bss_2638[mgType] - 7;
-    }
-    *arg0 = i;
-    if (lbl_1_bss_2638[mgType] < 7) {
-        *arg0 = 0;
-    }
-    *arg1 = *arg1 - *arg0;
-    return ret;
+    return 0;
 }
 
 void fn_1_B770(void)
