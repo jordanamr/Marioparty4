@@ -1051,7 +1051,7 @@ void fn_1_7AA0(omObjData *object)
     sp2C.y = 0.0f;
     VECSubtract(&sp38, &sp2C, &sp8);
     sp8.y = 0.0f;
-    var_f28 = VECMag((Vec *)&sp8.y);
+    var_f28 = VECMag(&sp8);
     var_f29 = 0.0025f * var_f28;
     if (var_f29 > 1.0f) {
         var_f29 = 1.0f;
