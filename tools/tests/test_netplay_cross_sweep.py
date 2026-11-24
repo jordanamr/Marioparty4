@@ -5,7 +5,7 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from netplay_cross_sweep import LiveEvidence, SCENARIOS, finalize_recording, scenario_definition, scenario_name, verify_hash_traces
+from netplay_cross_sweep import LiveEvidence, SCENARIOS, finalize_recording, free_play_failure, scenario_definition, scenario_name, verify_hash_traces
 
 
 class CampaignEvidenceTest(unittest.TestCase):
@@ -67,6 +67,26 @@ class CampaignEvidenceTest(unittest.TestCase):
             stream.write(b"Start New OVL 90\n")
         monitor.poll()
         self.assertTrue(monitor.milestone)
+
+    def test_generated_route_waits_for_both_peers_before_reporting_wrong_game(self):
+        scenario = scenario_definition("m403")
+        monitors = {p: LiveEvidence(self.directory, p, scenario) for p in ("linux", "win")}
+        (self.directory / "linux.log").write_bytes(b"objdll> m407dll.so prolog end\n")
+        monitors["linux"].poll()
+        self.assertIsNone(free_play_failure(403, monitors))
+        (self.directory / "win.log").write_bytes(b"objdll> m407dll.dll prolog end\n")
+        monitors["win"].poll()
+        self.assertEqual(free_play_failure(403, monitors),
+                         {"reason": "wrong_minigame", "observed_modules": {"linux": 407, "win": 407}})
+        self.assertIsNone(free_play_failure(407, monitors))
+
+    def test_generated_route_can_exhaust_before_entering_game(self):
+        scenario = scenario_definition("m403")
+        monitors = {p: LiveEvidence(self.directory, p, scenario) for p in ("linux", "win")}
+        for p, monitor in monitors.items():
+            (self.directory / (p + ".log")).write_bytes(b"[NET TEST] replay_exhausted_frame=6000\n")
+            monitor.poll()
+        self.assertEqual(free_play_failure(403, monitors)["reason"], "replay_exhausted_before_minigame")
 
     def test_pass_requires_both_contiguous_hash_traces(self):
         rows = b"0 000000000000000a\n1 000000000000000b\n"

@@ -231,7 +231,7 @@ s32 fn_1_4088(unkStruct6 *arg0, u8 arg1, u8 arg2, s32 arg3, unkStruct4 **arg4, s
             arg0->unk64 = (s32)(fn_1_38F0() % 21);
             do {
                 if (!(temp_r26 = arg0->unk8[arg0->unk64]) || temp_r26->unk64 != 0) {
-                    arg0->unk64 = ++arg0->unk64 % 21;
+                    arg0->unk64 = (arg0->unk64 + 1) % 21;
                 }
                 else
                     break;

@@ -40,8 +40,7 @@ typedef struct M425DllUnkStruct4 {
     float unk_30;
     s32 unk_34;
     s32 unk_38;
-    s32 unk_3C[5];
-    s32 unk_50;
+    s32 unk_3C[6];
     float unk_54[6];
     s32 unk_6C[6];
     s32 unk_84[6];
@@ -1937,12 +1936,12 @@ void fn_1_E914(HU3DMODEL *var_r27, Mtx matrix)
         var_f30 = var_r31->unk_CC.x + ((sp70[0][0] * var_f27) + (sp70[0][2] * var_f25));
         var_f31 = var_r31->unk_CC.z + ((sp70[2][0] * var_f27) + (sp70[2][2] * var_f25));
         fn_1_10EF8(var_r31->unk_00, 2, var_f30, var_f31);
-        var_r31->unk_50 = var_r31->unk_34;
+        var_r31->unk_3C[5] = var_r31->unk_34;
         var_r31->unk_54[5] = var_f26;
         var_r31->unk_6C[5] = 0;
     }
     else {
-        var_r31->unk_50 = -1;
+        var_r31->unk_3C[5] = -1;
         var_r31->unk_54[5] = 0.0f;
         var_r31->unk_6C[5] = 0;
     }

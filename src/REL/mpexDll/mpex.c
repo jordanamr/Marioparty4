@@ -1,3 +1,8 @@
+#ifdef TARGET_PC
+#include "port/netplay_runtime.h"
+#include "port/netplay_special_game.h"
+#endif
+
 #include "ext_math.h"
 #include "game/board/main.h"
 #include "game/chrman.h"
@@ -441,6 +446,12 @@ void fn_1_3AF8(void)
         fn_1_1BF1C(0x33004C);
         var_r31 = -1;
         lbl_1_bss_3B0.unk_08 = 0;
+#ifdef TARGET_PC
+        {
+            int slot = PartyBoard_ExtraRoomSlot(PartyBoard_NetplaySpecialGame());
+            if (slot >= 0) lbl_1_bss_3B0.unk_08 = slot == 10 ? 2 : slot >= 4;
+        }
+#endif
         lbl_1_bss_3B0.unk_04 = (MpexDllUnkFunc2)fn_1_11FC0;
         while (TRUE) {
             fn_1_1B7D0(1);
@@ -577,6 +588,12 @@ s32 fn_1_4184(s32 arg0)
         lbl_1_bss_3B0.unk_0C = lbl_1_data_294;
         lbl_1_data_294 = -1;
     }
+#ifdef TARGET_PC
+    {
+        int slot = PartyBoard_ExtraRoomSlot(PartyBoard_NetplaySpecialGame());
+        if (slot >= 0 && slot < 4) lbl_1_bss_3B0.unk_0C = slot;
+    }
+#endif
     fn_1_1B7D0(1);
     fn_1_1BF1C(0x33004D);
     fn_1_1015C();
@@ -749,6 +766,12 @@ s32 fn_1_4770(s32 arg0)
         lbl_1_bss_3B0.unk_0C = lbl_1_data_294;
         lbl_1_data_294 = -1;
     }
+#ifdef TARGET_PC
+    {
+        int slot = PartyBoard_ExtraRoomSlot(PartyBoard_NetplaySpecialGame());
+        if (slot >= 4 && slot < 10) lbl_1_bss_3B0.unk_0C = slot - 4;
+    }
+#endif
     fn_1_1B7D0(1);
     fn_1_1BF1C(0x33004D);
     fn_1_114D4();

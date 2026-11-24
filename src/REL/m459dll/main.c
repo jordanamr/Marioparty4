@@ -1336,8 +1336,10 @@ void fn_1_45EC(void)
         for (var_r31 = 0; var_r31 < 5; var_r31++) {
             lbl_1_bss_CC[var_r31].unk_04 = 0xD;
         }
-        while (lbl_1_bss_CC[var_r31].unk_04 == 0xD) {
-            HuPrcVSleep();
+        for (var_r31 = 0; var_r31 < 5; var_r31++) {
+            while (lbl_1_bss_CC[var_r31].unk_04 == 0xD) {
+                HuPrcVSleep();
+            }
         }
     }
     HuPrcSleep(0xD2);

@@ -97,7 +97,7 @@ typedef struct _unkStruct7 {
     };
     s32 unk4;
     s32 unk8;
-    s16 unkC[9];
+    s16 unkC[10];
     Vec unk20;
     Vec unk2C;
     Vec unk38;

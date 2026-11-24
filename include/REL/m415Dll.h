@@ -141,10 +141,7 @@ typedef struct _unkSubStruct {
     char unk59[0x3];
     Vec unk5C;
     Vec unk68;
-    s16 unk74[2];
-    s16 *unk78;
-    s16 *unk7C;
-    char unk80[0x14];
+    s16 unk74[16];
 } unkSubStruct; /* size = 0x94 */
 
 typedef void (*unkSubStruct2Func)(struct _unkSubStruct2 *);

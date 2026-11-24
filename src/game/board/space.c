@@ -16,6 +16,7 @@
 #include "port/widescreen.h"
 #ifdef TARGET_PC
 #include "port/crash_report.h"
+#include "port/netplay_runtime.h"
 #endif
 
 #include "ext_math.h"
@@ -564,6 +565,21 @@ void BoardSpaceLandExec(s32 player, s32 space)
 #define STAR_SPACE 8
 #define WARP_SPACE 9
 
+#ifdef TARGET_PC
+    if (!GWPlayer[player].com && PartyBoard_NetplayTakeFortuneFixture()) {
+        /* Start Chance Time with a real board, human turn and fortune space.
+         * FortuneMain still sets up the teams, overlay return and award. */
+        for (s32 i = 1; i <= BoardSpaceCountGet(0); ++i) {
+            if (BoardSpaceTypeGet(0, i) == FORTUNE_SPACE) {
+                Vec pos;
+                GWPlayer[player].space_curr = GWPlayer[player].space_next = space = i;
+                BoardSpacePosGet(0, i, &pos);
+                BoardPlayerPosSetV(player, &pos);
+                break;
+            }
+        }
+    }
+#endif
     BoardSpace *space_ptr = BoardSpaceGet(0, space);
     switch (space_ptr->type) {
         case BLUE_SPACE:

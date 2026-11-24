@@ -154,8 +154,7 @@ typedef struct M427DllMapSubstruct3 {
     M427DllMapUNKB8 unkB8[2][2];
     s16 unk178[3];
     M427DllMapUNK17E unk17E[2][2];
-    s16 unk18E[2];
-    char unk194[4];
+    s16 unk18E[5];
 } M427DllMapSubstruct3; // sizeof 0x198
 
 typedef struct M427DllMapStruct3Sub {

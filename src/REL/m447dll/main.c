@@ -706,7 +706,7 @@ void fn_1_1BF8(void) {
 void fn_1_1CE0(UnkM447Struct_00* arg0) {
     s32 i;
 
-    for (i = 0; i <= 25; i++) {
+    for (i = 0; i < 25; i++) {
         espDispOff(arg0->unk34[i]);
     }
 }

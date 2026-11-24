@@ -924,7 +924,7 @@ s16 fn_1_B1E8(Vec *arg0, Vec *arg1, s16 arg2)
     if (temp_r30 == lbl_1_data_3A4[arg2]) {
         arg1->y += 0.3;
 #if VERSION_REV2
-        if (VECMag((Vec *)&arg1) < 0.000001) {
+        if (VECMag(arg1) < 0.000001) {
             arg1->y += 0.3;
         }
 #endif

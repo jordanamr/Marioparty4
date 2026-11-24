@@ -331,9 +331,10 @@ void fn_1_2174(M420DllPlayerStruct *arg0)
 {
     s32 var_r31;
 
-    for (var_r31 = 0; var_r31 < 0xB; var_r31++) {
+    for (var_r31 = 0; var_r31 < 10; var_r31++) {
         espKill(arg0->unk_C4[var_r31]);
     }
+    espKill(arg0->unk_D8);
 }
 
 void fn_1_21C8(M420DllPlayerStruct *arg0, Vec *arg1, s32 arg2, s32 arg3)

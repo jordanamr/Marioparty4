@@ -1530,7 +1530,7 @@ void fn_1_127C4(s16 arg0, u8 arg1)
 
     if (arg0 != 0) {
         temp_r29 = &lbl_1_bss_DE4.unk_40[arg0];
-        var_r31 = (M438UnkStruct *)&temp_r29->unk_3C; //! bug
+        var_r31 = temp_r29->unk_3C;
         for (var_r28 = 0; var_r28 < temp_r29->unk_02; var_r28++, var_r31++) {
             for (var_r30 = 0; var_r30 < var_r31->unk_34; var_r30++) {
                 var_r31->unk_58[var_r30].unk_24 = arg1;

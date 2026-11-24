@@ -1141,8 +1141,7 @@ void fn_1_758(omObjData *var_r29)
                             }
                             var_r31->unk_1C4[var_r30] = 0;
                         }
-                        var_r21 = 0;
-                        for (var_r21 = 0; var_r21 < 0x10; var_r21++) {
+                        for (var_r21 = 0; var_r21 < 4; var_r21++) {
                             var_r31->unk_1C4[var_r21]++;
                         }
                         sp160 = 0;

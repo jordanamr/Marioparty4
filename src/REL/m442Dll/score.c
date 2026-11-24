@@ -21,10 +21,8 @@ typedef struct M442ScoreWork {
     /* 0x04 */ s32 unk_04;
     /* 0x08 */ s16 unk_08;
     /* 0x0A */ s16 unk_0A;
-    /* 0x0C */ s16 unk_0C[6];
-    /* 0x18 */ s16 unk_18;
-    /* 0x1A */ s16 unk_1A;
-    /* 0x0E */ s32 unk_1C;
+    /* 0x0C */ s16 unk_0C[8];
+    /* 0x1C */ s32 unk_1C;
     /* 0x20 */ float unk_20;
 } M442ScoreWork; /* size = 0x24 */
 
@@ -39,12 +37,12 @@ void fn_1_91AC(Process *arg0, s16 arg1)
     var_r31 = lbl_1_bss_11F48->data;
     var_r31->unk_08 = arg1;
     var_r31->unk_0A = 0;
-    var_r31->unk_18 = espEntry(DATA_MAKE_NUM(DATADIR_MGCONST, 0x23), 2, 0);
-    espTPLvlSet(var_r31->unk_18, 0.5f);
-    espPosSet(var_r31->unk_18, 508.0f, 64.0f);
-    espColorSet(var_r31->unk_18, 0, 0, 0);
-    var_r31->unk_1A = espEntry(DATA_MAKE_NUM(DATADIR_MGCONST, 0x37), 1, 0);
-    espPosSet(var_r31->unk_1A, 480.0f, 56.0f);
+    var_r31->unk_0C[6] = espEntry(DATA_MAKE_NUM(DATADIR_MGCONST, 0x23), 2, 0);
+    espTPLvlSet(var_r31->unk_0C[6], 0.5f);
+    espPosSet(var_r31->unk_0C[6], 508.0f, 64.0f);
+    espColorSet(var_r31->unk_0C[6], 0, 0, 0);
+    var_r31->unk_0C[7] = espEntry(DATA_MAKE_NUM(DATADIR_MGCONST, 0x37), 1, 0);
+    espPosSet(var_r31->unk_0C[7], 480.0f, 56.0f);
     for (var_r30 = 0; var_r30 < 3; var_r30++) {
         var_r31->unk_0C[var_r30] = espEntry(DATA_MAKE_NUM(DATADIR_MGCONST, 0x30), 0, 0);
         espPosSet(var_r31->unk_0C[var_r30], (var_r30 * 0x10) + 0x1F4, 56.0f);
@@ -180,5 +178,5 @@ void fn_1_980C(void)
     for (var_r30 = 0; var_r30 <= 2; var_r30++) {
         espScaleSet(var_r31->unk_0C[var_r30], var_r31->unk_20, var_r31->unk_20);
     }
-    espScaleSet(var_r31->unk_1A, var_r31->unk_20, var_r31->unk_20);
+    espScaleSet(var_r31->unk_0C[7], var_r31->unk_20, var_r31->unk_20);
 }

@@ -19,6 +19,7 @@ import threading
 import time
 
 from netplay_sweep_results import classify_case, write_campaign
+from netplay_free_play import ROUTES, generate as generate_free_play, module_id
 
 
 @dataclass(frozen=True)
@@ -28,6 +29,7 @@ class Scenario:
     windows_host: bool
     board: int = None
     context: int = None
+    special: int = None
 
 
 SCENARIOS = {
@@ -77,6 +79,12 @@ def arguments():
     parser.add_argument("--jobs", type=int, default=2, help="simultaneous pairs (default 2)")
     parser.add_argument("--scenario", type=scenario_name, action="append", metavar="NAME",
                         help="named scenario or minigame module mNNN with a recording")
+    free = parser.add_mutually_exclusive_group()
+    free.add_argument("--free-play", type=module_id, action="append", metavar="mNNN",
+                      help="generate the PAL/French menu route to this game (repeatable)")
+    free.add_argument("--free-play-all", action="store_true", help="run all 51 modules in the seven Free Play tabs")
+    free.add_argument("--special", action="append", metavar="mNNN", help="route to one game outside Free Play")
+    free.add_argument("--special-all", action="store_true", help="run all ten games outside Free Play")
     parser.add_argument("--result-context", type=int, action="append", metavar="ID",
                         help="expected next overlay after a minigame exits (repeatable, default 84)")
     parser.add_argument("--list-scenarios", action="store_true")
@@ -116,7 +124,21 @@ def arguments():
             parser.error("--wine-prefix must contain system.reg and drive_c")
         if args.output.is_relative_to(args.wine_prefix):
             parser.error("place --output outside the source Wine prefix")
-    args.scenario = list(dict.fromkeys(args.scenario or DEFAULT_SCENARIOS))
+    if args.free_play_all:
+        args.free_play = list(ROUTES)
+    args.special_routes = {}
+    if args.special or args.special_all:
+        from netplay_special_games import SPECIAL_GAMES
+        selected = SPECIAL_GAMES.keys() if args.special_all else (
+            str(s).lower().removeprefix("m").removesuffix("dll") for s in args.special)
+        for value in selected:
+            if not str(value).isdecimal() or int(value) not in SPECIAL_GAMES:
+                parser.error(f"{value} is not one of the ten special games")
+            args.special_routes[f"m{int(value)}"] = SPECIAL_GAMES[int(value)]
+    if (args.free_play or args.special_routes) and (args.scenario or args.replay_dir or args.replay_input):
+        parser.error("generated routes use their own scenarios and inputs")
+    selected = [f"m{n}" for n in args.free_play] if args.free_play else args.special_routes or args.scenario
+    args.scenario = list(dict.fromkeys(selected or DEFAULT_SCENARIOS))
     if args.result_context and (min(args.result_context) < 0 or
                                any(scenario_definition(n).board is not None for n in args.scenario)):
         parser.error("--result-context requires a minigame scenario and a non-negative overlay ID")
@@ -127,7 +149,7 @@ def arguments():
             parser.error("--replay-dir contains no *.txt recordings")
         args.replay_input.extend(inputs)
     args.replay_input = list(dict.fromkeys(p.resolve() for p in args.replay_input))
-    if not args.replay_input and any(name not in SCENARIOS for name in args.scenario):
+    if not (args.free_play or args.special_routes or args.replay_input) and any(name not in SCENARIOS for name in args.scenario):
         parser.error("a module scenario requires --replay-input or --replay-dir")
     if args.replay_input and len(args.scenario) != 1:
         parser.error("supply exactly one --scenario when using recordings")
@@ -263,6 +285,8 @@ def launch(peer, host, port, scenario, replay, directory, worker, args, stack):
             "1" if peer == host else "4", "--disc-image", path(args.rom), "--lang=fr"]
     if args.fast:
         cmd += ["--netplay-fast-replay"]
+    if scenario.special is not None:
+        cmd += ["--netplay-special-game", str(scenario.special)]
     if args.trace_hashes:
         cmd += ["--netplay-record-hashes", path(directory / f"{peer}.hashes")]
     if replay:
@@ -325,6 +349,9 @@ class LiveEvidence:
         self.tails = {}
         self.fast = False
         self.failed = False
+        self.first_minigame = None
+        self.replay_exhausted = None
+        self.special = None
         self.progress = 0
         self.milestone = False
 
@@ -344,8 +371,20 @@ class LiveEvidence:
             for line in lines:
                 if b"[NET TEST] unthrottled full-game replay" in line:
                     self.fast = True
+                if b"[NET TEST] special_game armed module=" in line:
+                    match = re.search(rb"special_game armed module=(\d+)", line)
+                    if match:
+                        self.special = int(match[1])
                 if b"DESYNC frame=" in line or b"PROTOCOL frame=" in line:
                     self.failed = True
+                if suffix == "log" and self.first_minigame is None and b" prolog end" in line:
+                    match = re.search(rb"\bm(4\d\d)dll\.(?:so|dll) prolog end\b", line, re.I)
+                    if match:
+                        self.first_minigame = int(match[1])
+                if suffix == "log" and b"replay_exhausted_frame=" in line:
+                    match = re.search(rb"replay_exhausted_frame=(\d+)", line)
+                    if match:
+                        self.replay_exhausted = int(match[1])
                 if suffix == "native" and b"event=checkpoint " in line:
                     fields = dict(re.findall(rb"(\w+)=(-?\d+)\b", line))
                     self.progress = int(fields.get(b"hash_frame", 0))
@@ -358,20 +397,35 @@ class LiveEvidence:
                         self.milestone = True
 
 
+def free_play_failure(module, monitors):
+    loaded = {peer: monitor.first_minigame for peer, monitor in monitors.items()}
+    if all(n is not None for n in loaded.values()) and any(n != module for n in loaded.values()):
+        return {"reason": "wrong_minigame", "observed_modules": loaded}
+    exhausted = {peer: monitor.replay_exhausted for peer, monitor in monitors.items()}
+    if module not in loaded.values() and all(f is not None for f in exhausted.values()):
+        return {"reason": "replay_exhausted_before_minigame", "replay_exhausted_frames": exhausted}
+    return None
+
+
 def run_case(job, worker, args, ports, stop):
     case_id, name, replay = job
     scenario = scenario_definition(name)
+    results_contexts = args.result_context
+    if name in args.special_routes:
+        route = args.special_routes[name]
+        scenario = Scenario(route["walk"], scenario.overlay, True, special=int(name[1:]))
+        results_contexts = route["results"]
     directory = args.output / "cases" / case_id
     directory.mkdir()
     host = args.host or ("win" if scenario.windows_host else "linux")
     peer = "linux" if host == "win" else "win"
     port = ports.next()
     options = dict(overlay=scenario.overlay, board_id=scenario.board, context=scenario.context, min_turn=2,
-                   results_contexts=args.result_context)
+                   results_contexts=results_contexts, direct_return=scenario.special is not None)
     print(f"START {case_id} host={host}", flush=True)
     started = time.monotonic()
     deadline = started + args.max_seconds
-    monitors = {side: LiveEvidence(directory, side, scenario, args.result_context) for side in (host, peer)}
+    monitors = {side: LiveEvidence(directory, side, scenario, results_contexts) for side in (host, peer)}
     with ExitStack() as processes:
         players = {host: launch(host, host, port, scenario, replay, directory, worker, args, processes)}
         stop.wait(0.3)
@@ -382,9 +436,13 @@ def run_case(job, worker, args, ports, stop):
             for monitor in monitors.values():
                 monitor.poll()
             fast_seen = {side for side, m in monitors.items() if m.fast}
+            route_failure = free_play_failure(int(name[1:]), monitors) if args.free_play else None
             unconfirmed = args.fast and len(fast_seen) != 2 and all(m.progress >= 240 for m in monitors.values())
+            if (scenario.special is not None and all(m.progress >= 240 for m in monitors.values())
+                    and any(m.special != scenario.special for m in monitors.values())):
+                route_failure = {"reason": "special_route_unconfirmed"}
             final = expired or stop.is_set() or any(code is not None for code in codes.values())
-            if final or unconfirmed or any(m.failed for m in monitors.values()) or all(m.milestone for m in monitors.values()):
+            if final or unconfirmed or route_failure or any(m.failed for m in monitors.values()) or all(m.milestone for m in monitors.values()):
                 result = classify_case(directory, **options, timed_out=expired, exit_codes=codes)
                 if result["status"] == "DESYNC":
                     # The other peer may still be writing its independent field report.
@@ -393,6 +451,9 @@ def run_case(job, worker, args, ports, stop):
                         if stop.wait(0.1):
                             break
                     result = classify_case(directory, **options, timed_out=expired, exit_codes=codes)
+                    break
+                if route_failure and result["status"] not in {"CRASH", "DESYNC"} and not result["first_divergence"]:
+                    result.update(status="INCOMPLETE", **route_failure)
                     break
                 if unconfirmed and result["status"] != "CRASH" and not result["first_divergence"]:
                     result.update(status="INCOMPLETE", reason="fast_mode_unconfirmed")
@@ -474,7 +535,11 @@ def main():
     work = args.output / "workers"
     work.mkdir()
     jobs = queue.Queue()
+    free_inputs = generate_free_play(args.output / "free-play", dict.fromkeys(args.free_play)) if args.free_play else {}
     for name in args.scenario:
+        if free_inputs:
+            jobs.put((name, name, free_inputs[int(name[1:])]))
+            continue
         for n, replay in enumerate(args.replay_input or [None], 1):
             suffix = "" if replay is None else f"-{n:03d}-" + re.sub(r"[^a-zA-Z0-9_-]", "_", replay.stem)
             jobs.put((name + suffix, name, replay))

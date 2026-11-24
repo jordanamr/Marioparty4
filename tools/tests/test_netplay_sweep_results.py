@@ -46,6 +46,18 @@ class ResultsTest(unittest.TestCase):
         self.logs(log, checkpoint(120, 15) + checkpoint(240, 84))
         self.assertEqual(self.case()["status"], "INCOMPLETE")
 
+    def test_direct_return_requires_exit_and_a_new_checkpoint_in_destination(self):
+        params = {"results_contexts": (75,), "direct_return": True}
+        target = "Start New OVL 75\nNetplay: game context 75 at network frame 180.\n"
+        within_game = checkpoint(0, 75) + checkpoint(120, 15)
+        self.logs(ENTER + EXIT + target, within_game)
+        self.assertEqual(self.case(**params)["status"], "INCOMPLETE")
+        self.logs(ENTER + EXIT + target, within_game + checkpoint(240, 75))
+        self.assertEqual(self.case(**params)["reason"], "minigame_direct_return")
+        self.assertEqual(self.case(results_contexts=(75,))["status"], "INCOMPLETE")
+        (self.root / "win.log").write_text(ENTER + target)
+        self.assertEqual(self.case(**params)["status"], "INCOMPLETE")
+
     def test_crash_timeout_or_overlay_only(self):
         self.logs(ENTER, checkpoint(120, 15))
         self.assertEqual(self.case(timed_out=True)["status"], "TIMEOUT")

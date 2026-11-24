@@ -30,6 +30,8 @@ void PartyBoard_NetplayWalkMenu(int ready);
 int PartyBoard_HookTickGateEnabled(void);
 /* Test-only override of the party turn count, 0 when unset. */
 int PartyBoard_NetplayMaxTurnsOverride(void);
+int PartyBoard_NetplaySpecialGame(void);
+bool PartyBoard_NetplayTakeFortuneFixture(void);
 /* Companion-controlled start barrier, called only after game initialization. */
 bool PartyBoard_OnlineWaitForStart(void);
 bool PartyBoard_NetplayAllowsMultipleInstances(void);

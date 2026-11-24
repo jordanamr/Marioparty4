@@ -31,10 +31,7 @@ typedef struct {
     /* 0x00 */ s16 unk00;
     /* 0x02 */ s16 unk02;
     /* 0x04 */ s16 unk04;
-    /* 0x06 */ s16 unk06[8];
-    /* 0x16 */ s16 unk16;
-    /* 0x18 */ s16 unk18;
-    /* 0x1A */ s16 unk1A;
+    /* 0x06 */ s16 unk06[11];
     /* 0x1C */ s16 unk1C[4];
     /* 0x24 */ s16 unk24;
     /* 0x26 */ char unk26[2];
@@ -2060,10 +2057,10 @@ void fn_1_9AF0(void)
         }
         var_f28 = fn_1_21D4(atan2d(temp_r31->unk54 - temp_r29->unk54, temp_r31->unk5C - temp_r29->unk5C));
         if (ABS_INV(var_f28 - temp_r31->unk6C) > 90.0f && ABS_INV(var_f28 - temp_r31->unk6C) < 270.0f) {
-            CharMotionShiftSet(lbl_1_data_0[GWPlayerCfg[temp_r31->unk28].character], temp_r31->unk18, 0.0f, 5.0f, HU3D_MOTATTR_NONE);
+            CharMotionShiftSet(lbl_1_data_0[GWPlayerCfg[temp_r31->unk28].character], temp_r31->unk06[9], 0.0f, 5.0f, HU3D_MOTATTR_NONE);
         }
         else {
-            CharMotionShiftSet(lbl_1_data_0[GWPlayerCfg[temp_r31->unk28].character], temp_r31->unk1A, 0.0f, 5.0f, HU3D_MOTATTR_NONE);
+            CharMotionShiftSet(lbl_1_data_0[GWPlayerCfg[temp_r31->unk28].character], temp_r31->unk06[10], 0.0f, 5.0f, HU3D_MOTATTR_NONE);
         }
         sp44 = temp_r31->unk58;
         var_f19 = 0.0f;
@@ -2998,7 +2995,7 @@ void fn_1_10258(s32 arg0)
             HuAudFXStop(lbl_1_bss_594[i]);
         }
         HuAudSStreamPlay(1);
-        Hu3DMotionShiftSet(var_r30->unk00, var_r30->unk16, 0.0f, 5.0f, HU3D_MOTATTR_NONE);
+        Hu3DMotionShiftSet(var_r30->unk00, var_r30->unk06[8], 0.0f, 5.0f, HU3D_MOTATTR_NONE);
     }
     else {
         for (lbl_1_bss_5A4 = 0; lbl_1_bss_5A4 < 60; lbl_1_bss_5A4++) {

@@ -46,7 +46,7 @@ void fn_1_5AF4(UnkM410Struct2 *arg0, u8 arg1);
 void fn_1_5CA0(Vec arg0, Vec arg1, Vec arg2, Vec *arg3, Vec *arg4);
 void fn_1_61DC(UnkM410Struct2 *arg0, UnkM410Struct2 *arg1);
 void fn_1_6364(UnkM410Struct2 *arg0, UnkM410Struct2 *arg1);
-void fn_1_66B8(UnkM410Struct2 *arg0, UnkM410Struct2 *arg1);
+void fn_1_66B8(UnkM410Struct2 *arg0, omObjData *player);
 void fn_1_67D4(omObjData *object);
 void fn_1_6968(omObjData *object);
 void fn_1_6D84(omObjData *object);
@@ -397,8 +397,8 @@ void fn_1_3BE0(s16 arg0) // what happens with the argument?
                     sp1B0[var_r29].unk_0C_unk->unk_3C++;
                     break;
                 case 2:
-                    fn_1_66B8(sp1B0[var_r29].unk_08, sp1B0[var_r29].unk_0C_unk);
-                    sp1B0[var_r29].unk_08->unk_40 = sp1B0[var_r29].unk_0C_unk;
+                    fn_1_66B8(sp1B0[var_r29].unk_08, sp1B0[var_r29].unk_0C_obj);
+                    sp1B0[var_r29].unk_08->unk_40 = sp1B0[var_r29].unk_0C_obj;
                     sp1B0[var_r29].unk_08->unk_3C++;
                     break;
                 case 3:
@@ -881,12 +881,12 @@ void fn_1_6364(UnkM410Struct2 *arg0, UnkM410Struct2 *arg1)
     }
 }
 
-void fn_1_66B8(UnkM410Struct2 *arg0, UnkM410Struct2 *arg1) // TODO maybe UnkM410Struct3?
+void fn_1_66B8(UnkM410Struct2 *arg0, omObjData *player)
 {
     Vec spC;
     float var_f31;
 
-    VECSubtract(&arg0->unk_04, (Vec *)&arg1->unk_10.z, &spC);
+    VECSubtract(&arg0->unk_04, &player->trans, &spC);
     spC.y = 0.0f;
     VECNormalize(&spC, &spC);
     var_f31 = -arg0->unk_1C.x * spC.x - arg0->unk_1C.z * spC.z;

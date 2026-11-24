@@ -1,3 +1,4 @@
+#include "port/netplay_special_game.h"
 #include "port/netplay_runtime.h"
 
 #include "dolphin/os.h"
@@ -191,6 +192,8 @@ struct Runtime {
     // of it. Recorded in every result: a ten-turn game must never be read
     // later as a twenty-turn one.
     int maxTurnsOverride = 0;
+    int specialGame = 0;
+    bool fortuneFixtureUsed = false;
     // Test-only, see --netplay-inject-heap.
     int injectHeapFrame = 0;
     int injectHeapBlocks = 0;
@@ -2307,6 +2310,14 @@ extern "C" bool PartyBoard_NetplayConfigureFromArgs(int argc, char **argv)
             // Say it out loud: a run whose log does not carry this line was not
             // planned, whatever the campaign manifest claims it asked for.
             std::printf("[NET TEST] walk_plan armed mode=%d notches=%d\n", gRuntime.walkMode, gRuntime.walkNotches);
+        } else if (argument == "--netplay-special-game") {
+            if (++index >= argc) return false;
+            const std::string_view number(argv[index]);
+            int module = 0;
+            const auto result = std::from_chars(number.data(), number.data() + number.size(), module);
+            if (result.ec != std::errc{} || result.ptr != number.data() + number.size()
+                || (module != 444 && PartyBoard_ExtraRoomSlot(module) < 0)) return false;
+            gRuntime.specialGame = module;
         } else if (argument == "--netplay-record-input" && index + 1 < argc) {
             gRuntime.recordPath = argv[++index];
         } else if (argument == "--netplay-replay-input" && index + 1 < argc) {
@@ -2315,6 +2326,15 @@ extern "C" bool PartyBoard_NetplayConfigureFromArgs(int argc, char **argv)
             || argument == "--netplay-delay" || argument == "--netplay-pad" || argument == "--netplay-record-hashes") {
             argumentsValid = false;
         }
+    }
+    if (gRuntime.specialGame) {
+        if (!(host || join) || !loopbackOnly || !fullGame || !gRuntime.walkPlan || rollbackRequested
+            || gRuntime.walkMode != (gRuntime.specialGame == 444 ? 0 : 5)) {
+            std::fputs("Special-game fixtures require a local full-game walk on the matching menu.\n", stderr);
+            return false;
+        }
+        std::printf("[NET TEST] special_game armed module=%d\n", gRuntime.specialGame);
+        std::fflush(stdout);
     }
     if ((fastReplay || hashTracePath) && (!(host || join) || !loopbackOnly || !fullGame
         || rollbackRequested || (!gRuntime.walkPlan && gRuntime.replayPath.empty()))) {
@@ -2462,6 +2482,20 @@ extern "C" int PartyBoard_HookTickGateEnabled(void)
 }
 
 // Test-only. 0 means the game decides, as it normally does.
+extern "C" int PartyBoard_NetplaySpecialGame(void)
+{
+    const auto &runtime = partyboard::netplay::gRuntime;
+    return runtime.enabled ? runtime.specialGame : 0;
+}
+
+extern "C" bool PartyBoard_NetplayTakeFortuneFixture(void)
+{
+    auto &runtime = partyboard::netplay::gRuntime;
+    if (PartyBoard_NetplaySpecialGame() != 444 || runtime.fortuneFixtureUsed) return false;
+    runtime.fortuneFixtureUsed = true;
+    return true;
+}
+
 extern "C" int PartyBoard_NetplayMaxTurnsOverride(void)
 {
     return partyboard::netplay::gRuntime.maxTurnsOverride;
@@ -2725,7 +2759,13 @@ extern "C" bool PartyBoard_NetplayTick(void)
                 // The minigame mode is a vertical list, not a horizontal one.
                 const bool minigameList = runtime.walkPlan
                     && context == static_cast<int>(MenuProbeOverlay::mgmodedll);
-                if (modeSelect) {
+                if (runtime.specialGame && (context == static_cast<int>(MenuProbeOverlay::mpexDll)
+                    || context == static_cast<int>(MenuProbeOverlay::ztardll)
+                    || context == static_cast<int>(MenuProbeOverlay::subchrselDll))) {
+                    if (beat % 24 < 2) {
+                        runtime.pendingLocal.buttons = (beat / 24) % 3 == 2 ? PAD_BUTTON_START : PAD_BUTTON_A;
+                    }
+                } else if (modeSelect) {
                     // The mode list. Its cursor starts on Party, and a single
                     // horizontal pulse moves it; the free beat delivers one
                     // every 240 frames, so which mode is chosen depends only on

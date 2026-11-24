@@ -15,9 +15,7 @@ typedef struct M453ScoreUnkStruct {
     s32 unk_04;
     s16 unk_08;
     s16 unk_0A;
-    s16 unk_0C[4];
-    s16 unk_14;
-    s16 unk_16;
+    s16 unk_0C[6];
     s32 unk_18;
     float unk_1C;
 } M453ScoreUnkStruct; /* size = 0x20 */
@@ -46,12 +44,12 @@ void fn_1_8F48(Process *arg0, s16 arg1)
     var_r31 = lbl_1_bss_C0->data;
     var_r31->unk_08 = arg1;
     var_r31->unk_0A = 0;
-    var_r31->unk_14 = espEntry(0x530000, 2, 0);
-    espTPLvlSet(var_r31->unk_14, 0.5f);
-    espPosSet(var_r31->unk_14, 520.0f, 64.0f);
-    espColorSet(var_r31->unk_14, 0, 0, 0);
-    var_r31->unk_16 = espEntry(0x610037, 1, 0);
-    espPosSet(var_r31->unk_16, 501.0f, 55.0f);
+    var_r31->unk_0C[4] = espEntry(0x530000, 2, 0);
+    espTPLvlSet(var_r31->unk_0C[4], 0.5f);
+    espPosSet(var_r31->unk_0C[4], 520.0f, 64.0f);
+    espColorSet(var_r31->unk_0C[4], 0, 0, 0);
+    var_r31->unk_0C[5] = espEntry(0x610037, 1, 0);
+    espPosSet(var_r31->unk_0C[5], 501.0f, 55.0f);
     for (var_r30 = 0; var_r30 < 2; var_r30++) {
         var_r31->unk_0C[var_r30] = espEntry(0x610030, 0, 0);
         espPosSet(var_r31->unk_0C[var_r30], (var_r30 * 0x12) + 0x20A, 56.0f);
@@ -74,7 +72,7 @@ void fn_1_91D8(void)
     s32 var_r31;
     M453ScoreUnkStruct *var_r30 = lbl_1_bss_C0->data;
 
-    for (var_r31 = 0; var_r31 < 7; var_r31++) {
+    for (var_r31 = 0; var_r31 < 6; var_r31++) {
         espKill(var_r30->unk_0C[var_r31]);
     }
     HuMemDirectFree(lbl_1_bss_C0->data);
@@ -177,5 +175,5 @@ void fn_1_9510(void)
     for (var_r30 = 0; var_r30 <= 1; var_r30++) {
         espScaleSet(var_r31->unk_0C[var_r30], var_r31->unk_1C, var_r31->unk_1C);
     }
-    espScaleSet(var_r31->unk_16, var_r31->unk_1C, var_r31->unk_1C);
+    espScaleSet(var_r31->unk_0C[5], var_r31->unk_1C, var_r31->unk_1C);
 }

@@ -21,7 +21,7 @@ def _read(path):
     return path.read_text(encoding="utf-8", errors="replace") if path.is_file() else ""
 
 
-def _route(log, module, results_contexts):
+def _route(log, module, results_contexts, direct_return=False):
     loaded = re.compile(rf"\b{re.escape(module)}\.(?:so|dll) prolog end\b", re.I)
     unloaded = re.compile(rf"(?:End|Unlink) DLL:\s*{re.escape(module)}\.(?:so|dll)\b", re.I)
     route = {"entered": False, "context": None, "exited": False, "result_overlay": None,
@@ -43,7 +43,8 @@ def _route(log, module, results_contexts):
             route["exited"] = True
             exited = True
         tick = CONTEXT.search(line)
-        if (tick and route["result_overlay"] is not None and current not in results_contexts
+        at_destination = current == route["result_overlay"] if direct_return else current not in results_contexts
+        if (tick and route["result_overlay"] is not None and at_destination
                 and int(tick[1]) == current and current >= 0):
             route["after_result_frame"] = int(tick[2])
             route["after_result_context"] = int(tick[1])
@@ -63,7 +64,7 @@ def _validated_report_pairs(reports, peers, frame):
 
 
 def classify_case(run_dir, *, overlay, peers=("linux", "win"), timed_out=False, exit_codes=None,
-                  board_id=None, min_turn=2, context=None, results_contexts=(84,)):
+                  board_id=None, min_turn=2, context=None, results_contexts=(84,), direct_return=False):
     """Compare two peers. A board PASS covers min_turn, a minigame PASS covers results."""
     directory = Path(run_dir).resolve()
     peers = tuple(peers)
@@ -82,7 +83,7 @@ def classify_case(run_dir, *, overlay, peers=("linux", "win"), timed_out=False, 
         native = directory / f"{peer}.native"
         sidecar = directory / f"{peer}.native.desync"
         evidence[peer] = [p.name for p in (path, native, sidecar) if p.is_file()]
-        routes[peer] = _route(log, module, results_contexts)
+        routes[peer] = _route(log, module, results_contexts, direct_return)
         checkpoints[peer] = {}
         for line in (_read(native) + "\n" + _read(sidecar) + "\n" + log).splitlines():
             if "event=checkpoint " in line:
@@ -131,6 +132,8 @@ def classify_case(run_dir, *, overlay, peers=("linux", "win"), timed_out=False, 
               "last_matching_hash": left[last]["state_hash"] if last is not None else None,
               "last_equal_frame": last, "first_divergence": None, "evidence": evidence,
               "exit_codes": exit_codes or {}, "timed_out": timed_out, "unreadable_reports": unreadable_reports}
+    if direct_return:
+        result["milestone"] = "minigame_direct_return"
 
     if first is not None:
         observations = [(kind, p, data) for f, kind, p, data in failures if f == first]
