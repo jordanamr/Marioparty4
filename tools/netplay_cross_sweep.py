@@ -251,7 +251,7 @@ class PortPool:
                     return port
 
 
-def launch(peer, host, port, scenario, replay, directory, worker, args, stack):
+def launch(peer, host, port, scenario, replay, directory, worker, args, stack, startup_retry=False):
     prefix, displays = worker
     linux = peer == "linux"
     profile = directory / ("linux/MarioPartyRD/Party Board" if linux else "win-profile")
@@ -268,6 +268,11 @@ def launch(peer, host, port, scenario, replay, directory, worker, args, stack):
                SDL_AUDIODRIVER="dummy", PARTYBOARD_NET_DIAGNOSTIC=path(directory / f"{peer}.native"),
                PARTYBOARD_NETPLAY_TEST_PROFILE=path(profile), PARTYBOARD_CRASH_DIR=path(profile))
     if linux:
+        if startup_retry:
+            # A new display and shader cache isolate a failed graphics startup.
+            xvfb_log = stack.enter_context((directory / "linux-xvfb.log").open("wb"))
+            env.update(DISPLAY=stack.enter_context(display(xvfb_log, "640x480" if args.fast else "1260x540")),
+                       XDG_CACHE_HOME=str(directory / "cache"))
         cwd = args.linux_dir
         env.update(SDL_VIDEODRIVER="x11", LD_LIBRARY_PATH=os.pathsep.join(
             str(p) for p in (cwd, cwd.parent / "lib")) + (os.pathsep + os.environ["LD_LIBRARY_PATH"]
@@ -407,7 +412,14 @@ def free_play_failure(module, monitors):
     return None
 
 
-def run_case(job, worker, args, ports, stop):
+def linux_startup_stalled(directory):
+    linux_log = directory / "linux.log"
+    win_native = directory / "win.native"
+    return (linux_log.is_file() and linux_log.stat().st_size == 0 and not (directory / "linux.native").exists()
+            and win_native.is_file() and win_native.stat().st_size > 0)
+
+
+def run_case(job, worker, args, ports, stop, deadline, startup_retry=False):
     case_id, name, replay = job
     scenario = scenario_definition(name)
     results_contexts = args.result_context
@@ -416,6 +428,8 @@ def run_case(job, worker, args, ports, stop):
         scenario = Scenario(route["walk"], scenario.overlay, True, special=int(name[1:]))
         results_contexts = route["results"]
     directory = args.output / "cases" / case_id
+    if startup_retry:
+        directory = directory / "startup-retry"
     directory.mkdir()
     host = args.host or ("win" if scenario.windows_host else "linux")
     peer = "linux" if host == "win" else "win"
@@ -424,12 +438,11 @@ def run_case(job, worker, args, ports, stop):
                    results_contexts=results_contexts, direct_return=scenario.special is not None)
     print(f"START {case_id} host={host}", flush=True)
     started = time.monotonic()
-    deadline = started + args.max_seconds
     monitors = {side: LiveEvidence(directory, side, scenario, results_contexts) for side in (host, peer)}
     with ExitStack() as processes:
-        players = {host: launch(host, host, port, scenario, replay, directory, worker, args, processes)}
+        players = {host: launch(host, host, port, scenario, replay, directory, worker, args, processes, startup_retry)}
         stop.wait(0.3)
-        players[peer] = launch(peer, host, port, scenario, replay, directory, worker, args, processes)
+        players[peer] = launch(peer, host, port, scenario, replay, directory, worker, args, processes, startup_retry)
         while True:
             codes = {side: p.poll() for side, p in players.items()}
             expired = time.monotonic() >= deadline
@@ -437,6 +450,9 @@ def run_case(job, worker, args, ports, stop):
                 monitor.poll()
             fast_seen = {side for side, m in monitors.items() if m.fast}
             route_failure = free_play_failure(int(name[1:]), monitors) if args.free_play else None
+            if (time.monotonic() - started >= 45 and not stop.is_set()
+                    and all(code is None for code in codes.values()) and linux_startup_stalled(directory)):
+                route_failure = {"reason": "linux_startup_stalled"}
             unconfirmed = args.fast and len(fast_seen) != 2 and all(m.progress >= 240 for m in monitors.values())
             if (scenario.special is not None and all(m.progress >= 240 for m in monitors.values())
                     and any(m.special != scenario.special for m in monitors.values())):
@@ -554,7 +570,18 @@ def main():
                 except queue.Empty:
                     return
                 try:
-                    result = run_case(job, env, args, ports, stop)
+                    started = time.monotonic()
+                    deadline = started + args.max_seconds
+                    result = run_case(job, env, args, ports, stop, deadline)
+                    if (result.get("reason") == "linux_startup_stalled" and not stop.is_set()
+                            and time.monotonic() < deadline):
+                        first = result
+                        print(f"RETRY {job[0]} (Linux startup stalled)", flush=True)
+                        result = run_case(job, env, args, ports, stop, deadline, startup_retry=True)
+                        result["first_attempt"] = str(Path(first["run_dir"]) / "case.json")
+                        result["total_elapsed_seconds"] = round(time.monotonic() - started, 3)
+                        case_file = Path(result["run_dir"]) / "case.json"
+                        case_file.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
                 except (OSError, RuntimeError, subprocess.SubprocessError) as e:
                     result = {"id": job[0], "status": "CRASH", "error": str(e), "scenario": job[1],
                               "directory": str(args.output / "cases" / job[0])}

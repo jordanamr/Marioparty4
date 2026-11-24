@@ -5,7 +5,7 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from netplay_cross_sweep import LiveEvidence, SCENARIOS, finalize_recording, free_play_failure, scenario_definition, scenario_name, verify_hash_traces
+from netplay_cross_sweep import LiveEvidence, SCENARIOS, finalize_recording, free_play_failure, linux_startup_stalled, scenario_definition, scenario_name, verify_hash_traces
 
 
 class CampaignEvidenceTest(unittest.TestCase):
@@ -67,6 +67,17 @@ class CampaignEvidenceTest(unittest.TestCase):
             stream.write(b"Start New OVL 90\n")
         monitor.poll()
         self.assertTrue(monitor.milestone)
+
+    def test_linux_startup_stall_requires_an_active_windows_peer(self):
+        (self.directory / "linux.log").touch()
+        self.assertFalse(linux_startup_stalled(self.directory))
+        (self.directory / "win.native").write_text("event=started\n")
+        self.assertTrue(linux_startup_stalled(self.directory))
+        (self.directory / "linux.native").touch()
+        self.assertFalse(linux_startup_stalled(self.directory))
+        (self.directory / "linux.native").unlink()
+        (self.directory / "linux.log").write_text("starting\n")
+        self.assertFalse(linux_startup_stalled(self.directory))
 
     def test_generated_route_waits_for_both_peers_before_reporting_wrong_game(self):
         scenario = scenario_definition("m403")
