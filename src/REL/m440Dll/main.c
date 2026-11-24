@@ -16,6 +16,21 @@
 #include "string.h"
 #include "version.h"
 
+#ifdef TARGET_PC
+s16 HuSysVWaitGet(s16 old);
+#endif
+
+static BOOL M440EffectsAdvance(void)
+{
+#ifdef TARGET_PC
+    /* Debris fading drives the end of the explosion in fn_1_33D4. */
+    if (HuSysVWaitGet(0) == 0) {
+        return FALSE;
+    }
+#endif
+    return !omPauseChk();
+}
+
 #undef REFRESH_RATE_F
 #if VERSION_NTSC
 #define REFRESH_RATE_F 60.0f
@@ -1871,7 +1886,7 @@ void fn_1_806C(HU3DMODEL *arg0, Mtx arg1)
     m440Func14 temp_r27;
 
     temp_r31 = (unkStruct14 *)arg0->hookData;
-    if (((u8)omPauseChk() == 0) && (temp_r31->unk38)) {
+    if (M440EffectsAdvance() && temp_r31->unk38) {
         temp_r27 = temp_r31->unk38;
         temp_r27(temp_r31);
     }
@@ -2477,7 +2492,7 @@ void fn_1_9C04(HU3DMODEL *arg0, Mtx arg1)
     GXSETARRAY(GX_VA_TEX0, temp_r30->unk20, temp_r30->unk0 * sizeof(Vec2f) * 4, sizeof(Vec2f), TRUE);
     fn_1_9344(arg1, sp128);
     MTXReorder(sp128, spF8);
-    if (((u8)omPauseChk() == 0) && (temp_r30->unkC)) {
+    if (M440EffectsAdvance() && temp_r30->unkC) {
         var_r23 = temp_r30->unkC;
         var_r23(arg0, temp_r30, arg1);
     }

@@ -9,6 +9,9 @@
 #include "ext_math.h"
 
 SHARED_SYM extern u8 texMtxTbl[];
+#ifdef TARGET_PC
+s16 HuSysVWaitGet(s16 old);
+#endif
 
 // PROTO
 void fn_1_E790(M438UnkStruct2 *);
@@ -292,6 +295,12 @@ void fn_1_F538(HU3DMODEL *arg0, Mtx arg1)
     Mtx sp8;
     M438UnkStruct2 *var_r31;
     s32 var_r30;
+    BOOL advance = !omPauseChk();
+#ifdef TARGET_PC
+    /* A network wait can draw the same game frame again. The callbacks below
+     * update model transforms, particle timers and the shared random stream. */
+    advance = advance && HuSysVWaitGet(0) != 0;
+#endif
 
     var_r31 = lbl_1_bss_DE4.unk_40;
     GXLoadPosMtxImm(arg1, 0);
@@ -302,7 +311,7 @@ void fn_1_F538(HU3DMODEL *arg0, Mtx arg1)
 
     for (var_r30 = 0; var_r30 < lbl_1_bss_DE4.unk_30; var_r30++, var_r31++) {
         if ((var_r31->unk_08 != 0) && ((var_r31->unk_08 & 2) != 0) && ((var_r31->unk_08 & 4) == 0)) {
-            if ((u8)omPauseChk() == 0) {
+            if (advance) {
                 if (var_r31->unk_30) {
                     var_r31->unk_30(var_r31);
                 }

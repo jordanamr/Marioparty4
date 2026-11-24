@@ -113,7 +113,7 @@ Vec lbl_1_data_30C = { 0.0f, 0.0f, 0.0f };
 
 // PROTO
 void fn_1_88E8(u8, f32, f32, f32);
-void fn_1_8924(u8, s32);
+void fn_1_8924(u8, u8);
 u8 fn_1_8950(u8);
 u8 fn_1_897C(u8);
 u8 fn_1_89A8(u8);
