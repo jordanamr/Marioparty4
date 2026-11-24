@@ -54,7 +54,7 @@ python3 tools/netplay_cross_sweep.py \
   --replay-input /chemin/Rejeu-Koopa-PAL.txt
 ```
 
-Le mode `--fast` supprime l’attente de présentation, désactive la synchronisation verticale et utilise une petite surface. Il exécute chaque pas du jeu avec ses rappels de dessin, sa logique de plateau et ses contrôles réseau. Le jeu doit confirmer ce mode des deux côtés. Pour tester les différences de réglages graphiques, omettre `--fast` et utiliser le profil panoramique et le profil 4:3 de la campagne. Plusieurs options `--scenario` avec `--jobs 2` lancent deux paires en parallèle. Le débit dépend du parcours, du pilote et de la contention GPU.
+Le mode `--fast` supprime l’attente de présentation, désactive la synchronisation verticale et utilise une petite surface. Il exécute chaque pas du jeu avec ses rappels de dessin, sa logique de plateau et ses contrôles réseau. Le jeu doit confirmer ce mode des deux côtés. Ajouter `--mixed-graphics` à `--fast` pour garder Linux en ultralarge à l’échelle 1× et Windows en 4:3 à l’échelle 3×. Plusieurs options `--scenario` avec `--jobs 2` lancent deux paires en parallèle. Le débit dépend du parcours, du pilote et de la contention GPU.
 
 Le fichier `manifest.json` indique si chaque paire a atteint le tour demandé ou l’écran suivant les résultats. En cas de désaccord, les journaux des deux processus conservent la première trame divergente et, quand les rapports détaillés sont présents, le premier champ en désaccord. Pour comparer la cadence normale et la cadence accélérée sur les mêmes entrées, activer `--trace-hashes` dans les deux campagnes, puis comparer les traces jusqu’à la dernière trame exigée, incluse.
 
@@ -74,4 +74,20 @@ python3 tools/generate_input.py variants inputs.txt --window 10560:10800 \
   --seed 19 --seat 0 --hold 6 --count 2 -o essais/variantes
 ```
 
-Les 25 régressions ciblées sont également exécutables sans ROM, fenêtre ni GPU avec `tools/test_minigame_determinism.py`. L’option `--jobs 8` parallélise les compilations et les essais. Ce niveau explore systématiquement les données des fonctions isolées, comme les 40 000 répartitions de passagers et d’occupants du train de Boo. Les replays complets permettent de vérifier ensuite les interactions entre ces fonctions.
+Les régressions ciblées sont également exécutables sans ROM, fenêtre ni GPU avec `tools/test_minigame_determinism.py`. L’option `--jobs 8` parallélise les compilations et les essais. Ce niveau explore systématiquement les données des fonctions isolées, comme les 40 000 répartitions de passagers et d’occupants du train de Boo. Les replays complets permettent de vérifier ensuite les interactions entre ces fonctions.
+
+## Rejouer le catalogue
+
+Avec les mêmes arguments de paquets, de ROM et de préfixe Wine que ci-dessus, donner à chaque campagne son propre répertoire `--output`.
+
+| Parcours | Options du pilote |
+| --- | --- |
+| Les 51 mini-jeux du jeu libre, depuis le menu en français | `--free-play-all --fast --trace-hashes` |
+| Les dix autres jeux, dont les extras et les événements | `--special-all --fast --trace-hashes` |
+| Boo jusqu’au quatrième tour, Windows hôte, réglages vidéo différents | `--scenario boo --windows-host --board-turn 4 --fast --mixed-graphics --trace-hashes` |
+
+Les jeux libres utilisent les commandes des deux manettes pour rejoindre la partie depuis le titre. Les jeux spéciaux utilisent les points d’entrée de test prévus pour leurs événements. Pour un plateau, `board_turn_checkpoints` dans `case.json` indique l’image où les deux machines ont confirmé chaque tour. Un essai arrêté au quatrième tour ne couvre que les événements rencontrés sur sa bande.
+
+Pour travailler sur la sélection des personnages, générer les trois bandes avec `python3 tools/netplay_character_select.py --output essais/bandes`. Ajouter `--scenario toad --board-turn 1 --replay-dir essais/bandes` au pilote. L’arrivée sur le plateau confirme que les deux joueurs ont franchi la validation des personnages et des bots. Les options `--windows-host` et `--linux-host` permettent de rejouer les mêmes gestes dans les deux sens.
+
+Le pilote partage un budget GPU entre les campagnes du même utilisateur. Une paire en mode accéléré compact occupe une place, une paire avec les deux profils graphiques en occupe deux. Ajuster `PARTYBOARD_QA_GPU_SLOTS` à la mémoire vidéo disponible en conservant la même valeur pour les campagnes simultanées. `--jobs` limite le nombre de paires dans une seule campagne.
