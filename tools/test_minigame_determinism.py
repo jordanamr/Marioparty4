@@ -29,6 +29,7 @@ def main():
     build = args.build.resolve()
     root = Path(__file__).resolve().parents[1]
     test_cases = [
+        ("mentDll", "main.c", "party_character_cursor_test.c"),
         ("m403Dll", "main.c", "minigame_camera_path_test.c"),
         ("m406Dll", "player.c", "minigame_avalanche_collision_test.c"),
         ("m407dll", "camera.c", "minigame_domination_camera_test.c"),

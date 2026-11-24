@@ -862,6 +862,20 @@ void fn_1_8B40(s32 arg0)
     fn_1_2055C(arg0);
 }
 
+#ifdef TARGET_PC
+static void MentTraceSelection(const char *action, int seat, int from, int to)
+{
+    if (PartyBoard_NetplayEnabled()) {
+        char event[112];
+        snprintf(event, sizeof(event), "character_select action=%s seat=%d from=%d to=%d",
+            action, seat, from, to);
+        PartyBoard_NetplayTrace(event);
+    }
+}
+#else
+#define MentTraceSelection(action, seat, from, to) ((void)0)
+#endif
+
 s32 fn_1_8B68(void)
 {
     s32 var_r31;
@@ -891,6 +905,7 @@ s32 fn_1_8B68(void)
         fn_1_2154(0x1A0021);
         fn_1_208F4();
         lbl_1_bss_35BC[0].unk_04 = (MentDllUnkFunc)fn_1_1FF4C;
+        MentTraceSelection("count_ready", 0, -1, -1);
         var_r25 = 0x63;
         var_r23 = 0;
         while (1) {
@@ -1016,6 +1031,7 @@ s32 fn_1_8FB8(void)
             lbl_1_bss_3114[var_r31].unk_04 = (MentDllUnkFunc)fn_1_15CB4;
         }
     }
+    MentTraceSelection("human_ready", -1, -1, -1);
     while (1) {
         fn_1_4D8();
         for (var_r31 = 0; var_r31 < 4; var_r31++) {
@@ -1024,6 +1040,7 @@ s32 fn_1_8FB8(void)
             }
         }
         if ((lbl_1_bss_3114[0].unk_70[0] == 0) && (HuPadBtnDown[lbl_1_bss_3114->unk_6C] & PAD_BUTTON_B)) {
+            MentTraceSelection("human_back", 0, -1, -1);
             HuAudFXPlay(3);
             var_r30 = 0;
             break;
@@ -1109,6 +1126,7 @@ s32 fn_1_92CC(void)
         for (var_r31 = 0; var_r31 < 4; var_r31++) {
             if ((lbl_1_bss_3114[var_r31].unk_60 != 0) && (lbl_1_bss_3114[var_r31].unk_70[0] == 0)) {
                 var_r30 = var_r31;
+                MentTraceSelection("cpu_ready", var_r30, -1, -1);
                 lbl_1_bss_3114[var_r31].unk_70[1] = var_r26;
                 fn_1_173FC(&lbl_1_bss_3114[var_r31]);
                 lbl_1_bss_3114[var_r31].unk_04 = (MentDllUnkFunc)fn_1_16B68;
@@ -1123,6 +1141,7 @@ s32 fn_1_92CC(void)
             }
             if ((HuPadBtnDown[lbl_1_bss_3114->unk_6C] & PAD_BUTTON_B) && (lbl_1_bss_3114[var_r30].unk_70[0] == 0)) {
                 HuAudFXPlay(3);
+                MentTraceSelection("cpu_back", var_r30, var_r30, var_r26);
                 if (var_r26 == -1) {
                     var_r29 = 0;
                 }
@@ -1141,6 +1160,8 @@ s32 fn_1_92CC(void)
                 fn_1_1968(var_r27, 0x1A0022, -1, -0x3E7);
                 fn_1_2154(0x1A0023);
                 var_r29 = fn_1_1648C(&lbl_1_bss_3114[var_r30]);
+                MentTraceSelection(var_r29 == 1 ? "difficulty_confirm" : "difficulty_back",
+                    var_r30, -1, lbl_1_bss_3114[var_r30].unk_64);
                 if (var_r29 == 1) {
                     lbl_1_bss_3114[var_r30].unk_70[2] = 1;
                     var_r29 = 4;
@@ -4046,6 +4067,7 @@ void fn_1_15CB4(omObjData *arg0, MentDllUnkBss3114Struct *arg1)
     var_r23 = var_r29;
     if (arg1->unk_70[0] == 0) {
         if ((HuPadBtnDown[arg1->unk_6C] & PAD_BUTTON_A) != 0) {
+            MentTraceSelection("human_confirm", arg1->unk_58, arg1->unk_68, arg1->unk_68);
             arg1->unk_70[0] = 1;
             HuSprBankSet(var_r25, arg1->unk_68, 1);
             HuSprBankSet(var_r25, arg1->unk_58 + 0x10, 1);
@@ -4084,6 +4106,7 @@ void fn_1_15CB4(omObjData *arg0, MentDllUnkBss3114Struct *arg1)
         }
     }
     else if ((HuPadBtnDown[arg1->unk_6C] & PAD_BUTTON_B) != 0) {
+        MentTraceSelection("human_unlock", arg1->unk_58, arg1->unk_68, arg1->unk_68);
         arg1->unk_70[0] = 0;
         HuSprBankSet(var_r25, arg1->unk_68, 0);
         HuSprBankSet(var_r25, arg1->unk_58 + 0x10, 0);
@@ -4095,6 +4118,7 @@ void fn_1_15CB4(omObjData *arg0, MentDllUnkBss3114Struct *arg1)
             for (var_r28 = 0; var_r28 < 4; var_r28++) {
                 if ((var_r28 != arg1->unk_58) && (lbl_1_bss_3114[var_r28].unk_60 == 0)
                     && ((var_r30 + (var_r29 * 4)) == lbl_1_bss_3114[var_r28].unk_68)) {
+                    MentTraceSelection("occupied", arg1->unk_58, arg1->unk_68, var_r30 + var_r29 * 4);
                     if ((var_r27 == 0) || (var_r26 == 0)) {
                         if (((var_r30 + var_r27) > 3) || ((var_r30 + var_r27) < 0)) {
                             var_r30 = var_r24;
@@ -4124,6 +4148,7 @@ void fn_1_15CB4(omObjData *arg0, MentDllUnkBss3114Struct *arg1)
             }
         } while (var_r28 != 4);
         if (arg1->unk_68 != (var_r30 + (var_r29 * 4))) {
+            MentTraceSelection("human_move", arg1->unk_58, arg1->unk_68, var_r30 + var_r29 * 4);
             arg1->unk_68 = var_r30 + (var_r29 * 4);
             HuAudFXPlay(0);
             for (var_r28 = 0; var_r28 <= 0xA; var_r28++) {
@@ -4257,6 +4282,7 @@ void fn_1_16B68(omObjData *arg0, MentDllUnkBss3114Struct *arg1)
     var_r22 = var_r29;
     if (arg1->unk_70[0] == 0) {
         if ((HuPadBtnDown[lbl_1_bss_3114->unk_6C] & PAD_BUTTON_A) != 0) {
+            MentTraceSelection("cpu_confirm", arg1->unk_58, arg1->unk_68, arg1->unk_68);
             arg1->unk_70[0] = 1;
             HuSprBankSet(var_r27, arg1->unk_68, 1);
             HuSprBankSet(var_r27, arg1->unk_58 + 0x18, 1);
@@ -4338,6 +4364,7 @@ void fn_1_16B68(omObjData *arg0, MentDllUnkBss3114Struct *arg1)
             }
         } while (var_r28 != 4);
         if (arg1->unk_68 != (var_r30 + (var_r29 * 4))) {
+            MentTraceSelection("cpu_move", arg1->unk_58, arg1->unk_68, var_r30 + var_r29 * 4);
             arg1->unk_68 = var_r30 + (var_r29 * 4);
             HuAudFXPlay(0);
             for (var_r28 = 0; var_r28 <= 0xA; var_r28++) {
