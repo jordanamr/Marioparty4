@@ -88,7 +88,20 @@ static class Tests {
         readonly HashSet<string> permitted=new HashSet<string>();readonly Dictionary<int,IPEndPoint> channels=new Dictionary<int,IPEndPoint>();
         IPEndPoint client;volatile bool closed;public int Unsigned,ChannelDataSeen,IndicationsSeen;
         public IPEndPoint Endpoint {get{return (IPEndPoint)Control.Client.LocalEndPoint;}}
-        public MockTurn(){new Thread(ServeControl){IsBackground=true}.Start();new Thread(ServeRelay){IsBackground=true}.Start();}
+        public volatile Func<IPEndPoint,int,bool> RefuseBind;
+        public int DropNextBindNumber=-1;
+        public volatile Func<IPAddress,bool> RefusePermission;
+        public int BoundNumber(IPEndPoint peer) {
+            lock(channels)foreach(var entry in channels)if(entry.Value.Equals(peer))return entry.Key;
+            return -1;
+        }
+        public void ExpireChannel(int number){lock(channels)channels.Remove(number);}
+        public MockTurn(){new Thread(()=>Run(ServeControl)){IsBackground=true}.Start();new Thread(()=>Run(ServeRelay)){IsBackground=true}.Start();}
+        void Run(Action serve) {
+            try{serve();}
+            catch(ObjectDisposedException) when(closed){}
+            catch(SocketException) when(closed){}
+        }
         void Reply(Stun.Message request,ushort cls,Action<Stun.Message> fill,bool sign,IPEndPoint to=null) {
             var r=new Stun.Message{Type=Stun.TypeOf(request.Method,cls)};Buffer.BlockCopy(request.Transaction,0,r.Transaction,0,12);fill(r);
             var b=Stun.Encode(r,sign?key:null,true);Control.Send(b,b.Length,to??client);
@@ -118,8 +131,20 @@ static class Tests {
                 }
                 if(!Stun.Verify(m,key)){Reply(m,Stun.Error,r=>r.Add(Stun.ErrorCode,new byte[]{0,0,4,1}).Add(Stun.Realm,Encoding.UTF8.GetBytes("mock.realm")).Add(Stun.Nonce,nonce),false);continue;}
                 if(m.Method==Stun.Allocate)Reply(m,Stun.Success,r=>r.Add(Stun.XorRelayedAddress,Stun.XorAddress((IPEndPoint)Relayed.Client.LocalEndPoint)).Add(Stun.XorMappedAddress,Stun.XorAddress(client)).Add(Stun.Lifetime,Stun.U32(600)),true);
-                else if(m.Method==Stun.CreatePermission){var peer=Stun.ReadXorAddress(m.Get(Stun.XorPeerAddress));lock(permitted)permitted.Add(peer.Address.ToString());Reply(m,Stun.Success,r=>{},true);}
-                else if(m.Method==Stun.ChannelBind){var c=m.Get(Stun.ChannelNumber);var peer=Stun.ReadXorAddress(m.Get(Stun.XorPeerAddress));lock(channels)channels[c[0]<<8|c[1]]=peer;Reply(m,Stun.Success,r=>{},true);}
+                else if(m.Method==Stun.CreatePermission) {
+                    var peer=Stun.ReadXorAddress(m.Get(Stun.XorPeerAddress));
+                    if(RefusePermission!=null && RefusePermission(peer.Address)) {Reply(m,Stun.Error,r=>r.Add(Stun.ErrorCode,new byte[]{0,0,5,0}),true);continue;}
+                    lock(permitted)permitted.Add(peer.Address.ToString());
+                    Reply(m,Stun.Success,r=>{},true);
+                }
+                else if(m.Method==Stun.ChannelBind) {
+                    var c=m.Get(Stun.ChannelNumber);int ch=c[0]<<8|c[1];
+                    var peer=Stun.ReadXorAddress(m.Get(Stun.XorPeerAddress));
+                    if(Interlocked.CompareExchange(ref DropNextBindNumber,-1,ch)==ch)continue;
+                    if(RefuseBind!=null && RefuseBind(peer,ch)) {Reply(m,Stun.Error,r=>r.Add(Stun.ErrorCode,new byte[]{0,0,5,0}),true);continue;}
+                    lock(channels)channels[ch]=peer;
+                    Reply(m,Stun.Success,r=>{},true);
+                }
                 else Reply(m,Stun.Success,r=>{},true);
             }
         }
@@ -164,6 +189,62 @@ static class Tests {
             Check(server.ChannelDataSeen>=1,"later replies use the bound channel");
             guest.Send(hello,hello.Length,turn.Relayed);got=TakeTurn(turn,out from);
             Check(got!=null && Encoding.ASCII.GetString(got)=="hello host","a channel-bound guest datagram arrives as ChannelData");
+        }
+    }
+    static void TurnRenewal() {
+        using(var server=new MockTurn())
+        using(var turn=new TurnClient(server.Endpoint,"alice","secret"))
+        using(var first=new UdpClient(new IPEndPoint(IPAddress.Loopback,0)))
+        using(var second=new UdpClient(new IPEndPoint(IPAddress.Loopback,0))) {
+            turn.Allocate();
+            turn.Permit(IPAddress.Loopback);
+            var otherAddress=IPAddress.Parse("127.0.0.2");
+            turn.Permit(otherAddress);
+            var a=(IPEndPoint)first.Client.LocalEndPoint;
+            var b=(IPEndPoint)second.Client.LocalEndPoint;
+            byte[] data={42};
+            first.Client.ReceiveTimeout=second.Client.ReceiveTimeout=3000;
+            Action<UdpClient,IPEndPoint> deliver=(guest,peer)=>{
+                turn.Send(data,data.Length,peer);
+                IPEndPoint sender=null;
+                Check(guest.Receive(ref sender).SequenceEqual(data) && sender.Equals(turn.Relayed),"datagram delivered during TURN renewal");
+            };
+            deliver(first,a);deliver(second,b);
+            Check(SpinWait.SpinUntil(()=>server.BoundNumber(a)>=0 && server.BoundNumber(b)>=0,3000),"both channels bound");
+            int original=server.BoundNumber(a), attempts=0, renewedB=0, renewedPermission=0;
+            server.RefusePermission=ip=>{
+                if(ip.Equals(otherAddress))return true;
+                Interlocked.Increment(ref renewedPermission);return false;
+            };
+            server.RefuseBind=(peer,ch)=>{
+                if(peer.Equals(b)){Interlocked.Increment(ref renewedB);return false;}
+                Interlocked.Increment(ref attempts);return true;
+            };
+            // Initial successful replies must have reached the client's reader.
+            Check(SpinWait.SpinUntil(()=>{
+                int count=Volatile.Read(ref server.ChannelDataSeen);
+                deliver(first,a);deliver(second,b);
+                return Volatile.Read(ref server.ChannelDataSeen)>=count+2;
+            },3000),"both peers using ChannelData before the fault");
+            server.ExpireChannel(original);
+            server.DropNextBindNumber=original;
+            turn.Refresh();
+            Check(turn.RefreshFailures==1 && server.DropNextBindNumber==-1 && renewedPermission==1 && renewedB==1 && attempts==1,
+                "a failed permission and channel do not skip the remaining renewals");
+            int indications=Volatile.Read(ref server.IndicationsSeen),channels=Volatile.Read(ref server.ChannelDataSeen);
+            for(int i=0;i<5;i++){deliver(first,a);deliver(second,b);}
+            Check(server.IndicationsSeen==indications+5 && server.ChannelDataSeen==channels+5 && attempts==1,
+                "failed peer uses indications without flooding binds, healthy peer keeps ChannelData");
+            server.RefuseBind=(peer,ch)=>{if(peer.Equals(a))Interlocked.Increment(ref attempts);return false;};
+            Check(SpinWait.SpinUntil(()=>{
+                deliver(first,a);Thread.Sleep(30);
+                return server.BoundNumber(a)==original;
+            },8000),"traffic rebinds the same channel number after the retry delay");
+            Check(attempts==2,"only one recovery bind");
+            Check(SpinWait.SpinUntil(()=>{
+                int count=Volatile.Read(ref server.ChannelDataSeen);deliver(first,a);
+                return Volatile.Read(ref server.ChannelDataSeen)>count;
+            },3000),"recovered peer returns to ChannelData");
         }
     }
     // The whole relay path, as a host behind a box that cannot be opened would use
@@ -1609,6 +1690,6 @@ static class Tests {
             }
         } catch(Exception e) {Console.Error.WriteLine("FAIL: "+e.Message);return 1;}
     }
-    public static int Run() {try{StartupOptions();GameLanguages();SeatNames();PublicInvitations();LanBeacon();RoomSyncFiles();Languages();ReservedUdpPorts();StunVectors();TurnRelay();Reports();Codecs();Leases();LobbyRules();Discs();CancelLoading();MeshWiringTest();MeshRouting();ControlOnlyLink();ChannelPairingTest();Tls(0,true,true);for(int mode=0;mode<4;mode++)Tls(mode,mode==0);Console.WriteLine("PASS: "+checks+" checks; host-only lobby start, full disk hash and locks, UDP ping, native loading barrier/cancel, TLS loss before/after commit, authenticated UDP for 4800 native ticks and a real three-peer UDP mesh. No real router/firewall changes.");return 0;}catch(Exception e){Console.Error.WriteLine("FAIL: "+e.ToString());return 1;}}
+    public static int Run() {try{StartupOptions();GameLanguages();SeatNames();PublicInvitations();LanBeacon();RoomSyncFiles();Languages();ReservedUdpPorts();StunVectors();TurnRelay();TurnRenewal();Reports();Codecs();Leases();LobbyRules();Discs();CancelLoading();MeshWiringTest();MeshRouting();ControlOnlyLink();ChannelPairingTest();Tls(0,true,true);for(int mode=0;mode<4;mode++)Tls(mode,mode==0);Console.WriteLine("PASS: "+checks+" checks; host-only lobby start, full disk hash and locks, UDP ping, native loading barrier/cancel, TLS loss before/after commit, authenticated UDP for 4800 native ticks and a real three-peer UDP mesh. No real router/firewall changes.");return 0;}catch(Exception e){Console.Error.WriteLine("FAIL: "+e.ToString());return 1;}}
 }
 }

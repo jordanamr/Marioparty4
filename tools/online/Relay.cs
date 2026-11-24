@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -163,11 +164,17 @@ sealed class TurnClient : IDatagramSocket {
     public IPEndPoint Mapped {get;private set;}
     readonly ConcurrentQueue<Tuple<byte[],IPEndPoint>> inbox=new ConcurrentQueue<Tuple<byte[],IPEndPoint>>();
     readonly ConcurrentDictionary<string,TaskCompletionSource<Stun.Message>> pending=new ConcurrentDictionary<string,TaskCompletionSource<Stun.Message>>();
-    readonly ConcurrentDictionary<string,ushort> channelOf=new ConcurrentDictionary<string,ushort>();
+    sealed class PeerChannel {
+        public readonly IPEndPoint Peer;
+        public readonly ushort Number;
+        public long UsableUntil,RetryAfter;
+        public int Binding;
+        public PeerChannel(IPEndPoint peer,ushort number){Peer=peer;Number=number;}
+    }
+    readonly ConcurrentDictionary<string,PeerChannel> channels=new ConcurrentDictionary<string,PeerChannel>();
     readonly ConcurrentDictionary<ushort,IPEndPoint> peerOf=new ConcurrentDictionary<ushort,IPEndPoint>();
-    readonly ConcurrentDictionary<string,byte> binding=new ConcurrentDictionary<string,byte>();
     readonly HashSet<IPAddress> permitted=new HashSet<IPAddress>();
-    int nextChannel=0x4000;volatile bool closed;Thread reader;Timer refresher;uint lifetime=600;
+    int nextChannel=0x4000,refreshing;volatile bool closed;Thread reader;Timer refresher;uint lifetime=600;
     // How the periodic refresh of allocation, permissions and channels went.
     int refreshes,refreshFailures;
     public int Refreshes {get{return Volatile.Read(ref refreshes);}}
@@ -199,11 +206,12 @@ sealed class TurnClient : IDatagramSocket {
     Stun.Message Authenticated(ushort method,Action<Stun.Message> fill) {
         for(int attempt=0;attempt<2;attempt++) {
             var request=Stun.New(method,Stun.Request);fill(request);
-            request.Add(Stun.Username,Encoding.UTF8.GetBytes(username)).Add(Stun.Realm,Encoding.UTF8.GetBytes(realm)).Add(Stun.Nonce,nonce);
+            var usedNonce=Volatile.Read(ref nonce);
+            request.Add(Stun.Username,Encoding.UTF8.GetBytes(username)).Add(Stun.Realm,Encoding.UTF8.GetBytes(realm)).Add(Stun.Nonce,usedNonce);
             var reply=Transact(request,true);
             if(reply.Class==Stun.Success)return reply;
             int code=Stun.ReadErrorCode(reply.Get(Stun.ErrorCode));
-            if(code==438 && reply.Get(Stun.Nonce)!=null){nonce=reply.Get(Stun.Nonce);continue;}
+            if(code==438 && reply.Get(Stun.Nonce)!=null){Interlocked.CompareExchange(ref nonce,reply.Get(Stun.Nonce),usedNonce);continue;}
             throw new IOException(L.T("Le relais a refusé la demande (code ")+code+").");
         }
         throw new IOException(L.T("Le relais a refusé la demande."));
@@ -226,15 +234,24 @@ sealed class TurnClient : IDatagramSocket {
         refresher=new Timer(_=>Refresh(),null,TimeSpan.FromSeconds(Math.Min(120,lifetime/3)),TimeSpan.FromSeconds(Math.Min(120,lifetime/3)));
     }
 
-    void Refresh() {
-        if(closed)return;
+    internal void Refresh() {
+        if(closed || Interlocked.CompareExchange(ref refreshing,1,0)!=0)return;
         try {
-            Authenticated(Stun.Refresh,r=>r.Add(Stun.Lifetime,Stun.U32(lifetime)));
+            int failures=0;
+            var renewals=new List<Action>{()=>Authenticated(Stun.Refresh,r=>r.Add(Stun.Lifetime,Stun.U32(lifetime)))};
             IPAddress[] addresses;lock(permitted)addresses=permitted.ToArray();
-            foreach(var a in addresses)CreatePermissionNow(a);
-            foreach(var c in peerOf.ToArray())BindNow(c.Value,c.Key);
-            Interlocked.Increment(ref refreshes);
-        } catch {if(!closed)Interlocked.Increment(ref refreshFailures);}
+            foreach(var address in addresses)renewals.Add(()=>CreatePermissionNow(address));
+            foreach(var channel in channels.Values)renewals.Add(()=>{
+                if(Interlocked.CompareExchange(ref channel.Binding,1,0)==0)Bind(channel);
+            });
+            // Retransmissions for one guest must not postpone another guest's lease.
+            Parallel.ForEach(renewals,operation=>{
+                try {operation();}
+                catch {Interlocked.Increment(ref failures);}
+            });
+            if(failures==0)Interlocked.Increment(ref refreshes);
+            else if(!closed)Interlocked.Increment(ref refreshFailures);
+        } finally {Volatile.Write(ref refreshing,0);}
     }
 
     // Lets datagrams from this address reach us. TURN permissions are per
@@ -247,29 +264,59 @@ sealed class TurnClient : IDatagramSocket {
     void CreatePermissionNow(IPAddress address) {
         Authenticated(Stun.CreatePermission,r=>r.Add(Stun.XorPeerAddress,Stun.XorAddress(new IPEndPoint(address,0))));
     }
-    void BindNow(IPEndPoint peer,ushort channel) {
-        Authenticated(Stun.ChannelBind,r=>r.Add(Stun.ChannelNumber,new byte[]{(byte)(channel>>8),(byte)channel,0,0}).Add(Stun.XorPeerAddress,Stun.XorAddress(peer)));
+    PeerChannel ChannelFor(IPEndPoint peer) {
+        string id=Key(peer);
+        PeerChannel channel;
+        if(channels.TryGetValue(id,out channel))return channel;
+        lock(channels) {
+            if(channels.TryGetValue(id,out channel))return channel;
+            if(nextChannel>0x7FFF)return null; // Indications still work.
+            channel=new PeerChannel(peer,(ushort)nextChannel++);
+            // A server may install the binding even when its reply is lost.
+            peerOf[channel.Number]=peer;
+            channels[id]=channel;
+            return channel;
+        }
+    }
+
+    void Bind(PeerChannel channel) {
+        long started=Stopwatch.GetTimestamp();
+        try {
+            ushort n=channel.Number;
+            Authenticated(Stun.ChannelBind,r=>r.Add(Stun.ChannelNumber,new byte[]{(byte)(n>>8),(byte)n,0,0})
+                .Add(Stun.XorPeerAddress,Stun.XorAddress(channel.Peer)));
+            // TURN channel bindings last 600 seconds. Use the request time and
+            // leave a margin for retransmission and scheduling at both ends.
+            Interlocked.Exchange(ref channel.UsableUntil,started+540*Stopwatch.Frequency);
+        } catch {
+            Interlocked.Exchange(ref channel.UsableUntil,0);
+            Interlocked.Exchange(ref channel.RetryAfter,Stopwatch.GetTimestamp()+5*Stopwatch.Frequency);
+            throw;
+        } finally {Volatile.Write(ref channel.Binding,0);}
     }
 
     public void Send(byte[] data,int length,IPEndPoint to) {
         if(closed)throw new ObjectDisposedException("TurnClient");
-        ushort channel;
-        if(channelOf.TryGetValue(Key(to),out channel)) {
-            // ChannelData: four bytes of header instead of a 36-byte indication.
-            var frame=new byte[4+length];frame[0]=(byte)(channel>>8);frame[1]=(byte)channel;frame[2]=(byte)(length>>8);frame[3]=(byte)length;
+        var channel=ChannelFor(to);
+        long now=Stopwatch.GetTimestamp();
+        if(channel!=null && now<Interlocked.Read(ref channel.UsableUntil)) {
+            ushort n=channel.Number;
+            var frame=new byte[4+length];frame[0]=(byte)(n>>8);frame[1]=(byte)n;frame[2]=(byte)(length>>8);frame[3]=(byte)length;
             Buffer.BlockCopy(data,0,frame,4,length);server.Send(frame,frame.Length);return;
         }
         var payload=new byte[length];Buffer.BlockCopy(data,0,payload,0,length);
         var indication=Stun.New(Stun.SendMethod,Stun.Indication).Add(Stun.XorPeerAddress,Stun.XorAddress(to)).Add(Stun.Data,payload);
         var bytes=Stun.Encode(indication);server.Send(bytes,bytes.Length);
-        // Bind a channel for this peer in the background; until it answers, the
-        // indications above keep the traffic moving.
-        if(binding.TryAdd(Key(to),0))Task.Run(()=>{
-            try {
-                ushort next=(ushort)Interlocked.Increment(ref nextChannel);if(next>0x7FFF)return;
-                BindNow(to,next);peerOf[next]=to;channelOf[Key(to)]=next;
-            } catch {byte ignored;binding.TryRemove(Key(to),out ignored);}
-        });
+        if(channel!=null && now>=Interlocked.Read(ref channel.RetryAfter) && Interlocked.CompareExchange(ref channel.Binding,1,0)==0) {
+            // Another send or the refresh timer may have finished in the meantime.
+            if(now<Interlocked.Read(ref channel.UsableUntil) || now<Interlocked.Read(ref channel.RetryAfter)) {
+                Volatile.Write(ref channel.Binding,0);
+                return;
+            }
+            // Keep the same channel number on every attempt: a lost reply need
+            // not mean that the previous binding has disappeared at the server.
+            Task.Run(()=>{try{Bind(channel);}catch{/* Send indications until the retry. */}});
+        }
     }
 
     public byte[] Receive(ref IPEndPoint from) {
