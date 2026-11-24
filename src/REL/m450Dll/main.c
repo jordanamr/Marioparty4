@@ -4021,10 +4021,11 @@ void fn_1_12688(omObjData *object)
     }
     if (object->work[0] != 0) {
         if (lbl_1_bss_1A4->work[0] <= 0x3EB) {
-            object->work[0] = object->work[0] - (3.0f - (lbl_1_bss_128 / 120.0f));
-            if (object->work[0] > 10 * REFRESH_RATE) {
-                object->work[0] = 1;
-            }
+            /* Stop at the tick that triggers the effect. A negative float or
+             * a zero followed by an unsigned decrement can wrap this timer. */
+            float remaining = object->work[0] - (3.0f - (lbl_1_bss_128 / 120.0f));
+            object->work[0] = (remaining < 1.0f || remaining >= 10 * REFRESH_RATE + 1)
+                ? 1 : (u32)remaining;
         }
         if (--object->work[0] == 0) {
             var_r30 = Hu3DCamera;

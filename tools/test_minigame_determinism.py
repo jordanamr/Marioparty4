@@ -50,6 +50,7 @@ def main():
         ("dol", "game/board/com_path.c", "board_path_search_test.c"),
         ("m462Dll", "main.c", "creature_collision_test.c"),
         ("m456Dll", "stage.c", "water_netplay_test.c"),
+        ("m450Dll", "main.c", "bowser_effect_timer_test.c"),
         ("m404Dll", "main.c", "trace_race_pixels_test.c"),
         ("m409Dll", "cursor.c", "cursor_lifetime_test.c"),
         ("m453Dll", "score.c", "minigame_score_cleanup_test.c"),
