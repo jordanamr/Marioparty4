@@ -169,6 +169,7 @@ struct Runtime {
     // silent where a stray pulse would change the mode, and spending an
     // exact number of cursor moves where the board is chosen.
     bool walkPlan = false;
+    bool fastReplay = false;
     // Which entry of the mode list to confirm: 0 Party, 1 Story,
     // 2 the minigame mode (src/REL/modeseldll/main.c:210-243).
     int walkMode = 0;
@@ -200,6 +201,7 @@ struct Runtime {
     std::string recordPath;
     std::string replayPath;
     std::FILE *recordFile = nullptr;
+    std::FILE *hashTrace = nullptr;
     std::vector<std::array<PartyBoardRollbackInput, 2>> replaySamples;
     std::vector<bool> replayPresent;
     std::uint32_t replayExhaustedFrame = UINT32_MAX;
@@ -1568,6 +1570,14 @@ bool captureCommittedState()
     if (gCaptureTiming.enabled) gCaptureTiming.record(captureStarted, state.size(), frame);
     stamp.hash = state.hash;
     stamp.parts = state.parts;
+    if (gRuntime.hashTrace) {
+        if (std::fprintf(gRuntime.hashTrace, "%u %016llx\n", frame,
+                static_cast<unsigned long long>(stamp.hash)) < 0
+            || (frame % 120 == 0 && std::fflush(gRuntime.hashTrace) != 0)) {
+            failSession("Could not write the netplay hash trace");
+            return false;
+        }
+    }
     gRuntime.detailFrames[frame % kDetailHistorySize] = frame;
     // Every peer compares our digests against its own, so each stream gets them.
     for (std::uint8_t seat = 0; seat < gRuntime.playerCount; ++seat) {
@@ -2164,6 +2174,9 @@ extern "C" bool PartyBoard_NetplayConfigureFromArgs(int argc, char **argv)
     bool host = false;
     bool join = false;
     bool argumentsValid = true;
+    bool fastReplay = false;
+    bool loopbackOnly = false;
+    const char *hashTracePath = nullptr;
     std::uint16_t hostPort = 0;
     std::uint16_t joinPort = 0;
     std::string joinAddress;
@@ -2203,6 +2216,12 @@ extern "C" bool PartyBoard_NetplayConfigureFromArgs(int argc, char **argv)
         } else if (argument == "--netplay-seat" && index + 1 < argc) {
             seatGiven = parseSeat(argv[++index], localSeat);
             argumentsValid = seatGiven && argumentsValid;
+        } else if (argument == "--netplay-loopback") {
+            loopbackOnly = true;
+        } else if (argument == "--netplay-fast-replay") {
+            fastReplay = true;
+        } else if (argument == "--netplay-record-hashes" && index + 1 < argc) {
+            hashTracePath = argv[++index];
         } else if (argument == "--netplay-full") {
             fullGame = true;
         } else if (argument == "--netplay-rollback-probe") {
@@ -2287,12 +2306,17 @@ extern "C" bool PartyBoard_NetplayConfigureFromArgs(int argc, char **argv)
         } else if (argument == "--netplay-replay-input" && index + 1 < argc) {
             gRuntime.replayPath = argv[++index];
         } else if (argument == "--netplay-host" || argument == "--netplay-join"
-            || argument == "--netplay-delay" || argument == "--netplay-pad") {
+            || argument == "--netplay-delay" || argument == "--netplay-pad" || argument == "--netplay-record-hashes") {
             argumentsValid = false;
         }
     }
+    if ((fastReplay || hashTracePath) && (!(host || join) || !loopbackOnly || !fullGame
+        || rollbackRequested || (!gRuntime.walkPlan && gRuntime.replayPath.empty()))) {
+        std::fputs("Netplay: fast replay and hash tracing require a local full-game lockstep walk or recording.\n", stderr);
+        return false;
+    }
     if (!host && !join) {
-        return true;
+        return argumentsValid;
     }
     if (!argumentsValid || host == join) {
         std::fputs("Netplay: choose exactly one of --netplay-host <port> or --netplay-join <IPv4:port>; optional --netplay-delay <0-8>, --netplay-pad <1-4>, --netplay-players <2-4>, --netplay-seat <0-3>, --netplay-peer <seat:ip:port>, --netplay-full, --netplay-rollback and --netplay-rollback-probe.\n", stderr);
@@ -2318,9 +2342,6 @@ extern "C" bool PartyBoard_NetplayConfigureFromArgs(int argc, char **argv)
     PartyBoard_CrashSetPeer(gRuntime.localPlayer, host ? "host" : "client");
     // The online companion owns the Internet-facing encrypted transport.
     // Its game subprocess must never expose the raw UDP protocol to the LAN.
-    bool loopbackOnly = false;
-    for (int i = 1; i < argc; ++i)
-        if (std::string_view(argv[i]) == "--netplay-loopback") loopbackOnly = true;
     if (loopbackOnly && join && joinAddress != "127.0.0.1") return false;
     if (!gRuntime.transport.open(host ? hostPort : 0, loopbackOnly)) {
         std::fprintf(stderr, "Netplay: %s\n", gRuntime.transport.lastError().c_str());
@@ -2371,6 +2392,15 @@ extern "C" bool PartyBoard_NetplayConfigureFromArgs(int argc, char **argv)
             gRuntime.replayPath.c_str());
         return false;
     }
+    if (hashTracePath) {
+        gRuntime.hashTrace = std::fopen(hashTracePath, "wb");
+        if (!gRuntime.hashTrace) {
+            std::fprintf(stderr, "Netplay: cannot open hash trace %s.\n", hashTracePath);
+            return false;
+        }
+    }
+    gRuntime.fastReplay = fastReplay;
+    if (fastReplay) std::puts("[NET TEST] unthrottled full-game replay");
     std::fprintf(stdout,
         "Netplay experimental: %s, UDP port %u, local player %u, physical controller port %u, input delay %u frame(s). %s.\n",
         host ? "host" : "client", gRuntime.localPort,
@@ -2390,6 +2420,12 @@ extern "C" bool PartyBoard_NetplayConfigureFromArgs(int argc, char **argv)
 extern "C" u32 PartyBoard_NetplayFrameForDiagnostics(void)
 {
     return partyboard::netplay::gRuntime.enabled ? partyboard::netplay::gRuntime.frame : 0;
+}
+
+extern "C" bool PartyBoard_NetplayFastReplay(void)
+{
+    const auto &runtime = partyboard::netplay::gRuntime;
+    return runtime.enabled && runtime.fastReplay;
 }
 
 extern "C" bool PartyBoard_NetplayEnabled(void)
@@ -3067,6 +3103,7 @@ extern "C" const char *PartyBoard_NetplayError(void)
 extern "C" void PartyBoard_NetplayShutdown(void)
 {
     using namespace partyboard::netplay;
+    if (gRuntime.hashTrace) std::fclose(gRuntime.hashTrace);
     if (gRuntime.recordFile) {
         std::fclose(gRuntime.recordFile);
         gRuntime.recordFile = nullptr;

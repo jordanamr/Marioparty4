@@ -735,7 +735,7 @@ extern "C" int port_main(int argc, char* argv[]) {
         AuroraConfig config{};
         config.appName = "Party Board";
         config.userPath = reinterpret_cast<const char*>(configPathString.c_str());
-        config.vsync = partyboard::getSettings().video.enableVsync;
+        config.vsync = !PartyBoard_NetplayFastReplay() && partyboard::getSettings().video.enableVsync;
         config.startFullscreen = partyboard::getSettings().video.enableFullscreen;
         config.windowPosX = -1;
         config.windowPosY = -1;

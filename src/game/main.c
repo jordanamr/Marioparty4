@@ -447,7 +447,7 @@ void main(void)
         aurora_end_frame();
         PartyBoard_LoopMark(5);
         PartyBoard_PerfFrameEnd();
-        if (!disableFrameLimiter || PartyBoard_NetplayEnabled()) {
+        if (!PartyBoard_NetplayFastReplay() && (!disableFrameLimiter || PartyBoard_NetplayEnabled())) {
             frame_limiter();
         }
         PartyBoard_LoopMark(6);
