@@ -739,8 +739,9 @@ extern "C" int port_main(int argc, char* argv[]) {
         config.startFullscreen = partyboard::getSettings().video.enableFullscreen;
         config.windowPosX = -1;
         config.windowPosY = -1;
-        config.windowWidth = HU_FB_WIDTH * 2;
-        config.windowHeight = HU_FB_HEIGHT * 2;
+        const int initialScale = PartyBoard_NetplayFastReplay() ? 1 : 2;
+        config.windowWidth = HU_FB_WIDTH * initialScale;
+        config.windowHeight = HU_FB_HEIGHT * initialScale;
         config.desiredBackend = ResolveDesiredBackend();
         config.logCallback = &aurora_log_callback;
         config.mem1Size = 64 * 1024 * 1024;

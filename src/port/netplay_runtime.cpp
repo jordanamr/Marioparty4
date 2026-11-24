@@ -378,6 +378,8 @@ void failSession(const char *reason, bool retainTransport = false)
 {
     if (!gRuntime.error.empty()) return;
     gRuntime.error = reason;
+    if (gRuntime.recordFile) std::fflush(gRuntime.recordFile);
+    if (gRuntime.hashTrace) std::fflush(gRuntime.hashTrace);
     writeDiagnostic(reason, true);
     std::fprintf(stderr, "[NET] ERROR frame=%u: %s. Simulation stopped; close the game to restart the session.\n",
         gRuntime.frame, reason);
@@ -1592,6 +1594,10 @@ bool captureCommittedState()
     // state in parallel. No extra round-trip barrier for each gameplay frame.
     sendInput(frame, {}, InputSendMode::Sample, &stamp);
     if (frame % 120 == 0) {
+        if (gRuntime.recordFile && std::fflush(gRuntime.recordFile) != 0) {
+            failSession("Could not write the netplay input recording");
+            return false;
+        }
         char event[160];
         std::snprintf(event, sizeof(event),
             "checkpoint hash_frame=%u state_hash=%016llx hash_version=%u equal_next=%u",
@@ -2334,6 +2340,10 @@ extern "C" bool PartyBoard_NetplayConfigureFromArgs(int argc, char **argv)
     // there; enforcing it here as well made a four-seat run impossible to stand up.
     if (localSeat >= playerCount) {
         std::fputs("Netplay: the seat must be inside the player count.\n", stderr);
+        return false;
+    }
+    if (playerCount != 2 && (!gRuntime.recordPath.empty() || !gRuntime.replayPath.empty())) {
+        std::fputs("Netplay: input recordings contain exactly two seats.\n", stderr);
         return false;
     }
     gRuntime.playerCount = playerCount;
