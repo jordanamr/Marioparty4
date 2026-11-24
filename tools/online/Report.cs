@@ -14,8 +14,10 @@ sealed class Report {
         DirectoryPath=Path.Combine(root??Root,DateTime.UtcNow.ToString("yyyyMMdd-HHmmss")+"-"+Guid.NewGuid().ToString("N"));
         try{Directory.CreateDirectory(DirectoryPath);Write("format=1");}catch{}
     }
-    public void Write(string text) {
-        lock(gate){if(lines>=3000)return;try{File.AppendAllText(Path.Combine(DirectoryPath,"session.txt"),DateTime.UtcNow.ToString("O")+" "+text+Environment.NewLine,Encoding.UTF8);lines++;}catch{}}
+    public void Write(string text) { Write(text,false); }
+    // Reserve space for the exit code and cause even in a long game.
+    public void Write(string text,bool terminal) {
+        lock(gate){if(lines>=(terminal?3008:3000))return;try{File.AppendAllText(Path.Combine(DirectoryPath,"session.txt"),DateTime.UtcNow.ToString("O")+" "+text+Environment.NewLine,Encoding.UTF8);lines++;}catch{}}
     }
     // The newest desync report the game wrote. It lives with the game data,
     // not with the lobby diagnostics, and it is the only file carrying the

@@ -19,6 +19,7 @@ sealed class LinuxRoom {
     volatile Session session;
     volatile bool opened;
     bool closing;
+    string requestedCloseCause;
     string lastSnapshot;
     long revision;
 
@@ -108,7 +109,11 @@ sealed class LinuxRoom {
                     Publish(state,invitation);
                     foreach(var request in RoomSync.Read(startup.StateDirectory,DateTime.UtcNow)) {
                         try {
-                            if(request.Action=="close") closing=true;
+                            if(request.Action=="close") {
+                                requestedCloseCause=request.Value=="launcher_shutdown"?"launcher_exited":"user_close_request";
+                                current?.NoteClose(requestedCloseCause);
+                                closing=true;
+                            }
                             else if(request.Action=="start" && current?.Host==true)current.Launch();
                             else throw new IOException(L.T("La partie ne peut pas encore être lancée."));
                             RoomSync.Complete(startup.StateDirectory,request,true,"");
@@ -119,18 +124,26 @@ sealed class LinuxRoom {
                     }
                     cancel.Token.WaitHandle.WaitOne(100);
                 }
+                if(!closing)session?.NoteClose("launcher_exited");
                 Publish("closed");
                 return 0;
             } finally {
                 var current=session;
+                if(closing)current?.NoteClose(requestedCloseCause);
+                else if(parent?.HasExited==true)current?.NoteClose("launcher_exited");
                 current?.Lobby?.LocalGameExited();
                 cancel.Cancel();
                 // A close request can arrive while mapping ports or preparing a game.
                 current?.Dispose();
                 worker.Wait(TimeSpan.FromSeconds(5));
                 var child=current?.Game;
-                if(child!=null && !child.HasExited && !child.WaitForExit(2000))
-                    child.Kill(entireProcessTree:true);
+                if(child!=null && !child.HasExited && !child.WaitForExit(2000)) {
+                    current.Report.Write("native_stop=companion_requested",true);
+                    try { child.Kill(entireProcessTree:true); }
+                    catch(InvalidOperationException) when(child.HasExited) {}
+                    child.WaitForExit(2000);
+                }
+                current?.ObserveNativeExit();
             }
         }
     }

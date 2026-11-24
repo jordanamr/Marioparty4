@@ -44,7 +44,7 @@ private:
 
 #if defined(__linux__) && !defined(__ANDROID__)
     void open_linux_room(bool host);
-    bool send_room_request(const char *action);
+    bool send_room_request(const char *action, const char *value = nullptr);
     bool consume_close_request() override;
     void reset_linux_room();
     GameLanguage mHostLanguage = getSettings().game.language.getValue();

@@ -18,7 +18,7 @@ OnlineWindow::~OnlineWindow()
 {
     if (mCompanion) {
         // Closing the application can skip the normal Leave/acknowledgement path.
-        send_room_request("close");
+        send_room_request("close", "launcher_shutdown");
         SDL_DestroyProcess(mCompanion);
         // The companion watches the parent and still needs its request file.
         return;
@@ -88,14 +88,16 @@ void OnlineWindow::open_linux_room(bool host)
     set_status("Verifying disc and opening lobby…");
 }
 
-bool OnlineWindow::send_room_request(const char *action)
+bool OnlineWindow::send_room_request(const char *action, const char *value)
 {
     // Only one pending start/close of each kind is needed. Publish it atomically.
     const auto path = mRoomDirectory / "requests" / action;
     auto temporary = path;
     temporary += ".tmp";
     std::ofstream file(temporary);
-    file << nlohmann::json{{"id", action}, {"action", action}};
+    nlohmann::json request{{"id", action}, {"action", action}};
+    if (value) request["value"] = value;
+    file << request;
     file.close();
     std::error_code ec;
     if (file) {

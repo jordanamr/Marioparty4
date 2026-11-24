@@ -170,6 +170,26 @@ sealed class Session : IDisposable {
     readonly CancellationTokenSource cancel=new CancellationTokenSource();
     readonly Action<string> status;readonly Action connected;readonly Action<string> failed;
     byte[] build; volatile bool disposed;public Process Game;
+    string closeCause;
+    readonly object exitLogLock=new object();
+    bool nativeExitLogged;
+    public void NoteClose(string cause) {Interlocked.CompareExchange(ref closeCause,cause,null);}
+    public void ObserveNativeExit() {
+        var game=Game;
+        if(game==null || !game.HasExited)return;
+        lock(exitLogLock) {
+            if(nativeExitLogged)return;
+            Report.Write("native_exit="+game.ExitCode,true);
+            nativeExitLogged=true;
+        }
+    }
+    string ObservedCause(string fallback) {
+        var ending=Lobby!=null?Lobby.Ending:LobbyEnding.None;
+        if(ending==LobbyEnding.Kicked)return "removed_by_host";
+        if(ending==LobbyEnding.RemoteGameClosed)
+            return !Host && maxPlayers==2?"host_game_ended":"peer_game_ended";
+        return fallback;
+    }
     public Session(Action<string> s,Action c,Action<string> f,PlayerInfo profile,DiscFile verifiedDisc) {status=s;connected=()=>{c();RoomChanged();};failed=f;initialProfile=profile;disc=verifiedDisc;}
     // The room as everyone else sees it: the directory (when public) and the
     // launcher that opened this window (RoomSync).
@@ -672,7 +692,7 @@ sealed class Session : IDisposable {
         // game data either -- MeshRelay does, once OpenMesh() is under way --
         // so it runs control-only, exactly like every guest link the host
         // itself holds in AcceptMesh().
-        Task.Run(async ()=> {string reason="Votre ami s'est déconnecté. Recréez une connexion.";try {await (maxPlayers>2?Bridge.RunControlOnly():Bridge.Run());}catch(IOException e){Report.Write("transport_error="+e.GetBaseException().GetType().Name+" hresult="+e.GetBaseException().HResult);reason=e.Message;}catch(Exception e){Report.Write("transport_error="+e.GetType().Name);}finally {if(Lobby!=null && Lobby.Ending==LobbyEnding.Kicked)reason=L.T("L'hôte vous a retiré de la room.");if(!disposed) {failed(reason);Dispose();}}});
+        Task.Run(async ()=> {string reason="Votre ami s'est déconnecté. Recréez une connexion.";try {await (maxPlayers>2?Bridge.RunControlOnly():Bridge.Run());}catch(IOException e){Report.Write("transport_error="+e.GetBaseException().GetType().Name+" hresult="+e.GetBaseException().HResult);reason=e.Message;}catch(Exception e){Report.Write("transport_error="+e.GetType().Name);}finally {if(Lobby!=null && Lobby.Ending==LobbyEnding.Kicked)reason=L.T("L'hôte vous a retiré de la room.");if(!disposed) {NoteClose(ObservedCause(Host?"guest_connection_lost":"host_connection_lost"));failed(reason);Dispose();}}});
     }
     public bool GameRouteReady {
         get {
@@ -742,7 +762,9 @@ sealed class Session : IDisposable {
         string modList=Profile.Mods.None?null:Profile.Mods.WriteListFile(ModListDirectory());
         gameStart.Launch(args,disc.Path,false,Report.NativePath,modList);Game=gameStart.Process;
         gameStart.WaitReady(cancel.Token);Report.Write("native_ready="+attempt);Lobby.Loaded(attempt);
-        Game.WaitForExit();Report.Write("native_exit="+Game.ExitCode);
+        Game.WaitForExit();
+        NoteClose(ObservedCause(Game.ExitCode==0?"native_exit_clean":"native_exit_nonzero"));
+        ObserveNativeExit();
         // Announce the departure while the control channel is still up. Dispose() closes
         // the sockets, so anything said after it is said to nobody -- which is precisely
         // how the other player used to be left alone in a salon that never emptied.
@@ -755,12 +777,22 @@ sealed class Session : IDisposable {
         // the form has moved on to another session.
         failed(L.T("La partie est terminée. Recréez un salon pour rejouer."));
         if(!disposed)Dispose();
-        }catch(OperationCanceledException){}catch(Exception e){if(!disposed){failed(e is IOException?e.Message:L.T("Le lancement a échoué. Fermez le salon puis réessayez."));Dispose();}}
+        }catch(OperationCanceledException){}catch(Exception e){if(!disposed){
+            bool exited=Game!=null && Game.HasExited;
+            NoteClose(ObservedCause(exited?(Game.ExitCode==0?"native_exit_clean":"native_exit_nonzero"):"launch_failed"));
+            ObserveNativeExit();
+            failed(e is IOException?e.Message:L.T("Le lancement a échoué. Fermez le salon puis réessayez."));Dispose();
+        }}
         finally {if(gameStart!=null)gameStart.Dispose();}
     }
     public void Dispose() {
         lock(this) {
-            if(!disposed)Report.Write("session_closed");
+            if(!disposed) {
+                NoteClose(ObservedCause("session_disposed"));
+                string phase=Lobby!=null?Lobby.Phase.ToString():"Opening";
+                string native=Game==null?"not_started":Game.HasExited?"exited":"running";
+                Report.Write("session_closed cause="+closeCause+" phase="+phase+" native="+native,true);
+            }
             if(modListDirectory!=null)try{Directory.Delete(modListDirectory,true);}catch{}if(diagnosticTimer!=null)diagnosticTimer.Dispose();
             disposed=true;cancel.Cancel();if(listener!=null) listener.Stop();if(peer!=null) peer.Close();if(peerWrite!=null)peerWrite.Close();
             if(turn!=null){turn.Dispose();turn=null;}if(relayHost!=null){relayHost.Dispose();relayHost=null;}

@@ -265,6 +265,7 @@ static void ExecShop(void)
     HuAudFXPlay(0x330);
     HuAudFXPlay(0x32D);
     PopupShop();
+    PARTYBOARD_BOARD_COVERAGE("SHOP_OPEN");
     BoardModelMotionShiftSet(BoardShopHostGet(), shopMot[2], 0.0f, 4.0f, HU3D_MOTATTR_NONE);
     HuPrcSleep(4);
     BoardPlayerRotSet(shopPlayer, 0.0f, temp_f31, 0.0f);
@@ -390,8 +391,8 @@ static void DestroyShop(void)
     s16 temp_r30;
     s32 i;
 
-    for (i = 0; i < 2; i++) {
-        BoardModelHookReset(shopMdlIdx[0][i]);
+    for (i = 0; i < ARRAY_COUNT(shopMdlIdx); i++) {
+        BoardModelHookReset(shopMdlIdx[i][0]);
     }
     temp_r30 = BoardShopHostGet();
     for (i = 0; i < 3; i++) {
@@ -406,6 +407,7 @@ static void DestroyShop(void)
         itemMdl = -1;
     }
     shopProc = NULL;
+    PARTYBOARD_BOARD_COVERAGE("SHOP_EXIT");
 }
 
 static void PopupShop(void)
@@ -1244,8 +1246,8 @@ void BoardShopTutorialExec(s32 arg0)
     BoardModelMotionShiftSet(BoardShopHostGet(), shopMot[1], 0.0f, 10.0f, HU3D_MOTATTR_LOOP);
     HuPrcSleep(30);
     CloseShop();
-    for (i = 0; i < 2; i++) {
-        BoardModelHookReset(shopMdlIdx[0][i]);
+    for (i = 0; i < ARRAY_COUNT(shopMdlIdx); i++) {
+        BoardModelHookReset(shopMdlIdx[i][0]);
     }
     sp8 = BoardShopHostGet();
     for (i = 0; i < 3; i++) {

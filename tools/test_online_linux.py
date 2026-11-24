@@ -73,6 +73,12 @@ class Seat:
                 continue
         raise RuntimeError("The room reports playing but has no live game process")
 
+    def session_report(self):
+        reports = list(self.room.glob("data/PartyBoard/Diagnostics/*/session.txt"))
+        if len(reports) != 1:
+            raise RuntimeError("Expected one private session report per seat")
+        return reports[0].read_text(errors="replace")
+
     def loaded_translation(self, suffix):
         content = (self.room / "process.log").read_text(errors="replace")
         return any(f"Loaded online message archive: mess/{archive}_{suffix}.dat" in content
@@ -103,6 +109,8 @@ def main():
     parser.add_argument("companion", type=Path)
     parser.add_argument("disc", type=Path)
     parser.add_argument("--players", type=int, choices=(2, 3, 4), default=2)
+    parser.add_argument("--end-by", choices=("host", "guest", "guest-crash"), default="host",
+                        help="Exercise normal room closure or a nonzero exit in the isolated guest game")
     parser.add_argument("--pal-language", choices=("en", "fr", "de", "it", "es"),
                         help="Check that all game engines load the host's translated messages from a European disc")
     args = parser.parse_args()
@@ -126,11 +134,25 @@ def main():
                 until(f"all games loaded the host's {args.pal_language} message archive",
                       lambda: all(seat.loaded_translation(suffix) for seat in seats))
             games = [seat.game_pid() for seat in seats]
-            host.request("close")
+            departing = 0 if args.end_by == "host" else 1
+            if args.end_by == "guest-crash":
+                os.kill(games[departing], signal.SIGKILL)
+            else:
+                seats[departing].request("close")
             until("all game processes closed", lambda: all(not Path(f"/proc/{p}").exists() for p in games), 30)
             for seat in seats:
                 if seat.process.wait(timeout=10) != 0 or seat.state()["state"] != "closed":
                     raise RuntimeError("A companion did not close cleanly")
+            for index, seat in enumerate(seats):
+                if index == departing:
+                    cause = "native_exit_nonzero" if args.end_by == "guest-crash" else "user_close_request"
+                elif departing == 0 and args.players == 2:
+                    cause = "host_game_ended"
+                else:
+                    cause = "peer_game_ended"
+                report = seat.session_report()
+                if f"session_closed cause={cause} " not in report or "native_exit=" not in report:
+                    raise RuntimeError(f"Seat {index} did not report {cause} and the native exit code")
             print(f"PASS: {args.players} verified seats, TLS lobby, UDP, native start and shutdown")
         finally:
             for seat in seats:
