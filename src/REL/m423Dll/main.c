@@ -5715,7 +5715,7 @@ s32 fn_1_137C4(Vec *arg0, Vec *arg1, Vec *arg2, Vec *arg3, float arg4, s32 arg5)
                     arg3->x = temp_f30;
                     arg3->y = arg0[0].y + arg4 + 1.0f;
                     arg3->z = temp_f28;
-                    VECAdd((Vec *)&arg3, &sp10, (Vec *)&arg3);
+                    VECAdd(arg3, &sp10, arg3);
                     return 1;
                 }
             }
@@ -5734,7 +5734,7 @@ s32 fn_1_137C4(Vec *arg0, Vec *arg1, Vec *arg2, Vec *arg3, float arg4, s32 arg5)
                     arg3->x = temp_f30;
                     arg3->y = arg0[0].y - arg4 - 1.0f;
                     arg3->z = temp_f28;
-                    VECAdd((Vec *)&arg3, &sp10, (Vec *)&arg3);
+                    VECAdd(arg3, &sp10, arg3);
                     return 1;
                 }
             }
@@ -5753,7 +5753,7 @@ s32 fn_1_137C4(Vec *arg0, Vec *arg1, Vec *arg2, Vec *arg3, float arg4, s32 arg5)
                     arg3->x = arg0[0].x - arg4 - 1.0f;
                     arg3->y = temp_f29;
                     arg3->z = temp_f28;
-                    VECAdd((Vec *)&arg3, &sp10, (Vec *)&arg3);
+                    VECAdd(arg3, &sp10, arg3);
                     return 1;
                 }
             }
@@ -5772,7 +5772,7 @@ s32 fn_1_137C4(Vec *arg0, Vec *arg1, Vec *arg2, Vec *arg3, float arg4, s32 arg5)
                     arg3->x = arg0[0].x + arg4 + 1.0f;
                     arg3->y = temp_f29;
                     arg3->z = temp_f28;
-                    VECAdd((Vec *)&arg3, &sp10, (Vec *)&arg3);
+                    VECAdd(arg3, &sp10, arg3);
                     return 1;
                 }
             }
@@ -5791,7 +5791,7 @@ s32 fn_1_137C4(Vec *arg0, Vec *arg1, Vec *arg2, Vec *arg3, float arg4, s32 arg5)
                     arg3->x = temp_f30;
                     arg3->y = temp_f29;
                     arg3->z = arg0[0].z + arg4 + 1.0f;
-                    VECAdd((Vec *)&arg3, &sp10, (Vec *)&arg3);
+                    VECAdd(arg3, &sp10, arg3);
                     return 1;
                 }
             }
@@ -5810,7 +5810,7 @@ s32 fn_1_137C4(Vec *arg0, Vec *arg1, Vec *arg2, Vec *arg3, float arg4, s32 arg5)
                     arg3->x = temp_f30;
                     arg3->y = temp_f29;
                     arg3->z = arg0[0].z - arg4 - 1.0f;
-                    VECAdd((Vec *)&arg3, &sp10, (Vec *)&arg3);
+                    VECAdd(arg3, &sp10, arg3);
                     return 1;
                 }
             }

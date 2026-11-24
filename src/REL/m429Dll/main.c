@@ -479,7 +479,7 @@ void fn_1_1FC4(Vec *arg0, float *arg1, s32 arg2, s32 arg3)
             var_r30 = 1;
         }
     }
-    VECAdd((Vec *)&arg0, &sp18, (Vec *)&arg0);
+    VECAdd(arg0, &sp18, arg0);
 }
 
 typedef struct data_1340_sub_struct {

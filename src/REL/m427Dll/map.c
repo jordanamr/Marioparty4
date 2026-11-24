@@ -327,7 +327,8 @@ void fn_1_48EC(HU3DMODEL *model, Mtx matrix);
 void fn_1_4D7C(HU3DMODEL *model, Mtx matrix);
 void fn_1_50A0(HU3DMODEL *model, Mtx matrix);
 void fn_1_510C(s32, s16, s16);
-void fn_1_558C(M427DllMapStruct4 *);
+static void UpdateFinishWater(M427DllMapStruct4 *);
+static void ProjectFinishWater(M427DllMapStruct4 *);
 void fn_1_618C(HU3DMODEL *model, Mtx matrix);
 void fn_1_6760(omObjData *object);
 void fn_1_C2C8(Vec *arg0, Vec *arg1, Vec *arg2, Vec *arg3);
@@ -655,6 +656,7 @@ void fn_1_4218(omObjData *arg0)
             }
         }
     }
+    UpdateFinishWater(var_r29);
 }
 
 void fn_1_44F4(f32 arg0, f32 arg1, f32 arg2, f32 arg3, f32 arg4)
@@ -824,6 +826,7 @@ void fn_1_510C(s32 arg0, s16 arg1, s16 arg2)
     Hu3DModelCameraSet(var_r29, 1);
     Hu3DModelLayerSet(var_r29, 4);
     var_r31->unk38 = var_r31->unk3C = 0.0f;
+    var_r31->unk40 = var_r31->unk44 = 0.0f;
     var_r31->unk34 = GXGetTexBufferSize(HU_FB_WIDTH, HU_FB_HEIGHT, 5, 0, 0);
     var_r31->unk30 = HuMemDirectMallocNum(HEAP_DATA, var_r31->unk34, temp_r28->mallocNo);
     var_r31->unk2C = GXGetTexBufferSize(HU_FB_WIDTH, HU_FB_HEIGHT, 5, 0, 0);
@@ -860,7 +863,6 @@ void fn_1_510C(s32 arg0, s16 arg1, s16 arg2)
             GXPosition1x16(var_r30->unk6);
             GXPosition1x16(var_r30->unk6);
             GXPosition1x16(var_r30->unk6);
-            fn_1_C2C8(&var_r31->unk4[var_r30->unk0], &var_r31->unk4[var_r30->unk2], &var_r31->unk4[var_r30->unk4], &var_r30->unk8);
         }
     }
     GXEnd();
@@ -869,23 +871,18 @@ void fn_1_510C(s32 arg0, s16 arg1, s16 arg2)
     memcpy(var_r31->unk20, var_r26, var_r31->unk24);
     DCFlushRange(var_r31->unk20, var_r31->unk24);
     HuMemDirectFree(var_r26);
-    fn_1_558C(var_r31);
+    UpdateFinishWater(var_r31);
 }
 
 f32 lbl_1_data_F8 = -1.0f;
 
-void fn_1_558C(M427DllMapStruct4 *arg0)
+static void UpdateFinishWater(M427DllMapStruct4 *arg0)
 {
-    Mtx spAC;
-    Mtx sp7C;
-    Mtx sp4C;
     Vec2f sp44;
     Vec2f sp3C;
     Vec2f sp34;
     Vec2f sp2C;
-    f32 sp28;
     f32 sp24;
-    f32 sp20;
     f32 var_f26;
     f32 var_f25;
     f32 var_f20;
@@ -893,11 +890,8 @@ void fn_1_558C(M427DllMapStruct4 *arg0)
     Vec *var_r29;
     Vec *var_r28;
     s16 var_r27;
-    Vec2f *var_r25;
     s16 var_r24;
-    HU3DCAMERA *var_r23;
 
-    var_r23 = &Hu3DCamera[0];
     if (lbl_1_data_F8 == -1.0f) {
         lbl_1_bss_94 = 720.0f / arg0->unk16;
         lbl_1_data_F8 = 1440.0f / arg0->unk18;
@@ -971,8 +965,19 @@ void fn_1_558C(M427DllMapStruct4 *arg0)
         var_r29->y /= var_f20;
         var_r29->z /= var_f20;
     }
-    var_r28 = arg0->unk4;
-    var_r25 = arg0->unk8;
+    DCFlushRangeNoSync(arg0->unk4, arg0->unk14 * sizeof(Vec));
+    DCFlushRangeNoSync(arg0->unkC, arg0->unk14 * sizeof(Vec));
+    PPCSync();
+}
+
+static void ProjectFinishWater(M427DllMapStruct4 *arg0)
+{
+    Mtx spAC, sp7C, sp4C;
+    Vec *var_r28 = arg0->unk4;
+    Vec2f *var_r25 = arg0->unk8;
+    HU3DCAMERA *var_r23 = &Hu3DCamera[0];
+    f32 sp28, sp24, sp20;
+    s16 var_r27;
     C_MTXLookAt(spAC, &var_r23->pos, &var_r23->up, &var_r23->target);
     GXGetProjectionv(&sp7C[0][0]);
     GXGetViewportv(&sp4C[0][0]);
@@ -988,8 +993,6 @@ void fn_1_558C(M427DllMapStruct4 *arg0)
         arg0->unk10[var_r27].b = 0xFF;
         arg0->unk10[var_r27].a = 0xFF;
     }
-    DCFlushRangeNoSync(arg0->unk4, arg0->unk14 * 0xC);
-    DCFlushRangeNoSync(arg0->unkC, arg0->unk14 * 0xC);
     DCFlushRangeNoSync(arg0->unk8, arg0->unk14 * 8);
     DCFlushRangeNoSync(arg0->unk10, arg0->unk14 * 4);
     PPCSync();
@@ -1004,7 +1007,7 @@ void fn_1_618C(HU3DMODEL *arg0, Mtx arg1)
     M427DllMapStruct4 *var_r31 = &lbl_1_bss_98;
     M427DllMapStruct3Sub *var_r30 = &lbl_1_bss_158.unk334;
 
-    fn_1_558C(var_r31);
+    ProjectFinishWater(var_r31);
     GXLoadPosMtxImm(arg1, 0);
     GXClearVtxDesc();
     GXSetVtxDesc(GX_VA_POS, GX_INDEX16);
@@ -1261,6 +1264,11 @@ void fn_1_72E4(omObjData *object)
     fn_1_7F38();
     fn_1_8F90(object);
     fn_1_9240();
+    /* Boats sample the surface from game logic. Both camera grids must advance
+       on a simulation tick, including when a camera is not drawn. */
+    for (var_r30 = 0; var_r30 < 2; ++var_r30) {
+        fn_1_A7F8(lbl_1_bss_158.unk4[var_r30].unkAC);
+    }
     for (var_r31 = lbl_1_bss_F8, var_r30 = 0; var_r30 < 0x10; var_r30++, var_r31++) {
         if (var_r31->unk0 != -1) {
             var_f31 = Hu3DMotionMaxTimeGet(var_r31->unk2);
@@ -1284,7 +1292,8 @@ void fn_1_73BC(void)
     for (var_r27 = 0, var_r31 = lbl_1_bss_158.unk4; var_r27 < 2; var_r27++, var_r31++) {
         for (var_r29 = 0; var_r29 < 0xA; var_r29++) {
             var_r28 = &Hu3DData[var_r31->unk2[var_r29]];
-            var_r30 = fn_1_DC0C(lbl_1_bss_E8[var_r31->unk0], var_r31->unk3C[var_r31->unk44[var_r29]]);
+            var_r30 = var_r31->unk44[var_r29] >= 0
+                ? fn_1_DC0C(lbl_1_bss_E8[var_r31->unk0], var_r31->unk3C[var_r31->unk44[var_r29]]) : NULL;
             var_f31 = -2000.0f * var_r29;
             if (((var_r31->unk84.z - 25000.0f) < var_f31) && ((3000.0f + var_r31->unk84.z) > var_f31)) {
                 if (var_r31->unk44[var_r29] == -1) {
@@ -2116,7 +2125,6 @@ s16 fn_1_A1F4(s32 arg0, s16 arg1, s16 arg2, s16 arg3, float arg8, Vec *arg4, Vec
             GXPosition1x16(var_r30->unk6);
             GXPosition1x16(var_r30->unk6);
             GXPosition1x16(var_r30->unk6);
-            fn_1_C2C8(&var_r31->unk_2C[var_r30->unk0], &var_r31->unk_2C[var_r30->unk2], &var_r31->unk_2C[var_r30->unk4], &var_r30->unk8);
             var_r30++;
         }
     }
@@ -2250,7 +2258,7 @@ float fn_1_AE78(s16 arg0, float arg8, float arg9)
     var_r29 = &lbl_1_bss_158.unk4[arg0];
     if (lbl_1_bss_158.unk0 != 0) {
         if (lbl_1_bss_158.unk0 == 1) {
-            lbl_1_data_1EC[arg0] = 0;
+            lbl_1_data_1EC[0] = lbl_1_data_1EC[1] = 0;
             lbl_1_bss_158.unk0 = 2;
         }
         if (!lbl_1_bss_98.unk4) {
@@ -2286,12 +2294,16 @@ float fn_1_AE78(s16 arg0, float arg8, float arg9)
             return 0.0f;
         }
     }
+    if (var_r30 % var_r26 == 0 || var_r31->x == var_r28[var_r30 - 1].x) {
+        lbl_1_data_1EC[arg0] = 0;
+        return 20.0f + var_r31->y;
+    }
     sp8[0] = var_r31->x - var_r28[var_r30 - 1].x;
     sp8[1] = arg8 - var_r28[var_r30 - 1].x;
     var_f30 = sp8[1] / sp8[0];
     var_f31 = var_r31->y - var_r28[var_r30 - 1].y;
     var_f31 = var_r28[var_r30 - 1].y + (var_f31 * var_f30);
-    lbl_1_data_1EC[arg0] = var_r30 - (var_r26 * 2);
+    lbl_1_data_1EC[arg0] = var_r30 > var_r26 * 2 ? var_r30 - var_r26 * 2 : 0;
     return 20.0f + var_f31;
 }
 
@@ -2348,7 +2360,6 @@ void fn_1_B3CC(HU3DMODEL *model, Mtx matrix)
     var_r30 = &lbl_1_bss_158.unk4[var_r31->unk_00];
     var_r27 = &var_r30->unk94;
     var_r24 = &lbl_1_bss_158.unk334;
-    fn_1_A7F8(var_r31);
     GXLoadPosMtxImm(matrix, 0);
     MTXInvXpose(matrix, spF4);
     GXLoadNrmMtxImm(spF4, 0);

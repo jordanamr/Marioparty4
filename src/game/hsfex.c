@@ -1,5 +1,6 @@
 #include "game/hsfex.h"
 #include "port/widescreen.h"
+#include "port/rotation_math.h"
 #include "game/hu3d.h"
 #include "game/disp.h"
 #include "game/process.h"
@@ -484,7 +485,7 @@ static inline float GetAngleXY(float arg0, float arg1) {
             return -(M_PI / 2);
         }
     } else {
-        return atan2f(arg0, arg1);
+        return PartyBoard_Atan2F(arg0, arg1);
     }
 }
 
@@ -514,7 +515,7 @@ void Hu3DMtxRotGet(Mtx arg0, Vec *arg1) {
                 } else if (temp_f24 <= -1.0f) {
                     var_f25 = -(M_PI / 2);
                 } else {
-                    var_f25 = asinf(temp_f24);
+                    var_f25 = PartyBoard_AsinF(temp_f24);
                 }
                 arg1->y = var_f25;
                 sp48 = cos(arg1->y);
