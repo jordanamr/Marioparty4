@@ -239,6 +239,15 @@ target_include_directories(musyx PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 # on its own. A no-op on Windows.
 set_property(TARGET musyx PROPERTY POSITION_INDEPENDENT_CODE ON)
 
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    # Netplay compares the game state bit for bit. MSVC /fp:precise rounds
+    # a multiply before the following add. GCC can fuse them on FMA-capable
+    # builders, already changing the mode-select models' Y positions by 1 ULP.
+    add_compile_options(-ffp-contract=off)
+    target_compile_options(aurora_mtx PRIVATE -ffp-contract=off)
+    target_compile_options(musyx PRIVATE -ffp-contract=off)
+endif ()
+
 # The pinned Tracy dependency already provides stb_image, which is used by the
 # portable THP movie player for the JPEG video component.
 FetchContent_GetProperties(tracy)
