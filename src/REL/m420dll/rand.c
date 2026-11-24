@@ -1,8 +1,8 @@
-#include "dolphin/types.h"
+#include "REL/m420dll.h"
 
 u32 lbl_1_bss_A48;
 
-void fn_1_8934 (u32 seed) {
+void fn_1_8934(u32 seed) {
     lbl_1_bss_A48 = seed;
 }
 
