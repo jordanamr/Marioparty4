@@ -1,4 +1,4 @@
-// Desktop adapter for the four fdlibm kernels shipped with the GameCube sources.
+// Desktop adapter for the fdlibm kernels shipped with the GameCube sources.
 // They access double words as lvalues. Compile these C files without strict aliasing.
 #pragma once
 #include <math.h>
@@ -14,6 +14,16 @@
 #define __HI(x) (((int32_t *)&(x))[1])
 #define __LO(x) (((int32_t *)&(x))[0])
 #endif
+
+#define __ieee754_asin PartyBoard_KernelAsin
+#define __ieee754_acos PartyBoard_KernelAcos
+#define __ieee754_atan2 PartyBoard_KernelAtan2
+#define atan PartyBoard_KernelAtan
+#define fabs__Fd fabs
+double __ieee754_asin(double x);
+double __ieee754_acos(double x);
+double __ieee754_atan2(double y, double x);
+double atan(double x);
 
 #define __kernel_sin PartyBoard_KernelSin
 #define __kernel_cos PartyBoard_KernelCos

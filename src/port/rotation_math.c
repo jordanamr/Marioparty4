@@ -1,4 +1,5 @@
 #include "port/rotation_kernels.h"
+#include "port/rotation_math.h"
 
 // Matrix rotations feed the next simulation tick (e.g. the fish in Manta Rings).
 // Evaluate both components using the same reduction and coefficients on every desktop.
@@ -11,4 +12,20 @@ void PartyBoard_RotationSinCos(float radians, float *sine, float *cosine)
     const double cycle[4] = {s, c, -s, -c};
     *sine = (float)cycle[quadrant];
     *cosine = (float)cycle[(quadrant + 1) & 3];
+}
+
+
+float PartyBoard_AsinF(float x)
+{
+    return (float)__ieee754_asin(x);
+}
+
+float PartyBoard_AcosF(float x)
+{
+    return (float)__ieee754_acos(x);
+}
+
+float PartyBoard_Atan2F(float y, float x)
+{
+    return (float)__ieee754_atan2(y, x);
 }

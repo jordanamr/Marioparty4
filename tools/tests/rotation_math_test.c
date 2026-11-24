@@ -1,4 +1,5 @@
 #include <dolphin/mtx.h>
+#include "port/rotation_math.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -41,6 +42,41 @@ int main(void)
         fputs("Sky Dive axis rotation mismatch\n", stderr);
         return 1;
     }
-    puts("Desktop matrix rotation tests passed");
+    // Direction changes observed in m416 at netplay frame 6946.
+    static const struct { uint32_t input, result; } steering[] = {
+        {0x3f7b7a55, 0x3fb0f7a8}, {0x3e98d2b3, 0x3e9b3039}, {0x3e8746f6, 0x3e88e718}
+    };
+    for (size_t i = 0; i < sizeof(steering) / sizeof(steering[0]); ++i) {
+        float ratio;
+        memcpy(&ratio, &steering[i].input, sizeof(ratio));
+        float angle = PartyBoard_AsinF(ratio);
+        if (memcmp(&angle, &steering[i].result, sizeof(angle))) {
+            fputs("Obstacle avoidance angle mismatch\n", stderr);
+            return 1;
+        }
+    }
+
+    // Makin' Waves constructs an axis quaternion, then interpolates orientations.
+    Quaternion from = {0, 0, 0, 1}, to;
+    const uint32_t radWord = 0xbf6e23e4, qx = 0xbee5a573, qw = 0x3f64ce09;
+    const uint32_t sx = 0xbe2f5aee, sw = 0x3f7c37ee;
+    float rad;
+    memcpy(&rad, &radWord, sizeof(rad));
+    C_QUATRotAxisRad(&to, &axis, rad);
+    C_QUATSlerp(&from, &to, &from, 0.37f);
+    if (memcmp(&to.x, &qx, sizeof(float)) || memcmp(&to.w, &qw, sizeof(float)) ||
+        memcmp(&from.x, &sx, sizeof(float)) || memcmp(&from.w, &sw, sizeof(float))) {
+        fputs("Quaternion rotation or interpolation mismatch\n", stderr);
+        return 1;
+    }
+    const uint32_t expectedAtan = 0x402a0e2b, expectedAcos = 0x3fb93814;
+    float direction = PartyBoard_Atan2F(0.1234567f, -0.2345678f);
+    float incline = PartyBoard_AcosF(0.1234567f);
+    if (memcmp(&direction, &expectedAtan, sizeof(float)) ||
+        memcmp(&incline, &expectedAcos, sizeof(float))) {
+        fputs("Matrix orientation angle mismatch\n", stderr);
+        return 1;
+    }
+    puts("Desktop rotation tests passed");
     return 0;
 }

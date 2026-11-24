@@ -159,7 +159,6 @@ UnkM417Struct8 lbl_1_data_114[11] = {
     { 10, 0.0f, 0.0f, -1.0f, HU3D_MOTATTR_NONE },
 };
 
-s32 lbl_1_bss_8AC; // unused
 s32 lbl_1_bss_8A8; // unused
 omObjData *lbl_1_bss_898[4];
 u32 lbl_1_bss_888[4];

@@ -25,7 +25,6 @@ void fn_1_C050(omObjData *object);
 void fn_1_C434(omObjData *object);
 void fn_1_C78C(omObjData *object);
 
-extern omObjData *lbl_1_bss_8AC;
 extern s32 lbl_1_bss_8A8;
 
 omObjFunc fn_1_BCAC(Process *arg0)
@@ -36,7 +35,7 @@ omObjFunc fn_1_BCAC(Process *arg0)
     Center.y = 0.0f;
     Center.z = 0.0f;
     CZoom = 1000.0f;
-    lbl_1_bss_8AC = omAddObjEx(arg0, 30, 1, 0, -1, fn_1_BFB0);
+    omAddObjEx(arg0, 30, 1, 0, -1, fn_1_BFB0);
     return fn_1_BD9C;
 }
 

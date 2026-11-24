@@ -15,6 +15,7 @@
 #include <string.h>
 
 #include "REL/m416Dll.h"
+#include "port/rotation_math.h"
 
 typedef struct camera_view_params {
     float zoom;
@@ -1474,7 +1475,7 @@ s32 fn_1_5530(omObjData *arg0, Vec *arg1, Vec *arg2)
                     else if (temp_f31 > 1.0f) {
                         temp_f31 = 1.0f;
                     }
-                    temp_f29 = asinf(temp_f31);
+                    temp_f29 = PartyBoard_AsinF(temp_f31);
                     MTXRotRad(sp84, 'Y', -temp_f29);
                     MTXMultVec(sp84, &sp3C, &sp30);
                     sp6C.x = arg0->trans.x + (sp30.x * temp_f30);

@@ -747,3 +747,55 @@ index bb9ddec..e906aef 100644
    g_gxState.stateDirty = false;
    return gfx::push_uniform(buf.data(), buf.size());
  }
+diff --git a/lib/dolphin/mtx/quat.c b/lib/dolphin/mtx/quat.c
+index 80966d6..49c2fdb 100644
+--- a/lib/dolphin/mtx/quat.c
++++ b/lib/dolphin/mtx/quat.c
+@@ -2,6 +2,15 @@
+ #include <math.h>
+ #include <dolphin/mtx.h>
+ 
++#ifdef PARTYBOARD_ROTATION_MATH
++#include "port/rotation_math.h"
++static f32 RotationSine(f32 rad) {
++  f32 sine, cosine;
++  PartyBoard_RotationSinCos(rad, &sine, &cosine);
++  return sine;
++}
++#endif
++
+ void C_QUATAdd(const Quaternion* p, const Quaternion* q, Quaternion* r) {
+   assert(p && "QUATAdd():  NULL QuaternionPtr 'p' ");
+   assert(q && "QUATAdd():  NULL QuaternionPtr 'q' ");
+@@ -177,8 +186,12 @@ void C_QUATRotAxisRad(Quaternion* r, const Vec* axis, f32 rad) {
+   VECNormalize(axis, &nAxis);
+ 
+   half = rad * 0.5f;
++#ifdef PARTYBOARD_ROTATION_MATH
++  PartyBoard_RotationSinCos(half, &sh, &ch);
++#else
+   sh = sinf(half);
+   ch = cosf(half);
++#endif
+ 
+   r->x = sh * nAxis.x;
+   r->y = sh * nAxis.y;
+@@ -262,11 +275,18 @@ void C_QUATSlerp(const Quaternion* p, const Quaternion* q, Quaternion* r, f32 t)
+     }
+ 
+     if (cos_th <= 0.99999f) {
++#ifdef PARTYBOARD_ROTATION_MATH
++        theta = PartyBoard_AcosF(cos_th);
++        sin_th = RotationSine(theta);
++        tp = RotationSine((1.0f - t) * theta) / sin_th;
++        tq *= RotationSine(t * theta) / sin_th;
++#else
+         theta = acosf(cos_th);
+         sin_th = sinf(theta);
+ 
+         tp = sinf((1.0f - t) * theta) / sin_th;
+         tq *= sinf(t * theta) / sin_th;
++#endif
+     } else {
+         tp = 1.0f - t;
+         tq *= t;
