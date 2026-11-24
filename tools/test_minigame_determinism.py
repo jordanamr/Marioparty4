@@ -37,6 +37,7 @@ def main():
         ("m410Dll", "game.c", "three_throw_player_collision_test.c"),
         ("m444dll", "pinball.c", "pinball_velocity_test.c"),
         ("m412Dll", "main.c", "minigame_wall_slide_test.c"),
+        ("m414Dll", "main.c", "claw_reticle_projection_test.c"),
         ("m421Dll", "player.c", "minigame_direction_grid_test.c"),
         ("w04Dll", "boo_event.c", "boo_train_landing_test.c"),
         ("dol", "game/board/main.c", "board_camera_view_test.c"),

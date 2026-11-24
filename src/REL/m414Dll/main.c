@@ -13,6 +13,9 @@
 #ifndef __MWERKS__
 #include "game/hsfex.h"
 #endif
+#ifdef TARGET_PC
+#include "port/widescreen.h"
+#endif
 
 typedef struct UnkM414Struct {
     s32 unk00;
@@ -718,6 +721,10 @@ void fn_1_1E04(void)
         var_r21 = HuSprAnimRead(var_r27);
         var_r30 = HuSprCreate(var_r21, 0x4000, 0);
         var_r31->unk_2C = HuSprGrpCreate(1);
+#ifdef TARGET_PC
+        /* Its position follows the camera, independent of the HUD layout. */
+        HuSprGrpHudAnchorSet(var_r31->unk_2C, HU_DISP_CENTERX);
+#endif
         HuSprGrpMemberSet(var_r31->unk_2C, 0, var_r30);
         HuSprAttrSet(var_r31->unk_2C, 0, 4);
         HuSprColorSet(var_r31->unk_2C, 0, lbl_1_data_C4[GWPlayerCfg[var_r28].character][0], lbl_1_data_C4[GWPlayerCfg[var_r28].character][1],
@@ -1950,13 +1957,31 @@ void fn_1_6644(void)
     }
 }
 
+static void ClawReticlePositionSet(UnkM414BssF0Struct *player, Vec *aim)
+{
+    Vec screen;
+    float x;
+#ifdef TARGET_PC
+    const HU3DCAMERA *camera = &Hu3DCamera[player->unk_48];
+    const float viewportCenter = (camera->viewportX + 0.5f * camera->viewportW)
+        * (HU_DISP_WIDTHF / HU_FB_WIDTHF);
+
+    Hu3D3Dto2DOriginal(aim, 1 << player->unk_48, &screen);
+    /* The viewport center moves with the window width. The perspective and
+     * sprite canvas widen equally, so the offset within that view does not. */
+    x = HU_DISP_CENTERX + (viewportCenter - HU_DISP_CENTERX) * PartyBoard_WidescreenAspectScale()
+        + (screen.x - HU_DISP_CENTERX) * (camera->viewportW / HU_FB_WIDTHF);
+#else
+    Hu3D3Dto2D(aim, 1 << player->unk_48, &screen);
+    x = 282.0f * (player->unk_44 % 2) + screen.x / 2 + 3.0f;
+#endif
+    /* The original vertical offset aims above the target model's origin. */
+    HuSprGrpPosSet(player->unk_2C, x, 225.0f * (player->unk_44 / 2) + screen.y / 2 - 15.0f);
+}
+
 void fn_1_76F4(void)
 {
     Vec sp14;
-    Vec sp8;
-
-    float var_f31;
-    float var_f30;
     float var_f29;
 
     UnkM414BssF0Struct *var_r31;
@@ -1969,12 +1994,7 @@ void fn_1_76F4(void)
             sp14.z = (2000.0f * (var_r31->unk_44 / 2)) + (-950.0 * cosd(var_r31->unk_70));
             var_f29 = Hu3DMotionMaxTimeGet(var_r31->unk_20);
             sp14.y = 220.0f + (350.0f * (1.0f - (Hu3DMotionTimeGet(var_r31->unk_20) / var_f29)));
-            Hu3D3Dto2D(&sp14, 1 << var_r31->unk_48, &sp8);
-            var_f31 = (282.0f * (var_r31->unk_44 % 2)) + (sp8.x / 2);
-            var_f30 = (225.0f * (var_r31->unk_44 / 2)) + (sp8.y / 2);
-            var_f31 += 3.0f;
-            var_f30 -= 15.0f;
-            HuSprGrpPosSet(var_r31->unk_2C, var_f31, var_f30);
+            ClawReticlePositionSet(var_r31, &sp14);
         }
         HuPrcVSleep();
     }
