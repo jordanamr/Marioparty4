@@ -729,7 +729,8 @@ Prelaunch::Prelaunch()
             mMenuButtons.push_back(std::make_unique<Button>(menuList, "Play Online"));
             mMenuButtons.back()->on_pressed([] {
                 const std::string companion = std::string(SDL_GetBasePath()) + "PartyBoardOnline.exe";
-                const char *args[] = { companion.c_str(), nullptr };
+                const char *args[] = { companion.c_str(), "--game-language",
+                    game_language_code(getSettings().game.language.getValue()), nullptr };
                 if (SDL_Process *process = SDL_CreateProcess(args, false)) {
                     SDL_DestroyProcess(process);
                     PartyBoard_IsRunning = false;

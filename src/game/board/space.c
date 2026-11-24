@@ -853,7 +853,7 @@ static void DrawSpaces(HU3DMODEL *model, Mtx matrix)
 #else
     BoardCameraPosGet(&pos);
     BoardCameraTargetGet(&target);
-    MTXPerspective(proj, camera->fov, PARTYBOARD_WIDESCREEN_ASPECT(camera->aspect), camera->nnear, camera->ffar);
+    MTXPerspective(proj, camera->fov, PARTYBOARD_RENDER_ASPECT(camera->aspect), camera->nnear, camera->ffar);
     GXSetProjection(proj, GX_PERSPECTIVE);
     MTXLookAt(lookat, &pos, &camera->up, &target);
     GXSetViewport(camera->viewport_x, camera->viewport_y, camera->viewport_w, camera->viewport_h, camera->viewport_near, camera->viewport_far);

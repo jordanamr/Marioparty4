@@ -690,7 +690,7 @@ static void BallRenderHook(void) {
     GXCopyTex(temp_r31->unk08->bmp->data, GX_TRUE);
     DCFlushRange(temp_r31->unk08->bmp->data, 12800);
     GXPixModeSync();
-    C_MTXPerspective(sp68, 25.0f, PARTYBOARD_WIDESCREEN_ASPECT(1.2f), 100.0f, 13000.0f);
+    C_MTXPerspective(sp68, 25.0f, PARTYBOARD_RENDER_ASPECT(1.2f), 100.0f, 13000.0f);
     GXSetProjection(sp68, GX_PERSPECTIVE);
     GXSetViewport(0.0f, 0.0f, 160.0f, 160.0f, 0.0f, 1.0f);
     GXSetScissor(0, 0, 160, 160);

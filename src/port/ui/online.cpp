@@ -186,6 +186,30 @@ void OnlineWindow::build(Rml::Element *content)
             pane.add_text("Every player needs the same disc image: Mario Party 4 USA revision 1, or the European disc in the host's language. The whole file is checked before joining.");
         });
 
+#if defined(__linux__) && !defined(__ANDROID__)
+    leftPane.register_control(leftPane.add_select_button({
+                                  .key = "Game language",
+                                  .getValue = [this] {
+                                      if (!prelaunch_state().configuredDiscInfo.isPal) return "English";
+                                      for (const auto &choice : kLanguageChoices) {
+                                          if (choice.value == mHostLanguage) return choice.nativeName;
+                                      }
+                                      return "English";
+                                  },
+                                  .isDisabled = [] {
+                                      const auto &state = prelaunch_state();
+                                      return !state.configuredDiscCanLaunch || !state.configuredDiscInfo.isPal;
+                                  },
+                              }),
+        rightPane, [this](Pane &pane) {
+            for (const auto &choice : kLanguageChoices) {
+                pane.add_button({.text = choice.nativeName, .isSelected = [this, value = choice.value] { return mHostLanguage == value; }})
+                    .on_pressed([this, value = choice.value] { mHostLanguage = value; });
+            }
+            pane.add_text("The host chooses the game language for everyone on the European disc.");
+        });
+#endif
+
     leftPane.register_control(leftPane.add_select_button({
                                   .key = "Players",
                                   .getValue = [this] { return std::to_string(mPlayers); },

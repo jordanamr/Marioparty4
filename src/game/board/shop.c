@@ -479,7 +479,9 @@ static void CreateShopWin(void)
 #ifdef TARGET_PC
     // The window runs across the middle, so the adaptive widescreen leaves it in place; keep the
     // item over the window instead of pushing it towards the edge like a side HUD.
-    sp8.x = PARTYBOARD_WIDESCREEN_HUD_X(HU_DISP_CENTERX + (sp8.x - HU_DISP_CENTERX) / PartyBoard_WidescreenAspectScale());
+    if (!PartyBoard_NetplayEnabled()) {
+        sp8.x = PartyBoard_WidescreenHudX(HU_DISP_CENTERX + (sp8.x - HU_DISP_CENTERX) / PartyBoard_WidescreenAspectScale());
+    }
 #endif
     sp8.y = HU_DISP_HEIGHT - 88;
     sp8.z = 400.0f;

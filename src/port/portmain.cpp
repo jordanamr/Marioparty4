@@ -771,16 +771,22 @@ extern "C" int port_main(int argc, char* argv[]) {
     snprintf(windowTitle, sizeof(windowTitle), "PartyBoard %s", PARTY_BOARD_WC_DESCRIBE);
     VISetWindowTitle(windowTitle);
 
-    if (PartyBoard_NetplayEnabled()
+    const bool localDisplay = partyboard_settings_use_local_display();
+    if (!localDisplay
         || (!partyboard::getSettings().video.enableAdaptiveWidescreen
             && partyboard::getSettings().video.lockAspectRatio)) {
         AuroraSetViewportPolicy(AURORA_VIEWPORT_FIT);
     } else {
         AuroraSetViewportPolicy(AURORA_VIEWPORT_STRETCH);
     }
-    VISetFrameBufferScale(PartyBoard_NetplayEnabled()
-        ? 1
-        : partyboard::getSettings().game.internalResolutionScale.getValue());
+    const int resolutionScale = localDisplay ? partyboard::getSettings().game.internalResolutionScale.getValue() : 1;
+    VISetFrameBufferScale(resolutionScale);
+    if (PartyBoard_NetplayEnabled()) {
+        PartyBoardMainLog.info("Online display: resolution scale={}, adaptive widescreen={}, lock 4:3={}, original HUD={}, fullscreen={}",
+            resolutionScale, partyboard_settings_adaptive_widescreen(),
+            !localDisplay || partyboard::getSettings().video.lockAspectRatio.getValue(),
+            partyboard::getSettings().video.keepOriginalHud.getValue(), partyboard::getSettings().video.enableFullscreen.getValue());
+    }
 
     // TODO PC
     // partyboard::audio::SetMasterVolume(partyboard::getSettings().audio.masterVolume / 100.0f);

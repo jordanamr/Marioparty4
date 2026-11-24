@@ -58,8 +58,9 @@ bool PartyBoard_NetplayPadHeadOnScreen(s32 pad, float *x, float *y)
     MTXMultVec(look, &head, &view);
     if (view.z > -1.0f) return false;
     Hu3D3Dto2D(&head, 1, &screen);
-    // Where it is on the picture, not where a HUD sprite would go.
-    *x = PartyBoard_WidescreenPictureX(screen.x) / HU_DISP_WIDTHF;
+    // Online game coordinates span the original camera. The drawn scene gains
+    // width equally on each side, regardless of the local HUD placement.
+    *x = 0.5f + (screen.x - HU_DISP_CENTERX) / (HU_DISP_WIDTHF * PartyBoard_WidescreenAspectScale());
     *y = screen.y / HU_DISP_HEIGHTF;
     return *x >= 0.0f && *x <= 1.0f && *y >= 0.0f && *y <= 1.0f;
 }

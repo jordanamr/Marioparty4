@@ -483,7 +483,7 @@ BOOL ObjCullCheck(HSFDATA *hsf, HSFOBJECT *objPtr, Mtx mtx) {
     fovTan = sind(cameraP->fov * 0.5) / cosd(cameraP->fov * 0.5);
     cameraH = fovTan * z;
     // The widened picture shows more on each side: keep what is there.
-    cameraW = PARTYBOARD_WIDESCREEN_ASPECT(HU_DISP_ASPECT) * cameraH;
+    cameraW = PARTYBOARD_RENDER_ASPECT(HU_DISP_ASPECT) * cameraH;
     cameraW = radius + ABS(cameraW);
     cameraH = radius + ABS(cameraH);
     if (ABS(x) < cameraW && ABS(y) < cameraH) {

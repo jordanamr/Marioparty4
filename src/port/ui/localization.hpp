@@ -2,10 +2,26 @@
 
 #include "port/settings.h"
 
+#include <array>
 #include <string>
 #include <string_view>
 
 namespace partyboard::ui {
+
+struct LanguageChoice {
+    const char *name;
+    const char *nativeName;
+    GameLanguage value;
+};
+
+// Every language a European disc carries (mess/*_g|f|s|i.dat); a USA disc is English only.
+inline constexpr std::array kLanguageChoices = {
+    LanguageChoice { "English", "English", GameLanguage::English },
+    LanguageChoice { "French", "Français", GameLanguage::French },
+    LanguageChoice { "German", "Deutsch", GameLanguage::German },
+    LanguageChoice { "Spanish", "Español", GameLanguage::Spanish },
+    LanguageChoice { "Italian", "Italiano", GameLanguage::Italian },
+};
 
 inline std::string ui_translate(std::string_view text)
 {
@@ -141,6 +157,8 @@ inline std::string ui_translate(std::string_view text)
         {"Choose a nickname of 1 to 24 characters, on a single line.", "Choisissez un pseudo de 1 à 24 caractères, sans retour à la ligne."},
         {"The name the other players see in the lobby.", "Le nom que les autres joueurs voient dans le salon."},
         {"Every player needs the same disc image: Mario Party 4 USA revision 1, or the European disc in the host's language. The whole file is checked before joining.", "Chaque joueur doit avoir la même image disque : Mario Party 4 USA révision 1, ou le disque européen dans la langue de l'hôte. Le fichier complet est vérifié avant de rejoindre."},
+        {"Game language", "Langue du jeu"},
+        {"The host chooses the game language for everyone on the European disc.", "L’hôte choisit la langue du jeu pour tous les joueurs sur le disque européen."},
         {"Players", "Joueurs"}, {"How many players the lobby waits for, you included. Only the host chooses.", "Nombre de joueurs attendus dans le salon, vous compris. Seul l’hôte choisit."},
         {"Create a lobby", "Créer un salon"}, {"Create the lobby, then send the invitation to your friends. Only you can start the game.", "Créez le salon, puis envoyez l’invitation à vos amis. Vous seul pourrez lancer le jeu."},
         {"Join a lobby", "Rejoindre un salon"}, {"Invitation", "Invitation"},

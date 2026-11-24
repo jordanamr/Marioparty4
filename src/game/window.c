@@ -20,6 +20,7 @@
 #ifdef TARGET_PC
 #include <assert.h>
 #include "port/port_version.h"
+#include "port/netplay_runtime.h"
 #include "port/widescreen.h"
 #endif
 
@@ -1397,6 +1398,9 @@ void HuWinMesRead(s32 mess_data_no)
 #endif
 #endif
     dvd_mess = HuDvdDataRead(mess_path);
+#ifdef TARGET_PC
+    PartyBoard_NetplayTrace(mess_path);
+#endif
     messDataPtr = HuMemDirectMalloc(HEAP_SYSTEM, DirDataSize);
     memcpy(messDataPtr, dvd_mess, DirDataSize);
     HuMemDirectFree(dvd_mess);

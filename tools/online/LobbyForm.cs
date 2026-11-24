@@ -11,7 +11,7 @@ using System.Windows.Forms;
 
 namespace PartyBoardOnline {
 sealed class MainForm : Form {
-    Label status,discLabel,footer;TextBox invitation,nickname;ListView players;ComboBox playerCount;FlowLayoutPanel missingMods;
+    Label status,discLabel,footer;TextBox invitation,nickname;ListView players;ComboBox playerCount,gameLanguage;FlowLayoutPanel missingMods;
     Button host,join,copy,play,cancel,choose,paste,update,mods,browse;Session session;DiscFile disc;
     // Two ways to play. On this network (LAN): nothing goes through Internet,
     // the game is found in a list of the network's games. Online: a room,
@@ -44,8 +44,15 @@ sealed class MainForm : Form {
         lanMode=new RadioButton{Text=L.T("Réseau local (LAN)"),AutoSize=true,Margin=new Padding(0,8,12,0),AccessibleName=L.T("Mode réseau local")};
         onlineMode.CheckedChanged+=(s,e)=>ModeChanged();identity.Controls.Add(onlineMode);identity.Controls.Add(lanMode);
         root.Controls.Add(identity,0,2);
-        var disk=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=2};disk.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,210));disk.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
+        var disk=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=3};disk.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,210));disk.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
         choose=Make(L.T("Choisir mon disque"),ChooseDisc);disk.Controls.Add(choose,0,0);discLabel=new Label{Text=L.T("Mario Party 4 USA révision 1, ou européen\nISO, GCM ou RVZ — vérification du fichier complet"),Dock=DockStyle.Fill,Padding=new Padding(0,4,0,0)};disk.Controls.Add(discLabel,1,0);root.Controls.Add(disk,0,3);
+        disk.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        var languages=new FlowLayoutPanel{AutoSize=true,FlowDirection=FlowDirection.TopDown,WrapContents=false};
+        languages.Controls.Add(new Label{Text=L.T("Langue du jeu"),AutoSize=true});
+        gameLanguage=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Width=132,AccessibleName=L.T("Langue du jeu")};
+        for(byte i=0;i<=GameLanguage.Max;i++)gameLanguage.Items.Add(LanguageName(GameLanguage.Code(i)));
+        gameLanguage.SelectedIndex=GameLanguage.Current;
+        languages.Controls.Add(gameLanguage);disk.Controls.Add(languages,2,0);
         var top=new FlowLayoutPanel{Dock=DockStyle.Fill};
         top.Controls.Add(new Label{Text=L.T("Joueurs"),Padding=new Padding(0,8,4,0)});
         playerCount=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Width=64,Margin=new Padding(0,3,12,3),AccessibleName=L.T("Nombre de joueurs")};
@@ -134,6 +141,8 @@ sealed class MainForm : Form {
     void UI(Action action){if(!closing && !IsDisposed){if(InvokeRequired){try{BeginInvoke(action);}catch(InvalidOperationException){}}else action();}}
     void SetStatus(string text){UI(()=>status.Text=text);}
     void RefreshControls(){bool idle=session==null;host.Enabled=join.Enabled=idle && disc!=null && !hashing;choose.Enabled=nickname.Enabled=idle && !hashing;playerCount.Enabled=idle;cancel.Enabled=!idle;invitation.ReadOnly=!idle;
+        gameLanguage.Parent.Visible=disc==null || disc.Pal;
+        gameLanguage.Enabled=idle && disc!=null && disc.Pal && !hashing;
         onlineMode.Enabled=lanMode.Enabled=idle;
         // LAN: no code at all, the list is the way in.
         invitation.Visible=copy.Visible=join.Visible=!Lan;visibility.Visible=!Lan;
@@ -328,7 +337,7 @@ sealed class MainForm : Form {
         string modsFrom;ModSet opening;
         try {opening=chosenMods??LauncherMods()??ModSet.FromCubeShelf(GameId,out modsFrom);}
         catch(Exception e){SetStatus(Friendly(e));return;}
-        var profile=new PlayerInfo(nickname.Text,disc.Hash,disc.Length,opening,GameLanguage.Current);
+        var profile=new PlayerInfo(nickname.Text,disc.Hash,disc.Length,opening,disc.Pal?(byte)gameLanguage.SelectedIndex:GameLanguage.English);
         Session current=null;current=new Session(t=>UI(()=>{if(session==current)SetStatus(t);}),()=>UI(()=>{if(session==current)RefreshLobby();}),t=>UI(()=>{if(session==current){Reset();SetStatus(t);}}),profile,disc);
         session=current;lastReport=current.Report;current.Host=create;current.Lan=Lan;if(create)current.RoomName=startup.RoomName;RefreshLobby();
         current.Report.Write("role="+(create?"host":"guest")+" connection_requested");

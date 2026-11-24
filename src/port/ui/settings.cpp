@@ -42,20 +42,6 @@ extern "C" int PartyBoard_TargetFrameRateFor(bool netplayEnabled, int configured
 namespace partyboard::ui {
 namespace {
 
-    struct LanguageChoice {
-        const char *name;
-        GameLanguage value;
-    };
-
-    // Every language a European disc carries (mess/*_g|f|s|i.dat); a USA disc is English only.
-    constexpr std::array kLanguageChoices = {
-        LanguageChoice { "English", GameLanguage::English },
-        LanguageChoice { "French", GameLanguage::French },
-        LanguageChoice { "German", GameLanguage::German },
-        LanguageChoice { "Spanish", GameLanguage::Spanish },
-        LanguageChoice { "Italian", GameLanguage::Italian },
-    };
-
     constexpr std::array kCardFileTypes = {
         "Card Image",
         "GCI Folder",

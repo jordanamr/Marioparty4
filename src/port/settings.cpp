@@ -206,10 +206,19 @@ bool partyboard_settings_unlock_bowsers_gnarly_party(void)
     return partyboard::getSettings().game.unlockBowsersGnarlyParty.getValue();
 }
 
+bool partyboard_settings_use_local_display(void)
+{
+#if defined(_WIN32) || (defined(__linux__) && !defined(__ANDROID__))
+    return true;
+#else
+    return !PartyBoard_NetplayEnabled();
+#endif
+}
+
 bool partyboard_settings_adaptive_widescreen(void)
 {
     // PC and phones only: the headset shows the game on a 4:3 screen of its own.
-    return !PartyBoard_NetplayEnabled() && !PartyBoard_StereoActive()
+    return partyboard_settings_use_local_display() && !PartyBoard_StereoActive()
         && partyboard::getSettings().video.enableAdaptiveWidescreen.getValue();
 }
 

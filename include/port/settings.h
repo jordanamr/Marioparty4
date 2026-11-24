@@ -174,6 +174,7 @@ bool partyboard_settings_enableTurboKeybind(void);
 bool partyboard_settings_skipBootSequence(void);
 bool partyboard_settings_unlock_all_minigames(void);
 bool partyboard_settings_unlock_bowsers_gnarly_party(void);
+bool partyboard_settings_use_local_display(void);
 bool partyboard_settings_adaptive_widescreen(void);
 
 #ifdef __cplusplus

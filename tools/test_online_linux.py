@@ -16,7 +16,7 @@ import time
 
 
 class Seat:
-    def __init__(self, index, root, companion, disc, count, invitation):
+    def __init__(self, index, root, companion, disc, count, invitation, language):
         self.room = root / str(index)
         self.room.mkdir(mode=0o700)
         data = self.room / "data"
@@ -35,9 +35,12 @@ class Seat:
             "XDG_CONFIG_HOME": str(self.room / "config"),
             "XDG_CACHE_HOME": str(self.room / "cache"),
         }
+        command = [companion, "--join" if invitation else "--host"]
+        if language:
+            command.extend(["--game-language", language])
         with (self.room / "process.log").open("wb") as log:
             self.process = subprocess.Popen(
-                [companion, "--join" if invitation else "--host"], env=environment,
+                command, env=environment,
                 stdout=log, stderr=subprocess.STDOUT, start_new_session=True,
             )
 
@@ -70,6 +73,14 @@ class Seat:
                 continue
         raise RuntimeError("The room reports playing but has no live game process")
 
+    def loaded_translation(self, suffix):
+        for report in self.room.glob("data/PartyBoard/Diagnostics/*/native.txt"):
+            content = report.read_text(errors="replace")
+            for archive in ("board", "mini"):
+                if f"event=mess/{archive}_{suffix}.dat " in content:
+                    return True
+        return False
+
     def close(self):
         if self.process.poll() is None:
             self.request("close")
@@ -95,21 +106,28 @@ def main():
     parser.add_argument("companion", type=Path)
     parser.add_argument("disc", type=Path)
     parser.add_argument("--players", type=int, choices=(2, 3, 4), default=2)
+    parser.add_argument("--pal-language", choices=("en", "fr", "de", "it", "es"),
+                        help="Check that all game engines load the host's translated messages from a European disc")
     args = parser.parse_args()
     companion, disc = args.companion.resolve(strict=True), args.disc.resolve(strict=True)
     seats = []
     with tempfile.TemporaryDirectory(prefix="partyboard-online-") as workspace:
         root = Path(workspace)
         try:
-            host = Seat(0, root, companion, disc, args.players, None)
+            host = Seat(0, root, companion, disc, args.players, None, args.pal_language)
             seats.append(host)
             invite = until("host invitation", lambda: host.state().get("invitation"))
             for index in range(1, args.players):
-                seats.append(Seat(index, root, companion, disc, args.players, invite))
+                guest_language = ("fr" if args.pal_language == "en" else "en") if args.pal_language else None
+                seats.append(Seat(index, root, companion, disc, args.players, invite, guest_language))
             until("verified profiles and UDP routes", lambda: host.state().get("canStart"))
             host.request("start")
             until("all games released by the start barrier",
                   lambda: all(seat.state().get("state") == "playing" for seat in seats))
+            if args.pal_language:
+                suffix = {"en": "e", "fr": "f", "de": "g", "it": "i", "es": "s"}[args.pal_language]
+                until(f"all games loaded the host's {args.pal_language} message archive",
+                      lambda: all(seat.loaded_translation(suffix) for seat in seats))
             games = [seat.game_pid() for seat in seats]
             host.request("close")
             until("all game processes closed", lambda: all(not Path(f"/proc/{p}").exists() for p in games), 30)

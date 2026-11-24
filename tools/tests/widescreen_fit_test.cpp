@@ -1,7 +1,8 @@
 // The adaptive widescreen's arithmetic on every kind of screen.
 // Standalone:
-//   c++ -std=c++20 -Iinclude tools/tests/widescreen_fit_test.cpp
+//   c++ -std=c++20 -DTARGET_PC -Iinclude -Iextern/aurora/include tools/tests/widescreen_fit_test.cpp
 #include "port/widescreen_fit.hpp"
+#include "port/widescreen.h"
 
 #include <cmath>
 #include <cstdio>
@@ -11,6 +12,8 @@ using namespace partyboard::widescreen;
 namespace {
 
 int failures = 0;
+bool online = false;
+float windowScale = 1.0f;
 
 void check(bool condition, const char *what)
 {
@@ -36,8 +39,27 @@ float on_window(float hudX, float scale, HudSpan span)
 
 } // namespace
 
+extern "C" bool PartyBoard_NetplayEnabled() { return online; }
+extern "C" float PartyBoard_WidescreenPerspectiveAspect(float aspect) { return aspect * windowScale; }
+extern "C" float PartyBoard_WidescreenHudX(float x) { return hud_x(x, kCenter, windowScale, {}); }
+extern "C" float PartyBoard_WidescreenPictureX(float x) { return picture_x(x, kCenter, windowScale, {}); }
+
 int main()
 {
+    // Feed both peers the same near-edge coordinate but give them different
+    // windows. Check exact game values as lockstep hashes their float bits.
+    for (float scale : {1.0f, aspect_scale(3440, 1440)}) {
+        windowScale = scale;
+        online = true;
+        check(PARTYBOARD_GAME_ASPECT(1.2f) == 1.2f, "online game camera uses original aspect");
+        check(PARTYBOARD_GAME_HUD_X(40.0f) == 40.0f, "online world-to-HUD uses game coordinates");
+        check(PARTYBOARD_GAME_PICTURE_X(40.0f) == 40.0f, "online HUD-to-world uses game coordinates");
+        check(PARTYBOARD_RENDER_ASPECT(1.2f) == 1.2f * scale, "online renderer uses local window aspect");
+    }
+    online = false;
+    check(PARTYBOARD_GAME_ASPECT(1.2f) == 1.2f * windowScale, "offline adaptive camera");
+    check(PARTYBOARD_GAME_HUD_X(40.0f) == hud_x(40.0f, kCenter, windowScale, {}), "offline adaptive world-to-HUD");
+    check(PARTYBOARD_GAME_PICTURE_X(40.0f) == picture_x(40.0f, kCenter, windowScale, {}), "offline adaptive HUD-to-world");
     check(near(aspect_scale(640, 480), 1.0f), "4:3 is the original");
     check(near(aspect_scale(1920, 1080), 4.0f / 3.0f), "16:9");
     check(near(aspect_scale(1280, 800), 1.2f), "16:10");

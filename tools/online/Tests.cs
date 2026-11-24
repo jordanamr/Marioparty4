@@ -377,7 +377,15 @@ static class Tests {
         Reject(()=>new PlayerInfo("Camille",disc,3,null,5),"a profile cannot carry an unknown language");
         Check(GameLanguage.FromArguments(new[]{"--game-language","it"})==4,"the game's language comes from its argument");
         Check(GameLanguage.FromArguments(new[]{"--game-language","nl"})==GameLanguage.English,"an unknown code falls back to English");
-        Check(GameLanguage.FromArguments(new string[0])==GameLanguage.English,"opened by hand means English");
+        var thread=System.Threading.Thread.CurrentThread;
+        var previous=thread.CurrentUICulture;
+        try {
+            thread.CurrentUICulture=new System.Globalization.CultureInfo("fr-FR");
+            Check(GameLanguage.FromArguments(new string[0])==2,"manual launch follows a French desktop");
+            Check(GameLanguage.FromArguments(new[]{"--game-language","en"})==0,"explicit English overrides a French desktop");
+            thread.CurrentUICulture=new System.Globalization.CultureInfo("en-US");
+            Check(GameLanguage.FromArguments(new[]{"--game-language","fr"})==2,"French can be hosted from an English desktop");
+        } finally {thread.CurrentUICulture=previous;}
         Check(GameLanguage.Code(2)=="fr" && GameLanguage.Code(3)=="es","codes match the game's --lang");
     }
     static void Codecs() {

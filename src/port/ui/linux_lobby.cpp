@@ -60,11 +60,13 @@ void OnlineWindow::open_linux_room(bool host)
     const char *base = SDL_GetBasePath();
     const std::string companion = std::string(base ? base : "") + "PartyBoardOnline";
     const char *args[] = { companion.c_str(), host ? "--host" : "--join", "--game-language",
-        game_language_code(getSettings().game.language.getValue()), nullptr };
+        game_language_code(host ? mHostLanguage : getSettings().game.language.getValue()), nullptr };
     auto *env = SDL_CreateEnvironment(true);
     const auto props = SDL_CreateProperties();
     const auto &name = getSettings().online.nickname.getValue();
     if (!ec && base && env && props
+        && (SDL_GetEnvironmentVariable(env, "PARTYBOARD_ONLINE_UI_LANGUAGE")
+            || SDL_SetEnvironmentVariable(env, "PARTYBOARD_ONLINE_UI_LANGUAGE", game_language_code(getSettings().game.language.getValue()), true))
         && SDL_SetEnvironmentVariable(env, "PARTYBOARD_ONLINE_DISC", prelaunch_state().configuredDiscPath.c_str(), true)
         && SDL_SetEnvironmentVariable(env, "PARTYBOARD_ONLINE_NICKNAME", name.empty() ? ui_translate("Player").c_str() : name.c_str(), true)
         && SDL_SetEnvironmentVariable(env, "PARTYBOARD_ONLINE_INVITE", host ? "" : mInvitation.c_str(), true)

@@ -4,6 +4,7 @@
 
 #include <string>
 #if defined(__linux__) && !defined(__ANDROID__)
+#include "port/settings.h"
 #include <chrono>
 #include <filesystem>
 struct SDL_Process;
@@ -46,6 +47,7 @@ private:
     bool send_room_request(const char *action);
     bool consume_close_request() override;
     void reset_linux_room();
+    GameLanguage mHostLanguage = getSettings().game.language.getValue();
     SDL_Process *mCompanion = nullptr;
     std::filesystem::path mRoomDirectory;
     std::chrono::steady_clock::time_point mNextPoll{};

@@ -24,6 +24,7 @@
 #include "port/frame_interpolation.h"
 #include "port/quest_stereo.h"
 #include "port/widescreen.h"
+#include "game/object.h"
 extern bool PartyBoard_IsSimulationTick;
 #define PARTYBOARD_ADVANCE_FRAME PartyBoard_IsSimulationTick
 
@@ -1573,7 +1574,10 @@ void Hu3DCameraSet(s32 arg0, Mtx arg1) {
         temp_r31 = &renderCamera;
     }
     renderCamera = *temp_r31;
-    renderCamera.aspect = PartyBoard_WidescreenPerspectiveAspect(renderCamera.aspect);
+    /* Photo Finish camera 0 renders the reference photo into a 4:3 texture. */
+    if (arg0 != 0 || omcurovl != DLL_m411dll) {
+        renderCamera.aspect = PartyBoard_WidescreenPerspectiveAspect(renderCamera.aspect);
+    }
     temp_r31 = &renderCamera;
 #endif
     C_MTXPerspective(sp10, temp_r31->fov, temp_r31->aspect, temp_r31->nnear, temp_r31->ffar);

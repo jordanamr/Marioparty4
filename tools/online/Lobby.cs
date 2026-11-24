@@ -77,7 +77,7 @@ sealed class DiscFile : IDisposable {
 static class GameLanguage {
     static readonly string[] Codes={"en","de","fr","es","it"};
     public const byte English=0, Max=4;
-    // This window's game, English when it was opened by hand.
+    // An explicit game setting takes precedence over the desktop UI language.
     public static byte Current;
     public static string Code(byte language){return language<=Max?Codes[language]:Codes[English];}
     public static bool TryParse(string code,out byte language) {
@@ -86,8 +86,9 @@ static class GameLanguage {
         return false;
     }
     public static byte FromArguments(string[] args) {
-        for(int i=0;args!=null && i+1<args.Length;i++){byte language;if(args[i]=="--game-language" && TryParse(args[i+1],out language))return language;}
-        return English;
+        for(int i=0;args!=null && i+1<args.Length;i++){byte language;if(args[i]=="--game-language")return TryParse(args[i+1],out language)?language:English;}
+        byte system;
+        return TryParse(System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName,out system)?system:English;
     }
 }
 

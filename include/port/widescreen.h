@@ -2,6 +2,9 @@
 #define PORT_WIDESCREEN_H
 
 #include "dolphin/mtx.h"
+#ifdef TARGET_PC
+#include "port/netplay_runtime.h"
+#endif
 
 #ifndef __cplusplus
 #include <stdbool.h>
@@ -30,14 +33,18 @@ float PartyBoard_WidescreenPictureX(float hudX);
 }
 #endif
 
+/* GX projections use the local window. Screen coordinates returned to game code
+ * can drive input, AI and object positions, so peers use the original geometry. */
 #ifdef TARGET_PC
-#define PARTYBOARD_WIDESCREEN_ASPECT(value) PartyBoard_WidescreenPerspectiveAspect(value)
-#define PARTYBOARD_WIDESCREEN_HUD_X(value) PartyBoard_WidescreenHudX(value)
-#define PARTYBOARD_WIDESCREEN_PICTURE_X(value) PartyBoard_WidescreenPictureX(value)
+#define PARTYBOARD_RENDER_ASPECT(value) PartyBoard_WidescreenPerspectiveAspect(value)
+#define PARTYBOARD_GAME_ASPECT(value) (PartyBoard_NetplayEnabled() ? (value) : PartyBoard_WidescreenPerspectiveAspect(value))
+#define PARTYBOARD_GAME_HUD_X(value) (PartyBoard_NetplayEnabled() ? (value) : PartyBoard_WidescreenHudX(value))
+#define PARTYBOARD_GAME_PICTURE_X(value) (PartyBoard_NetplayEnabled() ? (value) : PartyBoard_WidescreenPictureX(value))
 #else
-#define PARTYBOARD_WIDESCREEN_ASPECT(value) (value)
-#define PARTYBOARD_WIDESCREEN_HUD_X(value) (value)
-#define PARTYBOARD_WIDESCREEN_PICTURE_X(value) (value)
+#define PARTYBOARD_RENDER_ASPECT(value) (value)
+#define PARTYBOARD_GAME_ASPECT(value) (value)
+#define PARTYBOARD_GAME_HUD_X(value) (value)
+#define PARTYBOARD_GAME_PICTURE_X(value) (value)
 #endif
 
 #endif

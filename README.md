@@ -133,8 +133,11 @@ has joined, the host selects **Start game**. European revisions 0, 1 and 2 are
 accepted. All players in one lobby need byte-identical image files, including
 the compression format. The Linux menu supports private rooms by invitation.
 The original Windows v0.21.1 client uses a different build check and rejects
-European revision 0. Windows players should use the matching fork build. Online sessions run at 60 Hz in 4:3, with a fresh profile: your own
-memory-card saves are not loaded.
+European revision 0. Windows players should use the matching fork build.
+Each desktop keeps its own resolution scale, aspect ratio and HUD placement.
+One player can use ultrawide while another uses 4:3. The host chooses the
+European game's language for everyone. Online play runs at 60 Hz with a
+separate session profile for game progress.
 
 ## CubeShelf
 

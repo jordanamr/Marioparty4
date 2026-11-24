@@ -210,6 +210,18 @@ BOOL LanguageMenuExec(void)
     return TRUE;
 }
 
+static s16 DiscLanguageFromSystem(void)
+{
+    switch (OSGetLanguage()) {
+        case OS_LANGUAGE_ENGLISH: return 1;
+        case OS_LANGUAGE_GERMAN: return 2;
+        case OS_LANGUAGE_FRENCH: return 3;
+        case OS_LANGUAGE_ITALIAN: return 4;
+        case OS_LANGUAGE_SPANISH: return 5;
+        default: return -1;
+    }
+}
+
 s32 LanguageBootGet(void)
 {
     s16 result = -1;
@@ -218,12 +230,13 @@ s32 LanguageBootGet(void)
 #ifdef TARGET_PC
     // LanguageBootGet copies the entire offline GameStat from a card, including
     // continuation flags and records. Do not import that state into netplay.
-    // Use the common English menu path until language negotiation is supported.
+    // The companion starts every seat with the PAL host's --lang setting.
     if (PartyBoard_NetplayEnabled()) {
         SLSaveFlagSet(0);
-        OSReport("Online boot language: common=1; local card untouched.\n");
-        PartyBoard_NetplayTrace("boot_profile source=session language=1 card=skipped");
-        return 1;
+        result = DiscLanguageFromSystem();
+        OSReport("Online PAL boot language: %d\n", result);
+        PartyBoard_NetplayTrace("boot_profile source=session card=skipped");
+        return result;
     }
 #endif
     for(i=0; i<2; i++) {
@@ -261,31 +274,7 @@ s32 LanguageBootGet(void)
     }
     if(result == -1) {
         OSReport("OS Language %d\n", OSGetLanguage());
-        switch(OSGetLanguage()) {
-            case OS_LANGUAGE_ENGLISH:
-                result = 1;
-                break;
-               
-            case OS_LANGUAGE_GERMAN:
-                result = 2;
-                break;
-            
-            case OS_LANGUAGE_FRENCH:
-                result = 3;
-                break;
-            
-            case OS_LANGUAGE_SPANISH:
-                result = 5;
-                break;
-            
-            case OS_LANGUAGE_ITALIAN:
-                result = 4;
-                break;
-            
-            default:
-                result = -1;
-                break;
-        }
+        result = DiscLanguageFromSystem();
     }
     return result;
 }

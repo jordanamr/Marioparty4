@@ -199,6 +199,10 @@ attente de vérification*, pas *corrigé*.
 
 ## Ce que le mode en ligne impose, et pourquoi ça change ce qu'on voit
 
+Sur le fork Linux et Windows, le joueur conserve désormais sa résolution
+interne, son ratio d’affichage et son HUD adaptatif en ligne. Les observations
+ci-dessous décrivent la version d’origine.
+
 Découvert le 2026-09-13 en cherchant l'origine d'un défaut « mal placé /
 déformé » sur Avalanche!. **Sept réglages sont forcés dès qu'une partie est en
 ligne, quels que soient les choix du joueur.** Certains changent l'image de
