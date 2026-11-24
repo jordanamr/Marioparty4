@@ -1399,7 +1399,10 @@ void HuWinMesRead(s32 mess_data_no)
 #endif
     dvd_mess = HuDvdDataRead(mess_path);
 #ifdef TARGET_PC
-    PartyBoard_NetplayTrace(mess_path);
+    if (PartyBoard_NetplayEnabled()) {
+        OSReport("Loaded online message archive: %s\n", mess_path);
+        PartyBoard_NetplayTrace(mess_path);
+    }
 #endif
     messDataPtr = HuMemDirectMalloc(HEAP_SYSTEM, DirDataSize);
     memcpy(messDataPtr, dvd_mess, DirDataSize);

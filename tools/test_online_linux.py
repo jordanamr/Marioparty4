@@ -74,12 +74,9 @@ class Seat:
         raise RuntimeError("The room reports playing but has no live game process")
 
     def loaded_translation(self, suffix):
-        for report in self.room.glob("data/PartyBoard/Diagnostics/*/native.txt"):
-            content = report.read_text(errors="replace")
-            for archive in ("board", "mini"):
-                if f"event=mess/{archive}_{suffix}.dat " in content:
-                    return True
-        return False
+        content = (self.room / "process.log").read_text(errors="replace")
+        return any(f"Loaded online message archive: mess/{archive}_{suffix}.dat" in content
+                   for archive in ("board", "mini"))
 
     def close(self):
         if self.process.poll() is None:
