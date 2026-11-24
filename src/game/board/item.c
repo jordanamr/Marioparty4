@@ -1698,7 +1698,7 @@ static void ExecItemBooBall(void)
     s32 var_r31;
 
     BoardAudSeqPause(0, 1, 1000);
-    suitMdl = BoardBooCreate(currItemRestore, &sp74);
+    suitMdl = BoardBooCreate(currItemRestore, NULL);
     booBallMdl = BoardModelCreate(DATA_MAKE_NUM(DATADIR_BGUEST, 18), booMotTbl, 0);
     BoardModelMotionStart(booBallMdl, 1, 0x40000001);
     BoardModelLayerSet(booBallMdl, 2);
