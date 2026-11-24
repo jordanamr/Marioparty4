@@ -93,6 +93,16 @@ class ResultsTest(unittest.TestCase):
         self.assertIsNone(result["first_divergence"]["field"])
         self.assertEqual(result["last_equal_frame"], 0)
 
+    def test_partial_board_progress_counts_only_equal_turns_on_both_peers(self):
+        board = "Start New OVL 93\nobjdll> w05Dll.so prolog end\n"
+        common = checkpoint(120, 93, extra="board=4 turn=1") + checkpoint(240, 93, extra="board=4 turn=2")
+        self.logs(board, common + checkpoint(360, 93, extra="board=4 turn=4"))
+        (self.root / "win.native").write_text(common + checkpoint(360, 93, extra="board=4 turn=3"))
+        result = self.case("w05Dll", board_id=4, min_turn=4, context=93, timed_out=True)
+        self.assertEqual(result["status"], "TIMEOUT")
+        self.assertEqual(result["highest_verified_turn"], 2)
+        self.assertEqual(result["board_turn_checkpoints"], {1: 120, 2: 240})
+
     def test_board_checkpoint_requires_target_turn_board_and_both_peers(self):
         board = "Start New OVL 93\nobjdll> w05Dll.so prolog end\n"
         self.logs(board, checkpoint(120, 93, extra="board=4 turn=1"))

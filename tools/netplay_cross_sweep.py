@@ -85,6 +85,8 @@ def arguments():
     free.add_argument("--free-play-all", action="store_true", help="run all 51 modules in the seven Free Play tabs")
     free.add_argument("--special", action="append", metavar="mNNN", help="route to one game outside Free Play")
     free.add_argument("--special-all", action="store_true", help="run all ten games outside Free Play")
+    parser.add_argument("--board-turn", "--min-turn", type=int, default=2, metavar="N",
+                        help="require a matching checkpoint on the selected board at turn N or later (default 2)")
     parser.add_argument("--result-context", type=int, action="append", metavar="ID",
                         help="expected next overlay after a minigame exits (repeatable, default 84)")
     parser.add_argument("--list-scenarios", action="store_true")
@@ -92,6 +94,8 @@ def arguments():
     role.add_argument("--windows-host", dest="host", action="store_const", const="win")
     role.add_argument("--linux-host", dest="host", action="store_const", const="linux")
     parser.add_argument("--trace-hashes", action="store_true", help="record each native peer’s frame/hash list")
+    parser.add_argument("--mixed-graphics", action="store_true",
+                        help="keep Linux ultrawide 1x and Windows 4:3 3x even in fast mode")
     parser.add_argument("--fast", action="store_true",
                         help="run unthrottled on smaller displays; requires support in both engines")
     parser.add_argument("--record", action=argparse.BooleanOptionalAction, default=True,
@@ -100,6 +104,7 @@ def arguments():
     parser.add_argument("--replay-dir", type=Path, help="read a corpus of *.txt inputs for one scenario")
     parser.add_argument("--max-seconds", type=float, default=1350, help="wall-clock limit per case")
     args = parser.parse_args()
+    args.compact_video = args.fast and not args.mixed_graphics
     if args.list_scenarios:
         for name, s in SCENARIOS.items():
             print(f"{name:12} {s.walk:5} {s.overlay:9} host={'Windows' if s.windows_host else 'Linux'}")
@@ -111,6 +116,8 @@ def arguments():
     args.output = args.output.resolve()
     if not args.rom.is_file():
         parser.error(f"disc image does not exist: {args.rom}")
+    if args.board_turn < 1:
+        parser.error("--board-turn must be positive")
     if args.jobs < 1 or not (0 < args.max_seconds < float('inf')):
         parser.error("--jobs and --max-seconds must be positive and finite")
     if (args.appimage or args.windows_zip) and (args.linux_dir or args.windows_dir):
@@ -198,13 +205,13 @@ def display(log, resolution):
 
 
 @contextmanager
-def worker_environment(directory, source, fast):
+def worker_environment(directory, source, compact_video):
     directory.mkdir()
     prefix = directory / "wine"
     with ExitStack() as stack:
         log = stack.enter_context((directory / "worker.log").open("wb"))
         stack.callback(shutil.rmtree, prefix, True)
-        sizes = {"linux": "640x480" if fast else "1260x540", "win": "640x480" if fast else "1280x960"}
+        sizes = {"linux": "640x480" if compact_video else "1260x540", "win": "640x480" if compact_video else "1280x960"}
         displays = {peer: stack.enter_context(display(log, size)) for peer, size in sizes.items()}
         env = dict(os.environ, DISPLAY=displays["win"], WINEPREFIX=str(prefix), WINEDEBUG="-all")
         if source:
@@ -259,9 +266,9 @@ def launch(peer, host, port, scenario, replay, directory, worker, args, stack, s
     path = str if linux else windows_path
     config = {"backend.graphicsBackend": "vulkan" if linux else "d3d12", "backend.wasPresetChosen": True,
               "backend.isoPath": path(args.rom), "backend.skipPreLaunchUI": True, "video.enableVsync": not (args.fast or linux),
-              "video.enableFullscreen": True, "video.lockAspectRatio": args.fast or not linux,
-              "video.enableAdaptiveWidescreen": linux and not args.fast, "video.keepOriginalHud": linux,
-              "game.internalResolutionScale": 1 if (args.fast or linux) else 3, "audio.masterVolume": 0}
+              "video.enableFullscreen": True, "video.lockAspectRatio": args.compact_video or not linux,
+              "video.enableAdaptiveWidescreen": linux and not args.compact_video, "video.keepOriginalHud": linux,
+              "game.internalResolutionScale": 1 if (args.compact_video or linux) else 3, "audio.masterVolume": 0}
     (profile / "config.json").write_text(json.dumps(config), encoding="utf-8")
     env = dict(os.environ, DISPLAY=displays[peer], XDG_DATA_HOME=str(directory / peer),
                XDG_CONFIG_HOME=str(directory / peer / "config"), XDG_CACHE_HOME=str(prefix.parent / "cache"),
@@ -271,7 +278,7 @@ def launch(peer, host, port, scenario, replay, directory, worker, args, stack, s
         if startup_retry:
             # A new display and shader cache isolate a failed graphics startup.
             xvfb_log = stack.enter_context((directory / "linux-xvfb.log").open("wb"))
-            env.update(DISPLAY=stack.enter_context(display(xvfb_log, "640x480" if args.fast else "1260x540")),
+            env.update(DISPLAY=stack.enter_context(display(xvfb_log, "640x480" if args.compact_video else "1260x540")),
                        XDG_CACHE_HOME=str(directory / "cache"))
         cwd = args.linux_dir
         env.update(SDL_VIDEODRIVER="x11", LD_LIBRARY_PATH=os.pathsep.join(
@@ -345,11 +352,12 @@ def finalize_recording(path):
 
 class LiveEvidence:
     """Follow appended lines cheaply; the classifier makes the final decision."""
-    def __init__(self, directory, peer, scenario, results_contexts=(84,)):
+    def __init__(self, directory, peer, scenario, results_contexts=(84,), board_turn=2):
         self.directory = directory
         self.peer = peer
         self.scenario = scenario
         self.results_contexts = results_contexts
+        self.board_turn = board_turn
         self.offsets = {}
         self.tails = {}
         self.fast = False
@@ -394,7 +402,7 @@ class LiveEvidence:
                     fields = dict(re.findall(rb"(\w+)=(-?\d+)\b", line))
                     self.progress = int(fields.get(b"hash_frame", 0))
                     if (self.scenario.board is not None and int(fields.get(b"board", -1)) == self.scenario.board
-                            and int(fields.get(b"turn", -1)) >= 2 and int(fields.get(b"context", -1)) == self.scenario.context):
+                            and int(fields.get(b"turn", -1)) >= self.board_turn and int(fields.get(b"context", -1)) == self.scenario.context):
                         self.milestone = True
                 elif suffix == "log" and self.scenario.board is None and b"Start New OVL " in line:
                     transition = re.search(rb"Start New OVL (\d+)\b", line)
@@ -434,11 +442,11 @@ def run_case(job, worker, args, ports, stop, deadline, startup_retry=False):
     host = args.host or ("win" if scenario.windows_host else "linux")
     peer = "linux" if host == "win" else "win"
     port = ports.next()
-    options = dict(overlay=scenario.overlay, board_id=scenario.board, context=scenario.context, min_turn=2,
+    options = dict(overlay=scenario.overlay, board_id=scenario.board, context=scenario.context, min_turn=args.board_turn,
                    results_contexts=results_contexts, direct_return=scenario.special is not None)
     print(f"START {case_id} host={host}", flush=True)
     started = time.monotonic()
-    monitors = {side: LiveEvidence(directory, side, scenario, results_contexts) for side in (host, peer)}
+    monitors = {side: LiveEvidence(directory, side, scenario, results_contexts, args.board_turn) for side in (host, peer)}
     with ExitStack() as processes:
         players = {host: launch(host, host, port, scenario, replay, directory, worker, args, processes, startup_retry)}
         stop.wait(0.3)
@@ -563,7 +571,7 @@ def main():
 
     def worker(index):
         directory = work / f"worker-{index}"
-        with worker_environment(directory, args.wine_prefix, args.fast) as env:
+        with worker_environment(directory, args.wine_prefix, args.compact_video) as env:
             while not stop.is_set():
                 try:
                     job = jobs.get_nowait()

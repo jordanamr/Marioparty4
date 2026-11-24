@@ -54,6 +54,17 @@ class CampaignEvidenceTest(unittest.TestCase):
         self.assertEqual(monitor.progress, 1200)
         self.assertTrue(monitor.milestone)
 
+    def test_later_board_turn_keeps_live_monitor_running(self):
+        monitor = LiveEvidence(self.directory, "linux", SCENARIOS["koopa"], board_turn=4)
+        log = self.directory / "linux.native"
+        log.write_bytes(b"event=checkpoint hash_frame=3600 context=93 turn=3 board=4\n")
+        monitor.poll()
+        self.assertFalse(monitor.milestone)
+        with log.open("ab") as stream:
+            stream.write(b"event=checkpoint hash_frame=4800 context=93 turn=4 board=4\n")
+        monitor.poll()
+        self.assertTrue(monitor.milestone)
+
     def test_custom_minigame_waits_for_exact_result_overlay(self):
         scenario = scenario_definition(scenario_name("m403DLL"))
         self.assertEqual(scenario.overlay, "m403Dll")

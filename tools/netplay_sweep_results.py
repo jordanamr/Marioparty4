@@ -135,6 +135,20 @@ def classify_case(run_dir, *, overlay, peers=("linux", "win"), timed_out=False, 
     if direct_return:
         result["milestone"] = "minigame_direct_return"
 
+    board_frames = {}
+    if board_id is not None:
+        if context is None:
+            context = routes[peers[0]]["context"]
+        if context is not None and all(route["entered"] for route in routes.values()):
+            for frame in equal:
+                a, b = left[frame], right[frame]
+                if (a.get("context") == b.get("context") == str(context)
+                        and a.get("board") == b.get("board") == str(board_id)
+                        and a.get("turn") == b.get("turn") and a.get("turn", "").isdigit()):
+                    board_frames.setdefault(int(a["turn"]), frame)
+        result["board_turn_checkpoints"] = board_frames
+        result["highest_verified_turn"] = max(board_frames, default=None)
+
     if first is not None:
         observations = [(kind, p, data) for f, kind, p, data in failures if f == first]
         kind = "PROTOCOL" if any(k == "PROTOCOL" for k, _, _ in observations) else "DESYNC"
@@ -175,12 +189,7 @@ def classify_case(run_dir, *, overlay, peers=("linux", "win"), timed_out=False, 
         return result
     reached = all(route["entered"] for route in routes.values())
     if board_id is not None:
-        # A frozen display or a different board must never earn turn coverage.
-        if context is None:
-            context = routes[peers[0]]["context"]
-        verified = next((f for f in equal if reached and context is not None and all(
-            cp.get("context") == str(context) and cp.get("board") == str(board_id)
-            and int(cp.get("turn", -1)) >= min_turn for cp in (left[f], right[f]))), None)
+        verified = next((frame for turn, frame in board_frames.items() if turn >= min_turn), None)
     else:
         marks = [r["after_result_frame"] for r in routes.values()]
         verified = None
