@@ -496,7 +496,7 @@ void fn_1_53B8(omObjData *object)
     Vec sp14;
     Vec sp8;
     WorkMGCoin *temp_r31;
-    s32 temp_r29;
+    s32 temp_r29 = 0;
     s32 temp_r28;
     temp_r31 = object->data;
     temp_r28 = GWPlayer[lbl_1_bss_86].port;

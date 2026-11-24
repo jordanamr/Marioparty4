@@ -340,7 +340,7 @@ s32 MGSeqInitTimer(SeqWork *work, va_list params)
     duration = va_arg(params, int);
     x = va_arg(params, int);
     y = va_arg(params, int);
-    if (duration <= 0 && duration > 99) {
+    if (duration < 0 || duration > 99) {
         duration = 99;
     }
     work->timer_val = duration;
@@ -876,7 +876,7 @@ static ANIMDATA *SeqLoadFontChar(char *str, s16 flags)
     s32 data_num;
     s16 id;
     char *list;
-    char c = *str;
+    u8 c = (u8)*str;
     if (c == 222 || c == 223) {
         return NULL;
     }
@@ -886,29 +886,29 @@ static ANIMDATA *SeqLoadFontChar(char *str, s16 flags)
     }
 #endif
     for (id = 0, list = seqFontAlphaTbl; *list != 0; id++, list++) {
-        if (*list == c) {
+        if ((u8)*list == c) {
             data_num = DATA_MAKE_NUM(DATADIR_GAMEMES, id + (VERSION_JP ? 20 : 21));
             return HuSprAnimRead(SeqReadFile(data_num));
         }
     }
     for (id = 0, list = seqFontNumTbl; *list != 0; id++, list++) {
-        if (*list == c) {
+        if ((u8)*list == c) {
             data_num = DATA_MAKE_NUM(DATADIR_GAMEMES, id + (VERSION_JP ? 10 : 11));
             return HuSprAnimRead(SeqReadFile(data_num));
         }
     }
     for (id = 0, list = seqPunctTbl; *list != 0; id++, list++) {
-        if (*list == c) {
+        if ((u8)*list == c) {
             data_num = DATA_MAKE_NUM(DATADIR_GAMEMES, id + (VERSION_JP ? 153 : 154));
             return HuSprAnimRead(SeqReadFile(data_num));
         }
     }
-    if (str[1] == 222) { // ゛
+    if ((u8)str[1] == 222) { // ゛
         list = seqFontKanaTbl;
         list += 55;
         id = 55;
     }
-    else if (str[1] == 223) { // ゜
+    else if ((u8)str[1] == 223) { // ゜
         list = seqFontKanaTbl;
         list += 75;
         id = 75;
@@ -918,7 +918,7 @@ static ANIMDATA *SeqLoadFontChar(char *str, s16 flags)
         id = 0;
     }
     while (*list != 0) {
-        if (*list == c) {
+        if ((u8)*list == c) {
             if (flags & 0x1) {
                 data_num = DATA_MAKE_NUM(DATADIR_GAMEMES, id + (VERSION_JP ? 155 : 156));
             }
@@ -1630,7 +1630,7 @@ s32 MGSeqUpdateMG1vs3(SeqWork *work)
                         }
                     }
                     else {
-                        if (work->time > 80 || work->time < 140) {
+                        if (work->time >= 80 && work->time < 140) {
                             for (i = 0; i < 4; i++) {
                                 for (j = 0; j < work->word_len; j++) {
                                     time = (work->time - 80) - i - j;
@@ -2748,7 +2748,7 @@ s32 MGSeqInitWin(SeqWork *work, va_list params)
     s32 num_winners;
     float word_w;
     float word_x;
-    if (win_type < 0 && win_type >= 6) {
+    if (win_type < 0 || win_type >= 6) {
         return 0;
     }
     if (win_type == 3) {

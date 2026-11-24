@@ -192,6 +192,7 @@ static class L {
         {"Lancer pour tout le monde","Start for everyone"},
         {"Langue de jeu inconnue.","Unknown game language."},
         {"Langue du jeu","Game language"},
+        {"La connexion avec un joueur a été perdue. La partie en ligne est terminée.","A player is no longer reachable. The online game has ended."},
         {"Le canal du salon est interrompu. La partie continue tant que l'autre joueur reste joignable. Gardez cette fenêtre ouverte.","The room's channel is interrupted. The game goes on while the other player stays reachable. Keep this window open."},
         {"Le canal rapide du jeu se prépare encore. Attendez deux secondes puis réessayez.","The game's fast channel is still getting ready. Wait two seconds and try again."},
         {"Le disque n'est pas vérifié.","The disc is not verified."},

@@ -207,6 +207,7 @@ s32 fn_1_774(void)
         unkFlag--;
         fn_1_93C8(unkFlag);
     }
+    return 0;
 }
 
 /* Check if can iteract with board object? */
@@ -461,7 +462,7 @@ s32 fn_1_1128(void)
     }
 
     BoardRollDispSet(1);
-    // TODO PC
+    return 0;
 }
 
 /**

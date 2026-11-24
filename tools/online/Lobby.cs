@@ -333,6 +333,13 @@ sealed class Lobby {
     public void Leave(int guest) {
         lock(this) {
             if(guest<1 || guest>=MaxSeats || guest==LocalSeat)return;
+            if(Phase==LobbyPhase.Preparing) {
+                // READY and GO belong to the original roster. Removing an
+                // unready player here could commit the remaining players.
+                Ending=LobbyEnding.RemoteGameClosed;Phase=LobbyPhase.Closed;
+                for(int i=1;i<MaxSeats;i++)if(i!=guest && seats[i]!=null)
+                    try{send(i,Command(8,attempt));}catch{}
+            } else if(Phase!=LobbyPhase.Waiting)return;
             seats[guest]=null;ready[guest]=false;endpoints[guest]=null;changed();
         }
     }

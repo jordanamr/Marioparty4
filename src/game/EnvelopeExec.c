@@ -217,7 +217,6 @@ static void SetEnvelop(HSFCENV *arg0) {
     Vec *temp_r28;
     Vec *temp_r31;
     float temp_f31;
-    MtxPtr var_r29;
     s32 temp_r18;
     s32 temp_r21;
     s32 i;
@@ -229,7 +228,6 @@ static void SetEnvelop(HSFCENV *arg0) {
     Mtx spE0;
     Mtx spB0;
     Mtx sp80;
-    Mtx sp50;
 
     var_r27 = arg0->singleData;
     for (i = 0; i < arg0->singleCount; i++, var_r27++) {
@@ -304,26 +302,18 @@ static void SetEnvelop(HSFCENV *arg0) {
             sp110[0][3] = spB0[0][3] * temp_f31;
             sp110[1][3] = spB0[1][3] * temp_f31;
             sp110[2][3] = spB0[2][3] * temp_f31;
-            if (sp80 == sp110 || sp80 == sp140) {
-                var_r29 = sp50;
-            } else {
-                var_r29 = sp80;
-            }
-            var_r29[0][0] = sp110[0][0] + sp140[0][0];
-            var_r29[0][1] = sp110[0][1] + sp140[0][1];
-            var_r29[0][2] = sp110[0][2] + sp140[0][2];
-            var_r29[0][3] = sp110[0][3] + sp140[0][3];
-            var_r29[1][0] = sp110[1][0] + sp140[1][0];
-            var_r29[1][1] = sp110[1][1] + sp140[1][1];
-            var_r29[1][2] = sp110[1][2] + sp140[1][2];
-            var_r29[1][3] = sp110[1][3] + sp140[1][3];
-            var_r29[2][0] = sp110[2][0] + sp140[2][0];
-            var_r29[2][1] = sp110[2][1] + sp140[2][1];
-            var_r29[2][2] = sp110[2][2] + sp140[2][2];
-            var_r29[2][3] = sp110[2][3] + sp140[2][3];
-            if (var_r29 == sp50) {
-                MTXCopy(sp50, sp80);
-            }
+            sp80[0][0] = sp110[0][0] + sp140[0][0];
+            sp80[0][1] = sp110[0][1] + sp140[0][1];
+            sp80[0][2] = sp110[0][2] + sp140[0][2];
+            sp80[0][3] = sp110[0][3] + sp140[0][3];
+            sp80[1][0] = sp110[1][0] + sp140[1][0];
+            sp80[1][1] = sp110[1][1] + sp140[1][1];
+            sp80[1][2] = sp110[1][2] + sp140[1][2];
+            sp80[1][3] = sp110[1][3] + sp140[1][3];
+            sp80[2][0] = sp110[2][0] + sp140[2][0];
+            sp80[2][1] = sp110[2][1] + sp140[2][1];
+            sp80[2][2] = sp110[2][2] + sp140[2][2];
+            sp80[2][3] = sp110[2][3] + sp140[2][3];
             Hu3DMtxScaleGet(&sp80[0], &sp14);
             if (sp14.x != 1.0f || sp14.y != 1.0f || sp14.z != 1.0f) {
                 MTXScale(spE0, 1.0 / sp14.x, 1.0 / sp14.y, 1.0 / sp14.z);

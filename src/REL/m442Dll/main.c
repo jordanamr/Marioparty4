@@ -1432,7 +1432,25 @@ void fn_1_3EC0(omObjData *object)
     object->func = fn_1_4364;
 }
 
-void fn_1_4364(omObjData *object) { }
+static void UpdateDustParticle(M442StructBss5C *particle, s32 i)
+{
+    particle->unk_20 += particle->unk_24;
+    particle->unk_00 = particle->unk_0C + (particle->unk_28 * sind(particle->unk_20));
+    particle->unk_04 += particle->unk_10;
+    if (--particle->unk_18 == 0) {
+        fn_1_4444(i);
+    }
+}
+
+void fn_1_4364(omObjData *object)
+{
+#ifdef TARGET_PC
+    s32 i;
+    for (i = 0; i < ARRAY_COUNT(lbl_1_bss_5C); ++i) {
+        UpdateDustParticle(&lbl_1_bss_5C[i], i);
+    }
+#endif
+}
 
 void fn_1_4368(u8 arg0, u8 arg1, Vec *arg2)
 {
@@ -1558,12 +1576,9 @@ void fn_1_485C(HU3DMODEL *model, Mtx mtx)
             var_r31->unk_00 + (var_r31->unk_2C * (sp10[3].x * var_f31)), var_r31->unk_04 + (sp10[3].y * var_f31), var_r31->unk_08 + (sp10[3].z * var_f31));
         GXTexCoord2f32(0.0f, 1.0f);
         GXEnd();
-        var_r31->unk_20 += var_r31->unk_24;
-        var_r31->unk_00 = var_r31->unk_0C + (var_r31->unk_28 * sind(var_r31->unk_20));
-        var_r31->unk_04 += var_r31->unk_10;
-        if (--var_r31->unk_18 == 0) {
-            fn_1_4444(var_r30);
-        }
+#ifndef TARGET_PC
+        UpdateDustParticle(var_r31, var_r30);
+#endif
     }
     GXDrawDone();
     fn_1_8520(&lbl_1_bss_C05C[0], 1);
@@ -1674,6 +1689,7 @@ s32 fn_1_59C0(Vec *arg0)
             return var_r31;
         }
     }
+    return -1;
 }
 
 void fn_1_5A48(HU3DMODEL *arg0, Mtx arg1)

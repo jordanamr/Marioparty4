@@ -281,6 +281,29 @@ extern "C" bool PartyBoard_RollbackCheckpointSelfTest(void) {
         ok ? "PASS" : "FAIL", fixture.corrections, fixture.replayed, fixture.bytes);
     return ok;
 #else
-    return false;
+    // ELF builds can capture registered game state without a PE module or a suspended task.
+    Builder globals;
+    if (!checkpointStaticRegions(Builder::add, &globals)) return false;
+    const size_t size = globals.layout.byteSize();
+    std::vector<u8> original(size), seeded(size), first(size), replay(size);
+    if (!globals.layout.save(original.data(), size)) return false;
+    auto simulate = [] {
+        ++GlobalCounter;
+        (void)rand8();
+        (void)frand();
+    };
+    frand_state_set(0x12345678);
+    bool ok = globals.layout.save(seeded.data(), size);
+    simulate();
+    ok &= globals.layout.save(first.data(), size) && first != seeded;
+    ok &= !globals.layout.load(original.data(), size - 1);
+    ok &= globals.layout.save(replay.data(), size) && first == replay;
+    ok &= globals.layout.load(seeded.data(), size);
+    simulate();
+    ok &= globals.layout.save(replay.data(), size) && first == replay;
+    ok &= globals.layout.load(original.data(), size);
+    OSReport("Registered game-state checkpoint: %s (%zu bytes, clock and RNG replay).\n",
+        ok ? "PASS" : "FAIL", size);
+    return ok;
 #endif
 }

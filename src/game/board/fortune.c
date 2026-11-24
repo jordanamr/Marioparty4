@@ -280,28 +280,16 @@ static void ExecComFortuneWin(void)
 	u32 mess_main;
 	u32 mess_prize;
 
+	if ((u32)comPrize >= sizeof(comPrizeMessTbl) / sizeof(comPrizeMessTbl[0])) return;
 	GWSystem.player_curr = -1;
 	mess_player1 = BoardPlayerGetCharMess(comPlayer1);
 	mess_player2 = BoardPlayerGetCharMess(comPlayer2);
 	mess_prize = comPrizeMessTbl[comPrize];
-	if(comPrize == 0 || comPrize == 5 || comPrize == 3) {
-		mess_main = MAKE_MESSID(0x1C, 0x12);
-	} else {
-		if(comPrize == 2) {
-			if(comCoin == 0) {
-				mess_main = MAKE_MESSID(0x1C, 0x13);
-			} else {
-				mess_main = MAKE_MESSID(0x1C, 0x11);
-			}
-		} else {
-			if(comPrize == 1 || comPrize == 4) {
-				if(comStar == 0) {
-					mess_main = MAKE_MESSID(0x1C, 0x14);
-				} else {
-					mess_main = MAKE_MESSID(0x1C, 0x11);
-				}
-			}
-		}
+	mess_main = MAKE_MESSID(0x1C, 0x12);
+	if(comPrize == 2) {
+		mess_main = comCoin == 0 ? MAKE_MESSID(0x1C, 0x13) : MAKE_MESSID(0x1C, 0x11);
+	} else if(comPrize == 1 || comPrize == 4) {
+		mess_main = comStar == 0 ? MAKE_MESSID(0x1C, 0x14) : MAKE_MESSID(0x1C, 0x11);
 	}
 	BoardWinCreate(2, mess_main, -1);
 	BoardWinInsertMesSet(mess_player1, 0);

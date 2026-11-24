@@ -205,6 +205,7 @@ void fn_1_CD14(omObjData *object)
 s32 fn_1_CE68(void)
 {
     switch (lbl_1_bss_140) {
+        default:
         case 0:
             return 0;
 
@@ -215,7 +216,6 @@ s32 fn_1_CE68(void)
             else {
                 return 1;
             }
-            break;
 
         case 2:
             if (lbl_1_bss_144) {
@@ -224,7 +224,6 @@ s32 fn_1_CE68(void)
             else {
                 return 4;
             }
-            break;
     }
 }
 

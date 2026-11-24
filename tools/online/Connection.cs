@@ -307,7 +307,9 @@ sealed class Bridge : IDisposable {
     readonly ReplayWindow replay=new ReplayWindow();
     readonly IPEndPoint[] peerEndpoint=new IPEndPoint[Lobby.MaxSeats];
     long pingStamp; public Action<byte[]> Control; public Action<int> Ping;
-    long udpPingStamp,lastUdpPongStamp;int committed,controlLost;
+    long udpPingStamp,lastUdpPongStamp,lastControlStamp;int committed,controlLost;
+    public long LastControlStamp {get{return Interlocked.Read(ref lastControlStamp);}}
+    public long LastGameStamp {get{return Interlocked.Read(ref lastUdpStamp);}}
     public bool ControlConnected {get{return Volatile.Read(ref controlLost)==0;}}
     // Set only by the authenticated lobby commit callback, never by UDP input.
     public void CommitGame(){if(closed || !ControlConnected)throw new IOException(L.T("Le salon s'est ferme avant le depart."));Volatile.Write(ref committed,1);}
@@ -401,6 +403,7 @@ sealed class Bridge : IDisposable {
             // make us allocate.
             if(n<1 || n>2048) throw new IOException(L.T("Message réseau incompatible."));
             var data=ReadControl(n);
+            Interlocked.Exchange(ref lastControlStamp,Stopwatch.GetTimestamp());
             if(n==1 && data[0]==0) continue;
             if(n==9 && data[0]==6) {data[0]=7;Write(data);continue;}
             if(n==9 && data[0]==7) {
@@ -546,7 +549,7 @@ sealed class MeshRelay : IDisposable {
         // is actually reading.
         public IPEndPoint Game;
         public readonly bool LearnPeer;
-        public long LastPongStamp;
+        public long LastPongStamp,LastGameStamp;
         // Round trip of the last heartbeat this leg answered, -1 before the first.
         public int PingMs=-1;
         // Non-blocking from birth: a leg is usually added while Run() is already
@@ -601,6 +604,11 @@ sealed class MeshRelay : IDisposable {
     // already registered, and threading the return value all the way from
     // MeshWiring's event handler to LoadGame() would be a longer path to the
     // same number.
+    public long LastGameStamp(int seat) {
+        var leg=legs[seat];
+        return leg==null?0:Interlocked.Read(ref leg.LastGameStamp);
+    }
+
     public int LoopbackPort(int seat) {
         if(seat<0 || seat>=Lobby.MaxSeats || legs[seat]==null)throw new IOException(L.T("Ce siège n'a pas de pair de maillage."));
         return legs[seat].LoopbackPort;
@@ -687,6 +695,7 @@ sealed class MeshRelay : IDisposable {
                         if(!Bridge.IsHeartbeat(payload,seat) && !Bridge.Packet(payload,seat))continue;
                         bool newest=replay.IsNewest(seat,sequence);
                         if(!replay.Accept(seat,sequence))continue;
+                        Interlocked.Exchange(ref leg.LastGameStamp,Stopwatch.GetTimestamp());
                         if(leg.LearnPeer && newest)leg.NetworkPeer=from;
                         if(Bridge.IsHeartbeat(payload,seat)) {
                             if(payload[6]==1){payload[5]=(byte)localPlayer;payload[6]=2;SendToLeg(leg,payload);}

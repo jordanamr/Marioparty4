@@ -1,9 +1,10 @@
 #ifndef REL_M431DLL_H
 #define REL_M431DLL_H
 
+#include "game/frand.h"
 #include "game/object.h"
 
-#define rand16() ((rand8() << 8) | (rand8()))
+#define rand16() HuRand16FromBytes()
 
 typedef struct bss_12C_inner {
     Vec unk0;

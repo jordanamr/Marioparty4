@@ -1601,7 +1601,7 @@ void fn_1_78B4(StructBss200 *arg0)
     float sp118;
     float sp114;
     float sp110;
-    float var_f27; // ! - uninitialized
+    float var_f27;
     float var_f29;
     float var_f28;
     float var_f30;
@@ -1671,7 +1671,7 @@ void fn_1_78B4(StructBss200 *arg0)
             arg0->unkB4 |= 2;
             fn_1_65C0(sp254, sp224);
             if (arg0->unkBC == -1) {
-                for (var_r30 = 0, sp120 = 0, var_f30 = 0.0f; var_r30 < 3; var_r30++) {
+                for (var_r30 = 0, sp120 = 0, var_f30 = -1.0f; var_r30 < 3; var_r30++) {
                     temp_r18 = sp224[var_r30];
                     (var_r30 >= 2) ? (var_r29 = 0) : (var_r29 = var_r30 + 1);
                     var_r17 = sp224[var_r29];
@@ -1739,7 +1739,7 @@ void fn_1_78B4(StructBss200 *arg0)
             var_f29 = sp230[var_r21].x;
             var_f28 = sp230[var_r21].z;
             if (fn_1_595C(var_f29, var_f28, arg0) <= 30.0f && !(arg0->unkB0 & 0x20)) {
-                arg0->unkC4 = fn_1_21D4(var_f27 - 90.0f);
+                arg0->unkC4 = fn_1_21D4(atan2d(var_f29, var_f28) - 90.0f);
                 arg0->unkB0 |= 0x20;
             }
             if (arg0->unkB0 & 0x20) {

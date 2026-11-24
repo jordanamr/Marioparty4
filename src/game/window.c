@@ -1815,17 +1815,18 @@ static void GetMesMaxSizeSub(u32 mess)
     mess_start = NULL;
     cr_flag = 0;
 #ifdef TARGET_PC
-    assert(mess <= 0x10000000); // In this case we should be in GetMesMaxSizeSubPtr
-#endif
+    if (mess > 0x10000000 || !messDataPtr) return;
+#else
     if (mess > 0x80000000) {
-#ifndef TARGET_PC
         from_messdata = 0;
         mess_data = (u8 *)mess;
-#endif
     }
-    else {
+    else
+#endif
+    {
         from_messdata = 1;
         mess_data = mess_start = MessData_MesPtrGet(messDataPtr, mess);
+        if (!mess_data) return;
     }
     line_h = 26;
     line_w = 0;
@@ -2114,15 +2115,16 @@ s16 HuWinKeyWaitNumGet(u32 mess)
     s16 wait_num;
     u8 *mess_data;
 #ifdef TARGET_PC
-    assert(mess <= 0x10000000);
-#endif
+    if (mess > 0x10000000 || !messDataPtr) return 0;
+#else
     if (mess > 0x80000000) {
-#ifndef TARGET_PC
         mess_data = (u8 *)mess;
-#endif
     }
-    else {
+    else
+#endif
+    {
         mess_data = MessData_MesPtrGet(messDataPtr, mess);
+        if (!mess_data) return 0;
     }
     for (wait_num = 0; *mess_data != 0; mess_data++) {
         if (*mess_data == 0xFF) {

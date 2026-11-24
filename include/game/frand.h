@@ -10,6 +10,16 @@
 #define frand16() (((s32)frand() & 0xFFFF))
 #define frandmod31(range) (((s32)frand() & 0x7FFFFFFF) % (range))
 
+s32 rand8(void);
+
+/* Keep which draw supplies the high byte independent of compiler evaluation order. */
+static inline s32 HuRand16FromBytes(void)
+{
+    s32 high = rand8();
+    s32 low = rand8();
+    return (high << 8) | low;
+}
+
 u32 frand(void);
 f32 frandf(void);
 u32 frandmod(u32 arg0);

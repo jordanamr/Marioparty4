@@ -1373,7 +1373,7 @@ void fn_1_69C0(void)
     while (TRUE) {
         temp_r31->unk58 = temp_r31->unk4C.x;
         temp_r31->unk5C = temp_r31->unk4C.z;
-        if (temp_r31->unk16[4] != 0) {
+        if (temp_r31->unk1E != 0) {
             break;
         }
         switch (temp_r31->unk2C) {

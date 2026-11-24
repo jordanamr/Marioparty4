@@ -810,7 +810,7 @@ void Hu3DMotionExec(s16 arg0, s16 arg1, float arg2, s32 arg3)
     for (; track < sp10; track++) {
         switch (track->type) {
             case HSF_TRACK_TRANSFORM:
-                if (track->target < temp_r29->objectNum && track->target != -1) {
+                if (track->target < temp_r29->objectNum && track->target != 0xFFFF) {
                     temp_r31 = &temp_r29->object[track->target];
                     if (track->channel == 0x28) {
                         temp_r31->mesh.mesh.baseMorph = GetCurve(track, arg2);
@@ -957,7 +957,7 @@ void Hu3DSubMotionExec(s16 arg0)
     for (var_r27 = 0; var_r27 < motion->numTracks; var_r27++, track++) {
         switch (track->type) {
             case HSF_TRACK_TRANSFORM:
-                if (track->target < temp_r28->objectNum && track->target != -1) {
+                if (track->target < temp_r28->objectNum && track->target != 0xFFFF) {
                     temp_r26 = &temp_r28->object[track->target];
                     temp_r24 = track->channel;
                     temp_r31 = GetObjTRXPtr(temp_r26, temp_r24);

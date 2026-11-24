@@ -1373,7 +1373,7 @@ static s32 DoDebugMove(s32 arg0, s16 *arg1)
                     var_r26 -= 0x168;
                 }
 
-                spC0[var_r29] = var_r26 = var_r26 = (((var_r26 + 0x16) / 45) * 0x2D);
+                spC0[var_r29] = var_r26 = (((var_r26 + 0x16) / 45) * 0x2D);
             }
         }
         sp54 = GWPlayer[arg0].space_curr;
@@ -2271,7 +2271,7 @@ void BoardPlayerMoveAwayStart(s32 arg0, s32 arg1, s32 arg2)
 
     var_r27 = 0;
     // hack
-    for (var_r28 = var_r28 = var_r27; var_r27 < 4; var_r27++, var_r30++) {
+    for (var_r28 = var_r27; var_r27 < 4; var_r27++, var_r30++) {
         var_r30 &= 3;
 
         for (var_r31 = 0; var_r31 < 4; var_r31++) {

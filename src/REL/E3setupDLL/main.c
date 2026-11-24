@@ -986,7 +986,7 @@ static void UpdateCharSel(omObjData *object)
 			HuSprAttrSet(work->frameGroup, 2, HUSPR_ATTR_DISPOFF);
 			object->work[2] = 1;
 			if(work->currPlayer != 0) {
-				i = work->currPlayer+(i = playerCntTbl[configE3.playerCnt]-1);
+				i = work->currPlayer + playerCntTbl[configE3.playerCnt] - 1;
 				OSReport("selmode %d %d\n", work->currPlayer, i);
 				work->cursorStat[i] = 0;
 			} else {

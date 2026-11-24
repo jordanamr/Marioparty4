@@ -371,6 +371,7 @@ static s32 LandEvent(void)
     else if (flag & 0x400) {
         CupLandEvent(playerNo, spaceId);
     }
+    return 0;
 }
 
 static s32 WalkEvent(void)
@@ -403,7 +404,7 @@ static s32 WalkEvent(void)
     }
     type = -1;
     for (i = 0; i < space->link_cnt; i++) {
-        if (space->link[i] != -1) {
+        if (space->link[i] != 0xFFFF) {
             spaceLink = BoardSpaceGet(0, space->link[i]);
             if (spaceLink->flag & 0x8000) {
                 type = 0;
@@ -671,7 +672,7 @@ static s32 WalkMiniEvent(void)
         RoundItemEvent();
     }
     BoardRollDispSet(1);
-    // TODO PC
+    return 0;
 }
 
 static void UpdateHostDisp(void)
@@ -1933,7 +1934,7 @@ static void CupObjRotate(CupObjWork *work, omObjData *obj)
     space = BoardSpaceGet(0, cupSpaceStart);
     cupSpaceEnd = -1;
     for (i = 0; i < space->link_cnt; i++) {
-        if (space->link[i] != -1) {
+        if (space->link[i] != 0xFFFF) {
             flag = BoardSpaceFlagGet(0, space->link[i]);
             if ((flag & 0x200) && cupDir == 0) {
                 cupSpaceEnd = space->link[i];

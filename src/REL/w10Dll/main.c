@@ -194,7 +194,7 @@ static void LightResetHook(void)
 
 static s32 LandEvent(void)
 {
-	
+    return 0;
 }
 
 static s32 WalkEvent(void)
@@ -214,7 +214,7 @@ void fn_1_918(void)
 
 static s32 WalkMiniEvent(void)
 {
-	
+    return 0;
 }
 
 s32 fn_1_920(s16 arg0, f32 arg8, f32 arg9) {

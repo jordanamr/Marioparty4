@@ -231,7 +231,7 @@ void fn_1_AE0(omObjData *arg0)
             if (lbl_1_bss_2 == 0) {
                 if (temp_r31->unkA != 0) {
                     temp_r31->unkA++;
-                    temp_f31 = (((rand8() << 8) | rand8()) % 361);
+                    temp_f31 = (HuRand16FromBytes() % 361);
                     Center.x = (lbl_1_data_78[1].center.x + (10.0 * sind(temp_f31)));
                     Center.y = (lbl_1_data_78[1].center.y + (10.0 * cosd(temp_f31)));
                     if (temp_r31->unkA > (2 * REFRESH_RATE / 3)) {
@@ -477,15 +477,15 @@ void fn_1_19B0(void)
     f32 var_f30;
     s16 var_r31;
 
-    var_f30 = (((rand8() << 8) | rand8()) % 361);
+    var_f30 = (HuRand16FromBytes() % 361);
 
     for (var_r31 = 1; var_r31 < 4; var_r31++, var_f30 += 120.0f) {
-        temp_f31 = 0.01f * ((((rand8() << 8) | rand8()) % 51) + 50);
+        temp_f31 = 0.01f * ((HuRand16FromBytes() % 51) + 50);
         temp_f29 = (temp_f31 * (200.0 * sind(var_f30)));
         var_f28 = (temp_f31 * (200.0 * cosd(var_f30)));
         var_f27 = 0.0f;
         Hu3DModelPosSet(lbl_1_bss_10[var_r31], temp_f29, 300.0f + var_f28, var_f27);
-        temp_f31 = 0.1f * ((((rand8() << 8) | rand8()) % 11) + 25);
+        temp_f31 = 0.1f * ((HuRand16FromBytes() % 11) + 25);
         Hu3DModelScaleSet(lbl_1_bss_10[var_r31], temp_f31, temp_f31, temp_f31);
         Hu3DModelAttrReset(lbl_1_bss_10[var_r31], HU3D_ATTR_DISPOFF);
         Hu3DModelAttrReset(lbl_1_bss_10[var_r31], HU3D_MOTATTR_PAUSE);
@@ -515,11 +515,11 @@ void fn_1_1D54(f32 arg8, f32 arg9, f32 argA, s16 arg0, f32 argB, s16 arg1)
     unkStruct4 *var_r31;
 
     for (var_r30 = 0; var_r30 < arg0; var_r30++) {
-        temp_f31 = argB + ((((rand8() << 8) | rand8()) % 11) - 5);
+        temp_f31 = argB + ((HuRand16FromBytes() % 11) - 5);
         temp_f30 = sind(temp_f31);
         temp_f29 = cosd(temp_f31);
-        sp30.x = arg8 + ((((rand8() << 8) | rand8()) % 21) - 10);
-        sp30.y = arg9 + ((((rand8() << 8) | rand8()) % 21) - 10);
+        sp30.x = arg8 + ((HuRand16FromBytes() % 21) - 10);
+        sp30.y = arg9 + ((HuRand16FromBytes() % 21) - 10);
         sp30.z = argA;
         sp24.x = sp24.y = sp24.z = 1.0f;
         sp1E.r = sp1E.g = sp1E.b = 0xFF;
@@ -529,14 +529,14 @@ void fn_1_1D54(f32 arg8, f32 arg9, f32 argA, s16 arg0, f32 argB, s16 arg1)
             break;
 
         var_r31->unk34 = 0;
-        var_r31->unk36 = ((rand8() << 8) | rand8()) % 2 + 2;
-        var_r31->unk0.x = (temp_f30 * (0.1f * ((((rand8() << 8) | rand8()) % 41) + 0x28)));
-        var_r31->unk0.y = (temp_f29 * (0.1f * ((((rand8() << 8) | rand8()) % 61) + 0x3C)));
+        var_r31->unk36 = HuRand16FromBytes() % 2 + 2;
+        var_r31->unk0.x = (temp_f30 * (0.1f * ((HuRand16FromBytes() % 41) + 0x28)));
+        var_r31->unk0.y = (temp_f29 * (0.1f * ((HuRand16FromBytes() % 61) + 0x3C)));
         var_r31->unk0.z = 0.0f;
         var_r31->unk18 = (0.01f * var_r31->unk0.x);
         var_r31->unk1C = 0.1f;
         var_r31->unk24 = 1.5f;
-        var_r31->unk28 = ((0.1f * ((((rand8() << 8) | rand8()) % 7) + 2)) / (var_r31->unk36 * 0xE));
+        var_r31->unk28 = ((0.1f * ((HuRand16FromBytes() % 7) + 2)) / (var_r31->unk36 * 0xE));
         var_r31->unk2C = sp1E.a;
         var_r31->unk30 = (var_r31->unk2C / (var_r31->unk36 * 0xE));
     }
@@ -901,15 +901,15 @@ void fn_1_3DD8(omObjData *object)
             }
             return;
         case 2:
-            var_f30 = (((rand8() << 8) | rand8()) % 361);
+            var_f30 = (HuRand16FromBytes() % 361);
 
             for (var_r29 = 1; var_r29 < 4; var_r29++, var_f30 += 120.0f) {
-                var_f31 = 0.01f * ((((rand8() << 8) | rand8()) % 51) + 0x32);
+                var_f31 = 0.01f * ((HuRand16FromBytes() % 51) + 0x32);
                 var_f27 = (var_f31 * (200.0 * sind(var_f30)));
                 var_f28 = (var_f31 * (200.0 * cosd(var_f30)));
                 var_f29 = 0.0f;
                 Hu3DModelPosSet(lbl_1_bss_10[var_r29], var_f27, 300.0f + var_f28, var_f29);
-                var_f31 = 0.1f * ((((rand8() << 8) | rand8()) % 11) + 0x19);
+                var_f31 = 0.1f * ((HuRand16FromBytes() % 11) + 0x19);
                 Hu3DModelScaleSet(lbl_1_bss_10[var_r29], var_f31, var_f31, var_f31);
                 Hu3DModelAttrReset(lbl_1_bss_10[var_r29], HU3D_ATTR_DISPOFF);
                 Hu3DModelAttrReset(lbl_1_bss_10[var_r29], HU3D_MOTATTR_PAUSE);
@@ -1022,7 +1022,7 @@ void fn_1_46E0(omObjData *object)
                 Hu3DMotionTimeSet(object->model[var_r30 + 4], 0.0f);
                 lbl_1_data_14[var_r30] = 0;
             }
-            temp_r31->unk2C = (((rand8() << 8) | rand8()) % (s16)temp_r31->unk1C);
+            temp_r31->unk2C = (HuRand16FromBytes() % (s16)temp_r31->unk1C);
             temp_r31->unk24 = 0.0f;
             lbl_1_data_108[0] = 0;
             lbl_1_data_104[0]++;
@@ -1224,12 +1224,12 @@ void fn_1_5010(unkStruct6 *arg0, Vec *arg1, f32 arg8)
             var_f28 = (ABS(sp14.x) < 0.1f) ? 100.0f : 100.0f * sp14.x;
             var_f27 = (ABS(sp14.y) < 0.1f) ? 100.0f : 100.0f * sp14.y;
             var_f26 = (ABS(sp14.z) < 0.1f) ? 100.0f : 100.0f * sp14.z;
-            sp14.x += (0.001f * (-var_f28 + (((rand8() << 8) | rand8()) % (s16)(1.0f + (var_f28 - -var_f28)))));
-            sp14.y += (0.001f * (-var_f27 + (((rand8() << 8) | rand8()) % (s16)(1.0f + (var_f27 - -var_f27)))));
-            sp14.z += (0.001f * (-var_f26 + (((rand8() << 8) | rand8()) % (s16)(1.0f + (var_f26 - -var_f26)))));
-            var_r31->unkAC.x = (sp14.x * ((((rand8() << 8) | rand8()) % 21) + 0x50));
-            var_r31->unkAC.y = (sp14.y * ((((rand8() << 8) | rand8()) % 16) + 0x1E));
-            var_r31->unkAC.z = (sp14.z * ((((rand8() << 8) | rand8()) % 21) + 0x50));
+            sp14.x += (0.001f * (-var_f28 + (HuRand16FromBytes() % (s16)(1.0f + (var_f28 - -var_f28)))));
+            sp14.y += (0.001f * (-var_f27 + (HuRand16FromBytes() % (s16)(1.0f + (var_f27 - -var_f27)))));
+            sp14.z += (0.001f * (-var_f26 + (HuRand16FromBytes() % (s16)(1.0f + (var_f26 - -var_f26)))));
+            var_r31->unkAC.x = (sp14.x * ((HuRand16FromBytes() % 21) + 0x50));
+            var_r31->unkAC.y = (sp14.y * ((HuRand16FromBytes() % 16) + 0x1E));
+            var_r31->unkAC.z = (sp14.z * ((HuRand16FromBytes() % 21) + 0x50));
             var_r31->unkC4.y = 1.47f;
             var_r31->unkB8.x = (120.0f * (-sp14.z * ABS(sp14.y)));
             var_r31->unkB8.z = (120.0f * (-sp14.x * ABS(sp14.y)));

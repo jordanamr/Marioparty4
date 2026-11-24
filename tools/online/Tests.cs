@@ -1162,6 +1162,24 @@ static class Tests {
         Reject(()=>GameStart.MeshArguments(50000,0,4,new[]{Tuple.Create(1,50010),Tuple.Create(1,50011)}),"the same peer seat cannot be named twice");
     }
     static void LobbyRules() {
+        Check(!Session.PeerExpired(12000,12000,true),"a transient outage does not end the running game");
+        Check(!Session.PeerExpired(10,240000,true),"authenticated game UDP survives a lost control channel");
+        Check(!Session.PeerExpired(29999,30000,true) && Session.PeerExpired(30000,30000,true),"both channels must expire for the fast timeout");
+        Check(!Session.PeerExpired(45000,40,true) && Session.PeerExpired(90000,50,true),"control traffic tolerates a longer game route recovery");
+        Check(!Session.PeerExpired(35000,50000,false),"a guest-to-guest leg gets the full data-only grace period");
+        var seatProfile=new PlayerInfo("Seat",Wire.Hash(new byte[]{42}),1);
+        var pending=new Lobby(true,seatProfile,(seat,payload)=>{},id=>{},id=>{throw new Exception("partial mesh committed");},()=>{}){Capacity=3};
+        pending.Admit(1,seatProfile);pending.Admit(2,seatProfile);
+        var route=new Route{Local=IPAddress.Parse("192.168.50.2"),Router=IPAddress.Parse("192.168.50.1")};
+        using(var mapping=Gateway.LocalFor(route,47973,false)) {
+            var expired=new Invitation{Expires=DateTime.UtcNow.AddMinutes(-30)};
+            Session.RenewHostMappings(DateTime.UtcNow,expired,pending.Occupied>1,mapping,null);
+            Check(pending.Complete,"a full mesh survives lease renewal after its invite expires");
+            Reject(()=>Session.RenewHostMappings(DateTime.UtcNow,expired,false,mapping,null),"expiry still closes an unoccupied room");
+        }
+        pending.Start();pending.Leave(1);
+        Check(pending.Phase==LobbyPhase.Closed,"losing a required seat before GO aborts the whole attempt");
+
         var launch=GameStart.OnlineArguments("--netplay-host 32100");
         Check(launch.Contains("--netplay-full") && launch.Contains("--netplay-delay 3")
             && !launch.Contains("--netplay-rollback"),"normal lobby uses lockstep without automatic rollback");

@@ -106,7 +106,7 @@ s16 lbl_1_bss_56;
 s16 lbl_1_bss_54;
 s32 lbl_1_bss_50;
 M443DllUnkStruct lbl_1_bss_14;
-s16 lbl_1_bss_10[1]; // why only 1 long?
+s16 lbl_1_bss_10[2];
 s32 lbl_1_bss_C;
 s32 lbl_1_bss_8;
 s32 lbl_1_bss_4;

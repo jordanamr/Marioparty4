@@ -3445,7 +3445,7 @@ float fn_1_10B20(float arg8, Vec *arg0)
     return var_f30 + arg8;
 }
 
-static inline float fn_1_10D24_inline(Vec *arg0)
+static inline void fn_1_10D24_inline(Vec *arg0)
 {
     M433PlayerWork2 *var_r31 = lbl_1_bss_7CC->data;
     if (var_r31->unk_94 != 0) {

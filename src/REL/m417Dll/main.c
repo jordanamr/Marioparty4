@@ -235,7 +235,6 @@ void fn_1_13DC(omObjData *object)
 
 void fn_1_17C0(omObjData *object)
 {
-    s16 sp8; // ! - uninitialized
 
     UnkM417Struct *var_r30;
 
@@ -247,7 +246,7 @@ void fn_1_17C0(omObjData *object)
             var_r30->unk_1C = 30;
             var_r30->unk_20 = REFRESH_RATE;
             lbl_1_bss_12 = MGSeqCreate(3, 0);
-            MGSeqPosSet(sp8, 320.0f, 240.0f);
+            MGSeqPosSet(lbl_1_bss_12, 320.0f, 240.0f);
             var_r30->unk_14 = 1;
             var_r30->unk_18 = 0;
             break;

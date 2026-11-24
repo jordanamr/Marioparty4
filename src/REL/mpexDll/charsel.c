@@ -760,7 +760,7 @@ s32 fn_1_140B0(s32 arg0, s32 arg1)
     s32 var_r31;
     s32 var_r30;
     s32 var_r29;
-    s32 var_r28;
+    s32 var_r28 = 0;
     s32 var_r27;
     s32 var_r26;
     s32 var_r24;

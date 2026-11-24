@@ -8,6 +8,7 @@ Use xvfb-run for an offscreen Linux build with software rendering.
 import argparse
 import json
 import os
+import re
 from pathlib import Path
 import signal
 import subprocess
@@ -109,8 +110,8 @@ def main():
     parser.add_argument("companion", type=Path)
     parser.add_argument("disc", type=Path)
     parser.add_argument("--players", type=int, choices=(2, 3, 4), default=2)
-    parser.add_argument("--end-by", choices=("host", "guest", "guest-crash"), default="host",
-                        help="Exercise normal room closure or a nonzero exit in the isolated guest game")
+    parser.add_argument("--end-by", choices=("host", "guest", "guest-crash", "host-loss", "guest-loss", "host-pause"), default="host",
+                        help="Exercise room closure, a failed game, or loss of both network channels in a private test seat")
     parser.add_argument("--pal-language", choices=("en", "fr", "de", "it", "es"),
                         help="Check that all game engines load the host's translated messages from a European disc")
     args = parser.parse_args()
@@ -134,7 +135,42 @@ def main():
                 until(f"all games loaded the host's {args.pal_language} message archive",
                       lambda: all(seat.loaded_translation(suffix) for seat in seats))
             games = [seat.game_pid() for seat in seats]
-            departing = 0 if args.end_by == "host" else 1
+            departing = 0 if args.end_by.startswith("host") else 1
+            if args.end_by.endswith("-loss"):
+                # Keep the killed seat's game in its own process group. It cannot
+                # notify the others through its companion after that process exits.
+                os.kill(seats[departing].process.pid, signal.SIGKILL)
+                seats[departing].process.wait(timeout=5)
+                try:
+                    survivors = [s for i, s in enumerate(seats) if i != departing]
+                    until("remaining companions ended after complete peer loss",
+                          lambda: all(s.process.poll() is not None for s in survivors), 50)
+                    reports = [s.session_report() for s in survivors]
+                    if not any("event=peer_timeout" in r for r in reports):
+                        raise RuntimeError("The missing peer was never diagnosed")
+                    if any("native_exit=" not in r for r in reports):
+                        raise RuntimeError("A surviving seat did not stop its game")
+                    print(f"PASS: {args.players}-seat session ended after {args.end_by}")
+                    return
+                finally:
+                    try:
+                        os.killpg(seats[departing].process.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+            if args.end_by == "host-pause":
+                def guest_packets():
+                    values = re.findall(r"peer_packets=(\d+)", seats[1].session_report())
+                    return int(values[-1]) if values else 0
+                until("game packets before outage", guest_packets)
+                os.killpg(host.process.pid, signal.SIGSTOP)
+                try:
+                    time.sleep(12)
+                    before = guest_packets()
+                    if seats[1].state().get("state") != "playing":
+                        raise RuntimeError("A brief network outage closed the guest")
+                finally:
+                    os.killpg(host.process.pid, signal.SIGCONT)
+                until("authenticated game traffic recovered", lambda: guest_packets() > before, 20)
             if args.end_by == "guest-crash":
                 os.kill(games[departing], signal.SIGKILL)
             else:

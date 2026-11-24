@@ -871,7 +871,7 @@ void fn_1_24F8(WorkPlayerOld *player1, WorkPlayerOld *player2, float *minDist, s
     fn_1_2418(minDist, state, 3, &player1->unk_6C, player1->unk_C0 - player1->unk_BC, &player2->unk_6C, player2->unk_BC);
 }
 
-s32 fn_1_2824(WorkPlayerOld *player, WorkPlayerOld *player2)
+void fn_1_2824(WorkPlayerOld *player, WorkPlayerOld *player2)
 {
     Vec dir;
     Vec dir2;
@@ -881,11 +881,7 @@ s32 fn_1_2824(WorkPlayerOld *player, WorkPlayerOld *player2)
     player->unk_90.x = player->unk_20 / 4.0f;
     player->unk_90.z = -(float)player->unk_24 / 4.0f;
     if (player->unk_90.x != 0.0f || player->unk_90.z != 0.0f) {
-#ifdef NON_MATCHING
-        return (s32)(uintptr_t)player;
-#else
         return;
-#endif
     }
     VECSubtract(&player->unk_6C, &player2->unk_6C, &dir);
     dist = VECMagXZ(&dir);
@@ -1529,10 +1525,7 @@ void fn_1_56C4(HU3DMODEL *arg0, Mtx arg1)
     Mtx spA0;
     Vec sp70[4];
     Vec sp40[4];
-    Vec sp34;
-    Vec sp28;
-    Vec sp1C;
-    Vec sp10;
+    Vec rotated[4];
     UnkM450ModelFunc spC;
     s16 sp8;
 
@@ -1635,11 +1628,11 @@ void fn_1_56C4(HU3DMODEL *arg0, Mtx arg1)
                     fn_1_55C4(&var_r31->unk_28, sp40, 4, var_r29->unk_2C);
                     MTXRotRad(spD0, 0x5A, 0.017453292f * var_r29->unk_28);
                     MTXConcat(sp130, spD0, spA0);
-                    MTXMultVecArray(spA0, sp40, &sp10, 4);
-                    VECAdd(&sp10, &var_r29->unk_30, var_r30++);
-                    VECAdd(&sp1C, &var_r29->unk_30, var_r30++);
-                    VECAdd(&sp28, &var_r29->unk_30, var_r30++);
-                    VECAdd(&sp34, &var_r29->unk_30, var_r30++);
+                    MTXMultVecArray(spA0, sp40, rotated, 4);
+                    VECAdd(&rotated[0], &var_r29->unk_30, var_r30++);
+                    VECAdd(&rotated[1], &var_r29->unk_30, var_r30++);
+                    VECAdd(&rotated[2], &var_r29->unk_30, var_r30++);
+                    VECAdd(&rotated[3], &var_r29->unk_30, var_r30++);
                 }
                 if (var_r29->unk_3C != -1) {
                     fn_1_5620(var_r27, var_r31->unk_1C, var_r29->unk_3C, var_r31->unk_5C, var_r31->unk_60);

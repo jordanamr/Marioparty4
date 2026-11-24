@@ -132,6 +132,7 @@ typedef struct work_347C {
 } Work347C;
 
 void fn_1_3DDC(omObjData *object);
+static void UpdateWaterTexture(Work347C *work);
 
 void fn_1_4180(HU3DMODEL *model, Mtx matrix);
 void fn_1_49AC(HU3DMODEL *model, Mtx matrix);
@@ -263,7 +264,6 @@ void fn_1_9CFC(float arg0);
 void fn_1_3DDC(omObjData *object)
 {
     Work347C *work = object->data;
-    Work347C *work2 = work;
     s32 i;
     if ((work->unkA50 = work->unkA50 + (0.007874016f * ((s32)frand() & 0x7F) * 3.0f)) > 360) {
         work->unkA50 -= 360;
@@ -284,6 +284,16 @@ void fn_1_3DDC(omObjData *object)
         }
         fn_1_9CFC(time);
     }
+#ifdef TARGET_PC
+    UpdateWaterTexture(work);
+    if (!omPauseChk()) {
+        for (i = 0; i < ARRAY_COUNT(work->unk74); i++) {
+            if (work->unk74[i].unk1E != 0) {
+                work->unk74[i].unk1E--;
+            }
+        }
+    }
+#endif
 }
 
 void fn_1_4104(omObjData *object)
@@ -321,6 +331,19 @@ float lbl_1_data_448[26][2]
 
 float lbl_1_data_518[26][2] = { 0, 30, 0.5, 30, 7.5, 30, 14.5, 30, 15, 30, 0, 15, 0.5, 15, 7.5, 15, 14.5, 15, 15, 15, 0, 7.5, 0.5, 7.5, 7.5, 7.5,
     14.5, 7.5, 15, 7.5, 0, 0, 0.5, 0, 7.5, 0, 14.5, 0, 15, 0, -2.25, 15, -4.9500003, 7.5, -7.3500004, 0, 17.25, 15, 19.95, 7.5, 22.35, 0 };
+
+// The renderer may draw the same simulation tick several times while a peer waits.
+static void UpdateWaterTexture(Work347C *work)
+{
+    s16 i;
+    for (i = 0; i < ARRAY_COUNT(work->unk944); i++) {
+        work->unk944[i][0] -= 0.007874016f * ((s32)frand() & 0x7F) * 0.005f;
+        work->unk944[i][1] += 0.007874016f * ((s32)frand() & 0x7F) * 0.005f;
+        work->unk874[i][0] = work->unk944[i][0] + lbl_1_data_518[i][0];
+        work->unk874[i][1] = work->unk944[i][1] + lbl_1_data_518[i][1];
+    }
+    DCFlushRange(&work->unk874[0][0], sizeof(work->unk874));
+}
 
 float lbl_1_data_5E8[2][3] = { 0, 0, 0.5, 0, 0.5, 0 };
 
@@ -429,9 +452,11 @@ void fn_1_4180(HU3DMODEL *model, Mtx matrix)
         mtxTransCat(modelview, 400 * (workUnk74->unk0.x + 1500) / 3000, 400 * (workUnk74->unk0.z - -2000) / 3000, 0);
         GXLoadPosMtxImm(modelview, GX_PNMTX0);
         GXCallDisplayList(work2->unkA14, work2->unkA18);
+#ifndef TARGET_PC
         if (!omPauseChk()) {
             workUnk74->unk1E--;
         }
+#endif
     }
     workUnk4 = &work2->unk4[0];
     fn_1_6088(workUnk4, 1);
@@ -592,13 +617,9 @@ void fn_1_4E64(HU3DMODEL *model, Mtx matrix)
     GXSetIndTexCoordScale(GX_INDTEXSTAGE0, GX_ITS_1, GX_ITS_1);
     GXSetTevIndWarp(GX_TEVSTAGE0, GX_INDTEXSTAGE0, GX_TRUE, GX_FALSE, GX_ITM_1);
     GXSetIndTexMtx(GX_ITM_1, lbl_1_data_5E8, -1);
-    for (i = 0; i < 26; i++) {
-        work2->unk944[i][0] -= 0.007874016f * ((s32)frand() & 0x7F) * 0.005f;
-        work2->unk944[i][1] += 0.007874016f * ((s32)frand() & 0x7F) * 0.005f;
-        work2->unk874[i][0] = work2->unk944[i][0] + lbl_1_data_518[i][0];
-        work2->unk874[i][1] = work2->unk944[i][1] + lbl_1_data_518[i][1];
-    }
-    DCFlushRange(&work2->unk874[0][0], sizeof(work2->unk874));
+#ifndef TARGET_PC
+    UpdateWaterTexture(work);
+#endif
     GXClearVtxDesc();
     GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
     GXSetVtxDesc(GX_VA_POS, GX_INDEX16);
@@ -1469,6 +1490,7 @@ float fn_1_8D90(float start, float end, float weight)
 }
 
 void fn_1_91B8(HU3DMODEL *model, HU3DPARTICLE *particle, Mtx matrix);
+static void InitLensFlare(HU3DPARTICLE *particle, s16 type);
 
 void fn_1_8EAC(void)
 {
@@ -1520,6 +1542,15 @@ void fn_1_8EAC(void)
     newWork = particle->work = HuMemDirectMallocNum(HEAP_DATA, sizeof(s16) * 4, modelP->mallocNo);
     memset(newWork, 0, 4 * sizeof(s16));
     newWork[1] = 3;
+#ifdef TARGET_PC
+    // Populate the random flare parameters before the first render, even if a
+    // particular client's window is hidden or it skips that frame.
+    for (s16 i = 1; i < ARRAY_COUNT(workP->unk10); i++) {
+        particle = Hu3DData[workP->unk10[i]].hookData;
+        InitLensFlare(particle, i);
+        ((s16 *)particle->work)[2] = 1;
+    }
+#endif
 }
 
 void fn_1_9168(void)
@@ -1538,54 +1569,59 @@ float lbl_1_data_6A0[4] = { 1000, 200, 600, 1200 };
 
 float lbl_1_data_6B0[4] = { 1, 0.6, 0.3, 0.425 };
 
+static void InitLensFlare(HU3DPARTICLE *particle, s16 type)
+{
+    HU3DPARTICLEDATA *temp_r31 = particle->data;
+    Vec sp18;
+    float temp_f29, temp_f26, temp_f25, temp_f23;
+    s32 i;
+    sp18.x = 2000;
+    sp18.y = -300;
+    sp18.z = 500;
+    temp_f29 = 1 / VECMagPoint(sp18.x, sp18.y, sp18.z);
+    sp18.x *= temp_f29;
+    sp18.y *= temp_f29;
+    sp18.z *= temp_f29;
+    temp_f23 = 3200.0f / particle->maxCnt;
+    for (i = 0; i < particle->maxCnt; i++, temp_r31++) {
+        temp_f26 = 500.0 + ((temp_f23 * i) + ((0.25f * temp_f23) * ((float)((s32)frand() & 0xFFFF) * 0.0000152587890625)));
+        temp_f25 = temp_f26 / 3200;
+        temp_r31->accel.x = temp_f26;
+        temp_r31->pos.x = 1000 + (temp_f26 * sp18.x);
+        temp_r31->pos.y = 4800 + (temp_f26 * sp18.y);
+        temp_r31->pos.z = -3500 + (temp_f26 * sp18.z);
+        temp_r31->scale = ((0.7f * (temp_f25 * temp_f25)) + 0.3f)
+            * (lbl_1_data_6A0[type] * (0.7f + (0.3f * ((float)((s32)frand() & 0xFFFF) * 0.0000152587890625))));
+        temp_r31->color.r = (s32)(((float)((s32)frand() & 0xFFFF) * 0.0000152587890625) * 160.0) + 32;
+        temp_r31->color.g = (s32)(((float)((s32)frand() & 0xFFFF) * 0.0000152587890625) * 96.0) + 32;
+        temp_r31->color.b = (s32)(((float)((s32)frand() & 0xFFFF) * 0.0000152587890625) * 128.0) + 32;
+        temp_r31->color.a = (255 * lbl_1_data_6B0[type] * (1.0 - (0.4 * temp_f25)))
+            - (s32)(((float)((s32)frand() & 0xFFFF) * 0.0000152587890625) * 16.0);
+        temp_r31->accel.z = temp_r31->color.a;
+    }
+}
+
 void fn_1_91B8(HU3DMODEL *model, HU3DPARTICLE *particle, Mtx matrix)
 {
-    s16 unk8 = 0;
     StructBss48 *workP = lbl_1_bss_48;
     s16 *newWorkP = particle->work;
-    s32 unk14 = 0;
     Vec pos = Center;
     Vec rot = CRot;
-    float temp_f26;
-    float temp_f25;
     float zoom = CZoom;
     HU3DPARTICLEDATA *temp_r31;
     Vec sp3C;
     Vec sp30;
     Vec sp24;
-    Vec sp18;
     float temp_f29;
-    float temp_f23;
     s32 i;
     switch (newWorkP[2]) {
         case 0:
             temp_r31 = particle->data;
             if (newWorkP[1]) {
-                sp18.x = 2000;
-                sp18.y = -300;
-                sp18.z = 500;
-                temp_f29 = 1 / VECMagPoint(sp18.x, sp18.y, sp18.z);
-                sp18.x *= temp_f29;
-                sp18.y *= temp_f29;
-                sp18.z *= temp_f29;
-                temp_f23 = 3200.0f / particle->maxCnt;
-                for (i = 0; i < particle->maxCnt; i++, temp_r31++) {
-                    temp_f26 = 500.0 + ((temp_f23 * i) + ((0.25f * temp_f23) * ((float)((s32)frand() & 0xFFFF) * 0.0000152587890625)));
-                    temp_f25 = temp_f26 / 3200;
-                    temp_r31->accel.x = temp_f26;
-                    temp_r31->pos.x = 1000 + (temp_f26 * sp18.x);
-                    temp_r31->pos.y = 4800 + (temp_f26 * sp18.y);
-                    temp_r31->pos.z = -3500 + (temp_f26 * sp18.z);
-                    temp_r31->scale = ((0.7f * (temp_f25 * temp_f25)) + 0.3f)
-                        * (lbl_1_data_6A0[newWorkP[1]] * (0.7f + (0.3f * ((float)((s32)frand() & 0xFFFF) * 0.0000152587890625))));
-                    temp_r31->color.r = (s32)(((float)((s32)frand() & 0xFFFF) * 0.0000152587890625) * 160.0) + 32;
-                    temp_r31->color.g = (s32)(((float)((s32)frand() & 0xFFFF) * 0.0000152587890625) * 96.0) + 32;
-                    temp_r31->color.b = (s32)(((float)((s32)frand() & 0xFFFF) * 0.0000152587890625) * 128.0) + 32;
-                    temp_r31->color.a = (255 * lbl_1_data_6B0[newWorkP[1]] * (1.0 - (0.4 * temp_f25)))
-                        - (s32)(((float)((s32)frand() & 0xFFFF) * 0.0000152587890625) * 16.0);
-                    temp_r31->accel.z = temp_r31->color.a;
-                }
+#ifndef TARGET_PC
+                InitLensFlare(particle, newWorkP[1]);
                 newWorkP[2]++;
+#endif
             }
             else {
                 temp_r31->pos.x = 1000;

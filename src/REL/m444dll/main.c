@@ -675,7 +675,8 @@ void fn_1_470(void)
             break;
 
         default:
-            break;
+            temp_r25 = 0;
+            goto prizeResolved;
     }
     HuWinInsertMesSizeGet((8 + GWPlayerCfg[lbl_1_bss_2D6].character) - 8, 0);
     HuWinInsertMesSizeGet(temp_r24, 1);
@@ -692,6 +693,7 @@ void fn_1_470(void)
     HuWinMesWait(temp_r30);
     HuWinExAnimOut(temp_r30);
     HuWinExCleanup(temp_r30);
+prizeResolved:
     HuWinComKeyReset();
     if (temp_r25) {
         fn_1_4DEC();

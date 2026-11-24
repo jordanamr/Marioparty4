@@ -57,8 +57,7 @@ typedef struct {
     /* 0x318 */ char unk318[0xC];
     /* 0x324 */ s32 unk324;
     /* 0x328 */ char unk328[0xC];
-    /* 0x334 */ s32 unk334[1]; // array length unknown
-    /* 0x338 */ char unk338[0xC];
+    /* 0x334 */ s32 resultParticles[4];
     /* 0x344 */ s32 unk344;
     /* 0x348 */ s32 unk348;
     /* 0x34C */ char unk34C[4];
@@ -362,6 +361,11 @@ s32 fn_1_814C(s32 arg0) {
         var_r31 = Hu3DParManCreate(HuSprAnimReadFile(DATA_MAKE_NUM(DATADIR_EFFECT, 1)), 500, &lbl_1_data_1B0);
     } else if (arg0 == 2) {
         var_r31 = Hu3DParManCreate(HuSprAnimReadFile(DATA_MAKE_NUM(DATADIR_EFFECT, 1)), 250, &lbl_1_data_200);
+    } else {
+        return HU3D_PARMANID_NONE;
+    }
+    if (var_r31 == HU3D_PARMANID_NONE) {
+        return var_r31;
     }
     if (arg0 != 2) {
         Hu3DParManTimeLimitSet(var_r31, 60);
@@ -1310,7 +1314,9 @@ void fn_1_C060(float arg8) {
     fn_1_1E28(lbl_1_bss_1530.unk00, 21, 21, 0, 0);
     fn_1_958(5);
     lbl_1_data_364 = fn_1_814C(1);
-    Hu3DParManPosSet(lbl_1_data_364, var_f31, Hu3DData[lbl_1_bss_1530.unk00->model[21]].pos.y, 510.0f);
+    if (lbl_1_data_364 != HU3D_PARMANID_NONE) {
+        Hu3DParManPosSet(lbl_1_data_364, var_f31, Hu3DData[lbl_1_bss_1530.unk00->model[21]].pos.y, 510.0f);
+    }
     Hu3DModelAttrSet(lbl_1_bss_1530.unk00->model[20], HU3D_ATTR_DISPOFF);
     lbl_1_bss_C0 = 1.0f;
     for (var_r31 = 0; var_r31 <= 30; var_r31++) {
@@ -1326,7 +1332,9 @@ void fn_1_C060(float arg8) {
     lbl_1_bss_B8 = 0;
     lbl_1_bss_1530.unk04 = (void*) fn_1_BF60;
     fn_1_958(30);
-    Hu3DParManKill(lbl_1_data_364);
+    if (lbl_1_data_364 != HU3D_PARMANID_NONE) {
+        Hu3DParManKill(lbl_1_data_364);
+    }
     lbl_1_data_364 = -1;
     fn_1_958(240);
     fn_1_1834(MAKE_MESSID(36, 7), 0);
@@ -2128,8 +2136,10 @@ void fn_1_11834(omObjData* arg0) {
             var_f31 = fn_1_61C(1.0f, 0.5f, var_r28 - 10, 5.0f);
         }
         if (var_r28 == 10) {
-            lbl_1_bss_1580.unk334[temp_r31->unk08] = fn_1_8264();
-            Hu3DParManPosSet(lbl_1_bss_1580.unk334[temp_r31->unk08], lbl_1_data_130[temp_r31->unk08].x, 300.0f + temp_f29, lbl_1_data_130[temp_r31->unk08].z);
+            lbl_1_bss_1580.resultParticles[temp_r29] = fn_1_8264();
+            if (lbl_1_bss_1580.resultParticles[temp_r29] != HU3D_PARMANID_NONE) {
+                Hu3DParManPosSet(lbl_1_bss_1580.resultParticles[temp_r29], lbl_1_data_130[temp_r31->unk08].x, 300.0f + temp_f29, lbl_1_data_130[temp_r31->unk08].z);
+            }
         }
         if ((var_f30 += 2.0f) >= 360.0f) {
             var_f30 -= 360.0f;
@@ -2138,8 +2148,10 @@ void fn_1_11834(omObjData* arg0) {
         Hu3DModelRotSet(arg0->model[5], 0.0f, temp_f28, 0.0f);
         Hu3DModelScaleSet(arg0->model[5], var_f31, var_f31, var_f31);
     }
-    Hu3DParManKill(lbl_1_bss_1580.unk334[temp_r31->unk08]);
-    lbl_1_bss_1580.unk334[temp_r31->unk08] = -1;
+    if (lbl_1_bss_1580.resultParticles[temp_r29] != HU3D_PARMANID_NONE) {
+        Hu3DParManKill(lbl_1_bss_1580.resultParticles[temp_r29]);
+    }
+    lbl_1_bss_1580.resultParticles[temp_r29] = -1;
     temp_f29 = Hu3DData[arg0->model[5]].pos.y;
     temp_f26 = temp_f29;
     temp_f28 = Hu3DData[arg0->model[5]].rot.y;

@@ -151,8 +151,7 @@ typedef struct _unkStruct8 {
 
 typedef struct _unkStruct9 {
     s16 unk0[5];
-    s16 unkA[2];
-    s16 unkE;
+    s16 unkA[3];
     float unk10;
     float unk14;
     s32 unk18;

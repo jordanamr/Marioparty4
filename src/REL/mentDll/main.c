@@ -6518,6 +6518,7 @@ void fn_1_21724(omObjData *object)
 void fn_1_225F4(omObjData *object)
 {
     s32 var_r30;
+    s32 initialX;
 
     if (object->work[0] == 0) {
         return;
@@ -6525,7 +6526,8 @@ void fn_1_225F4(omObjData *object)
     for (var_r30 = 0; var_r30 < 0xC8; var_r30++) {
         switch (lbl_1_bss_E4[var_r30].unk_04) {
             case 0:
-                Hu3DData[object->model[var_r30]].pos.x = rand8() + rand8() % 50;
+                initialX = rand8();
+                Hu3DData[object->model[var_r30]].pos.x = initialX + rand8() % 50;
                 if ((var_r30 % 2) == 0) {
                     Hu3DData[object->model[var_r30]].pos.x *= -1.0f;
                 }

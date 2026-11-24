@@ -1738,6 +1738,7 @@ s32 fn_1_10F24(s32 var_r29, float sp8, float spC, float sp10)
     Hu3DModelPosSet(var_r31->unk_04, var_r31->unk_1C.x, var_r31->unk_1C.y, var_r31->unk_1C.z);
     Hu3DModelRotSet(var_r31->unk_04, var_r31->unk_28, var_r31->unk_2C, var_r31->unk_30);
     Hu3DModelScaleSet(var_r31->unk_04, var_r31->unk_34, var_r31->unk_38, var_r31->unk_3C);
+    return var_r30;
 }
 
 s32 fn_1_110A8(s32 arg0, float arg8, float arg9, float argA, s32 arg1)
@@ -1906,6 +1907,7 @@ s32 fn_1_11648(s32 arg0, float arg1, float arg8, float arg9)
     Hu3DModelPosSet(var_r31->unk_04, var_r31->unk_14.x, var_r31->unk_14.y, var_r31->unk_14.z);
     Hu3DModelRotSet(var_r31->unk_04, var_r31->unk_20.x, var_r31->unk_20.y, var_r31->unk_20.z);
     Hu3DModelScaleSet(var_r31->unk_04, var_r31->unk_2C.x, var_r31->unk_2C.y, var_r31->unk_2C.z);
+    return var_r30;
 }
 
 s32 fn_1_117A4(s32 arg0, float arg8, float arg9, float argA, s32 arg1)
@@ -2133,6 +2135,7 @@ s32 fn_1_11F90(s32 arg0, float arg8, float arg9, float argA)
     Hu3DModelPosSet(var_r31->unk_04, var_r31->unk_18.x, var_r31->unk_18.y, var_r31->unk_18.z);
     Hu3DModelRotSet(var_r31->unk_04, var_r31->unk_24.x, var_r31->unk_24.y, var_r31->unk_24.z);
     Hu3DModelScaleSet(var_r31->unk_04, var_r31->unk_30.x, var_r31->unk_30.y, var_r31->unk_30.z);
+    return (s32)(var_r31 - lbl_1_bss_164);
 }
 
 void fn_1_12550(s32 arg0)

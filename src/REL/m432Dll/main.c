@@ -589,7 +589,7 @@ void fn_1_24F8(WorkPlayerOld *player1, WorkPlayerOld *player2, float *minDist, s
     fn_1_2418(minDist, state, 3, &player1->unk_6C, player1->unk_C0 - player1->unk_BC, &player2->unk_6C, player2->unk_BC);
 }
 
-s32 fn_1_2824(WorkPlayerOld *player, WorkPlayerOld *player2)
+void fn_1_2824(WorkPlayerOld *player, WorkPlayerOld *player2)
 {
     Vec dir;
     Vec dir2;
@@ -599,11 +599,7 @@ s32 fn_1_2824(WorkPlayerOld *player, WorkPlayerOld *player2)
     player->unk_90.x = player->unk_20 / 4.0f;
     player->unk_90.z = -(float)player->unk_24 / 4.0f;
     if (player->unk_90.x != 0.0f || player->unk_90.z != 0.0f) {
-#ifdef NON_MATCHING
-        return (s32)(uintptr_t)player;
-#else
         return;
-#endif
     }
     VECSubtract(&player->unk_6C, &player2->unk_6C, &dir);
     dist = VECMagXZ(&dir);

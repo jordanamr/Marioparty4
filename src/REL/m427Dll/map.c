@@ -1,3 +1,4 @@
+#include "game/frand.h"
 #include "REL/m427Dll.h"
 
 #include "dolphin/gx/GXEnum.h"
@@ -638,10 +639,10 @@ void fn_1_4218(omObjData *arg0)
     var_r31 = &lbl_1_bss_E4[0];
     for (var_r30 = 0; var_r30 < 1; var_r30++) {
         if (--var_r29->unk48[var_r30] < 0.0f) {
-            var_r29->unk48[var_r30] = (f32)((((rand8() << 8) | rand8()) % 241) + 0x78);
-            var_f31 = ((((rand8() << 8) | rand8()) % 4001) - 0x7D0);
+            var_r29->unk48[var_r30] = (f32)((HuRand16FromBytes() % 241) + 0x78);
+            var_f31 = ((HuRand16FromBytes() % 4001) - 0x7D0);
             temp_f30 = -3000.0f;
-            var_f29 = ((((rand8() << 8) | rand8()) % 21) + 0xA);
+            var_f29 = ((HuRand16FromBytes() % 21) + 0xA);
             fn_1_44F4(var_f31, 0.0f, temp_f30, var_f29, 0.0f);
         }
     }
@@ -1510,8 +1511,8 @@ void fn_1_7F38(void)
                             if (++var_r31->unkA > var_r31->unk18) {
                                 var_r31->unkA = 0;
                                 var_r31->unkC = 0.0f;
-                                var_r31->unk20 = ((rand8() << 8) | rand8()) % 361;
-                                var_r31->unk24 = ((rand8() << 8) | rand8()) % 361;
+                                var_r31->unk20 = HuRand16FromBytes() % 361;
+                                var_r31->unk24 = HuRand16FromBytes() % 361;
                                 var_r31->unk28 = 1.0f;
                                 var_r31->unk2C = 0.0f;
                                 var_r31->unk8++;
@@ -1666,7 +1667,7 @@ void fn_1_8768(M427DllMapSubstruct3 *var_r28, M427DllMapUNKB8 *var_r31, s16 var_
     }
     fn_1_99E4(var_r31->unk6, 0xFF, 0xA0, 0x60, 255.0f * var_r31->unkC);
     var_r31->unk20 += 2.0f;
-    var_r31->unk24 += (((rand8() << 8) | rand8()) % 5) + 4;
+    var_r31->unk24 += (HuRand16FromBytes() % 5) + 4;
     if (var_r31->unk20 >= 360.0f) {
         var_r31->unk20 -= 360.0f;
     }
@@ -2645,23 +2646,23 @@ void fn_1_C76C(u8 arg0, float arg8, float arg9, float argA, s16 arg1, float argB
     s16 var_r30;
 
     if (arg0 != 0) {
-        argB += (((rand8() << 8) | rand8()) % 21) - 0xA;
+        argB += (HuRand16FromBytes() % 21) - 0xA;
     }
     else {
-        argB += (((rand8() << 8) | rand8()) % 61) - 0x1E;
+        argB += (HuRand16FromBytes() % 61) - 0x1E;
     }
     sp10[0] = sind(argB);
     sp10[1] = cosd(argB);
     for (var_r30 = 0; var_r30 < arg1; var_r30++) {
         if (arg0 != 0) {
-            sp24.x = arg8 + ((((rand8() << 8) | rand8()) % 21) - 0xA);
-            sp24.y = arg9 + ((((rand8() << 8) | rand8()) % 21) - 0xA);
-            sp24.z = argA + ((((rand8() << 8) | rand8()) % 21) - 0xA);
+            sp24.x = arg8 + ((HuRand16FromBytes() % 21) - 0xA);
+            sp24.y = arg9 + ((HuRand16FromBytes() % 21) - 0xA);
+            sp24.z = argA + ((HuRand16FromBytes() % 21) - 0xA);
         }
         else {
-            sp24.x = arg8 + ((((rand8() << 8) | rand8()) % 41) - 0x14);
-            sp24.y = arg9 + ((((rand8() << 8) | rand8()) % 41) - 0x14);
-            sp24.z = argA + ((((rand8() << 8) | rand8()) % 41) - 0x14);
+            sp24.x = arg8 + ((HuRand16FromBytes() % 41) - 0x14);
+            sp24.y = arg9 + ((HuRand16FromBytes() % 41) - 0x14);
+            sp24.z = argA + ((HuRand16FromBytes() % 41) - 0x14);
         }
         sp18.x = sp18.y = sp18.z = 0.0f;
         spC.r = spC.g = spC.b = spC.a = 0xFF;
@@ -2673,26 +2674,26 @@ void fn_1_C76C(u8 arg0, float arg8, float arg9, float argA, s16 arg1, float argB
         if (arg0 != 0) {
             var_r31->unk_34 = 0;
             var_r31->unk_36 = 3;
-            var_r31->unk_00 = argC * (sp10[0] * (0.1f * ((((rand8() << 8) | rand8()) % 151) + 0x96)));
-            var_r31->unk_04 = 0.1f * ((((rand8() << 8) | rand8()) % 31) - 0x14);
-            var_r31->unk_08 = argC * (sp10[1] * (0.1f * ((((rand8() << 8) | rand8()) % 151) + 0x96)));
+            var_r31->unk_00 = argC * (sp10[0] * (0.1f * ((HuRand16FromBytes() % 151) + 0x96)));
+            var_r31->unk_04 = 0.1f * ((HuRand16FromBytes() % 31) - 0x14);
+            var_r31->unk_08 = argC * (sp10[1] * (0.1f * ((HuRand16FromBytes() % 151) + 0x96)));
             var_r31->unk_18 = 0.01f * var_r31->unk_00;
             var_r31->unk_1C = 0.1f;
             var_r31->unk_20 = 0.01f * var_r31->unk_08;
-            var_r31->unk_24 = argC * (0.1f * ((((rand8() << 8) | rand8()) % 11) + 0xA));
-            var_r31->unk_28 = argC * (0.01f * ((((rand8() << 8) | rand8()) % 101) + 0x32) / (var_r31->unk_36 * 0xE));
+            var_r31->unk_24 = argC * (0.1f * ((HuRand16FromBytes() % 11) + 0xA));
+            var_r31->unk_28 = argC * (0.01f * ((HuRand16FromBytes() % 101) + 0x32) / (var_r31->unk_36 * 0xE));
         }
         else {
             var_r31->unk_34 = 0;
             var_r31->unk_36 = 2;
-            var_r31->unk_00 = sp10[0] * (0.1f * ((((rand8() << 8) | rand8()) % 31) + 0x32));
-            var_r31->unk_04 = 0.1f * ((((rand8() << 8) | rand8()) % 31) - 0x14);
-            var_r31->unk_08 = sp10[1] * (0.1f * (((((rand8() << 8) | rand8()) % 31)) + 0x32));
+            var_r31->unk_00 = sp10[0] * (0.1f * ((HuRand16FromBytes() % 31) + 0x32));
+            var_r31->unk_04 = 0.1f * ((HuRand16FromBytes() % 31) - 0x14);
+            var_r31->unk_08 = sp10[1] * (0.1f * (((HuRand16FromBytes() % 31)) + 0x32));
             var_r31->unk_18 = 0.0f;
             var_r31->unk_1C = 0.1f;
             var_r31->unk_20 = 0.0f;
-            var_r31->unk_24 = 0.3f * (0.1f * ((((rand8() << 8) | rand8()) % 11) + 0xA));
-            var_r31->unk_28 = 0.4f * ((0.01f * ((((rand8() << 8) | rand8()) % 51) + 0x32)) / (var_r31->unk_36 * 0xE));
+            var_r31->unk_24 = 0.3f * (0.1f * ((HuRand16FromBytes() % 11) + 0xA));
+            var_r31->unk_28 = 0.4f * ((0.01f * ((HuRand16FromBytes() % 51) + 0x32)) / (var_r31->unk_36 * 0xE));
         }
         var_r31->unk_2C = 1024.0f * argC;
         var_r31->unk_30 = var_r31->unk_2C / (var_r31->unk_36 * 0xE);
@@ -2963,10 +2964,7 @@ void fn_1_DCD4(HU3DMODEL *model, Mtx matrix)
     Mtx sp98;
     Vec sp68[4];
     Vec sp38[4];
-    Vec sp2C;
-    Vec sp20;
-    Vec sp14;
-    Vec sp8;
+    Vec rotated[4];
     Vec *var_r31;
     M427DllMapStruct7 *var_r30;
     M427DllMapSubstruct6 *var_r29;
@@ -3067,11 +3065,11 @@ void fn_1_DCD4(HU3DMODEL *model, Mtx matrix)
                 fn_1_E420(&var_r30->unk_2C, sp38, &var_r29->unk_48, 4);
                 MTXRotRad(spC8, 0x5A, MTXDegToRad(var_r29->unk_44));
                 MTXConcat(sp128, spC8, sp98);
-                MTXMultVecArray(sp98, sp38, &sp8, 4);
-                VECAdd(&sp8, &var_r29->unk_54, var_r31++);
-                VECAdd(&sp14, &var_r29->unk_54, var_r31++);
-                VECAdd(&sp20, &var_r29->unk_54, var_r31++);
-                VECAdd(&sp2C, &var_r29->unk_54, var_r31++);
+                MTXMultVecArray(sp98, sp38, rotated, 4);
+                VECAdd(&rotated[0], &var_r29->unk_54, var_r31++);
+                VECAdd(&rotated[1], &var_r29->unk_54, var_r31++);
+                VECAdd(&rotated[2], &var_r29->unk_54, var_r31++);
+                VECAdd(&rotated[3], &var_r29->unk_54, var_r31++);
             }
             if (var_r29->unk_60 != -1) {
                 fn_1_E37C(var_r26, var_r30->unk_5C, var_r29->unk_60, var_r30->unk_60, var_r30->unk_64);

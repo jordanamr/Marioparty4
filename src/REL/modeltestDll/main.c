@@ -549,8 +549,8 @@ void fn_1_20F4(void)
     Vec sp18;
     Vec spC;
     f32 temp_f27;
-    f32 var_f29; // ! - uninitialized
-    s16 var_r27; // ! - uninitialized
+    f32 var_f29 = 0.0f;
+    s16 var_r27 = 360;
     s32 var_r26;
     f32 temp_f30;
 
@@ -750,10 +750,6 @@ void fn_1_2B68(HU3DMODEL *mdl, Mtx arg1)
     Mtx44 sp50;
     ANIMBMP *sp10;
     f32 temp_f31;
-    f32 var_f30; // ! - uninitialized
-    f32 var_f29; // ! - uninitialized
-    f32 var_f28; // ! - uninitialized
-    f32 var_f27; // ! - uninitialized
 
     if (!lbl_1_bss_30[0]) {
         lbl_1_bss_30[0] = HuMemDirectMallocNum(HEAP_SYSTEM, FB_SIZE(HU_FB_WIDTHF, HU_FB_HEIGHT), MEMORY_DEFAULT_NUM);
@@ -840,20 +836,20 @@ void fn_1_2B68(HU3DMODEL *mdl, Mtx arg1)
     GXBegin(GX_QUADS, GX_VTXFMT0, 4);
 
     GXPosition3f32(0.0f, 0.0f, 0.0f);
-    GXTexCoord2f32(0.0f, 1.0f);
-    GXNormal3f32(0.0f, var_f30 / 640.0f, var_f29 / 480.0f);
+    GXNormal3f32(0.0f, 1.0f, 0.0f);
+    GXTexCoord2f32(0.0f, 0.0f);
 
     GXPosition3f32(640.0f, 0.0f, 0.0f);
-    GXTexCoord2f32(0.0f, 1.0f);
-    GXNormal3f32(0.0f, var_f28 / 640.0f, var_f29 / 480.0f);
+    GXNormal3f32(0.0f, 1.0f, 0.0f);
+    GXTexCoord2f32(1.0f, 0.0f);
 
     GXPosition3f32(640.0f, 480.0f, 0.0f);
-    GXTexCoord2f32(0.0f, 1.0f);
-    GXNormal3f32(0.0f, var_f28 / 640.0f, var_f27 / 480.0f);
+    GXNormal3f32(0.0f, 1.0f, 0.0f);
+    GXTexCoord2f32(1.0f, 1.0f);
 
     GXPosition3f32(0.0f, 480.0f, 0.0f);
+    GXNormal3f32(0.0f, 1.0f, 0.0f);
     GXTexCoord2f32(0.0f, 1.0f);
-    GXNormal3f32(0.0f, var_f30 / 640.0f, var_f27 / 480.0f);
 
     GXEnd();
     GXSetNumIndStages(0U);

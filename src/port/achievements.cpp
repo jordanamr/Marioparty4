@@ -12,14 +12,6 @@ namespace partyboard {
 
 using json = nlohmann::json;
 
-static void* s_cucco_play_search(void* i_actor, void*) {
-    // if (!fopAcM_IsActor(i_actor) || fopAcM_GetName((fopAc_ac_c*)i_actor) != fpcNm_NI_e) {
-    //     return nullptr;
-    // }
-    // auto* ni = static_cast<ni_class*>(i_actor);
-    // return ni->mAction == ACTION_PLAY_e ? i_actor : nullptr;
-}
-
 // static void checkGoatHerding(Achievement& a, int32_t threshMs) {
 //     if (dMeter2Info_getMaxCount() != 20 || dMeter2Info_getNowCount() != 20) {
 //         return;

@@ -376,7 +376,6 @@ void fn_1_1A7C(omObjData *object)
 
 omObjFunc fn_1_216C(Process *objman, omObjData *object)
 {
-    u32 sp8 = object->work[4];
     return fn_1_2188;
 }
 

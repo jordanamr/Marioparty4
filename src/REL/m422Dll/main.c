@@ -1460,7 +1460,7 @@ void fn_1_9410(HU3DMODEL *model, HU3DPARTICLE *particle, Mtx matrix)
                 var_r31->scale = 0.0f;
             }
         }
-        var_r31->time += (var_r31->time < 0x8000);
+        var_r31->time += (var_r31->time < 0x7FFF);
     }
 }
 

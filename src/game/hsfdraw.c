@@ -61,13 +61,35 @@ void GXResetWriteGatherPipe(void);
 
 static const Vec lbl_8011DD20 = { 0.0f, 0.0f, -1.0f };
 
-static HU3DDRAWOBJ DrawObjData[DRAW_OBJ_MAX];
+#ifdef TARGET_PC
+typedef struct DrawQueue {
+    HU3DDRAWOBJ *objects;
+    s32 *order;
+    s32 count;
+    s32 capacity;
+    BOOL active;
+    struct DrawQueue *parent;
+    struct DrawQueue *child;
+} DrawQueue;
+
+/* One reusable queue for each active pass. A model hook can render a shadow
+   pass while the containing camera is still dispatching its sorted objects. */
+static DrawQueue mainDrawQueue;
+static DrawQueue *drawQueue = &mainDrawQueue;
+#define DrawObjData (drawQueue->objects)
+#define DrawObjNum (drawQueue->order)
+#define DrawObjIdx (drawQueue->count)
+#else
+/* The last slot is scratch for opaque meshes when the deferred queue is full. */
+static HU3DDRAWOBJ DrawObjData[DRAW_OBJ_MAX + 1];
+static s16 DrawObjNum[DRAW_OBJ_MAX];
+static s16 DrawObjIdx;
+#endif
 static HSFATTRIBUTE *BmpPtrBak[8];
 static Mtx MTXBuf[MTXBUF_MAX];
 static Vec scaleBuf[MTXBUF_MAX];
 static GXColor texCol[16];
 static Mtx hiliteMtx;
-static s16 DrawObjNum[DRAW_OBJ_MAX];
 static Vec NBTB;
 static Vec NBTT;
 Vec PGMaxPos;
@@ -82,7 +104,6 @@ static void *DLBufStartP;
 static HSFDRAWDATA *DrawData;
 static s32 drawCnt;
 static s16 lightBit;
-static s16 DrawObjIdx;
 static HSFCONSTDATA *Hu3DObjInfoP;
 static s16 reflectionMapNo;
 static s16 hiliteMapNo;
@@ -129,7 +150,55 @@ static GXColor secondTev = { 0x00, 0x00, 0xFF, 0xFF };
 
 void Hu3DDrawPreInit(void)
 {
+#ifdef TARGET_PC
+    if (drawQueue->active) {
+        if (!drawQueue->child) {
+            drawQueue->child = calloc(1, sizeof(*drawQueue));
+            if (!drawQueue->child) {
+                abort();
+            }
+            drawQueue->child->parent = drawQueue;
+        }
+        drawQueue = drawQueue->child;
+    }
+    drawQueue->active = TRUE;
+#endif
     DrawObjIdx = 0;
+}
+
+static HU3DDRAWOBJ *DrawQueueSlot(void)
+{
+#ifdef TARGET_PC
+    if (drawQueue->count == drawQueue->capacity) {
+        if (drawQueue->capacity > INT32_MAX / 2) {
+            abort();
+        }
+        s32 capacity = drawQueue->capacity ? 2 * drawQueue->capacity : DRAW_OBJ_MAX;
+        if ((size_t)capacity > SIZE_MAX / sizeof(*drawQueue->objects)) {
+            abort();
+        }
+        HU3DDRAWOBJ *objects = realloc(drawQueue->objects, capacity * sizeof(*objects));
+        s32 *order = realloc(drawQueue->order, capacity * sizeof(*order));
+        if (!objects || !order) {
+            abort();
+        }
+        drawQueue->objects = objects;
+        drawQueue->order = order;
+        drawQueue->capacity = capacity;
+    }
+#endif
+    return &DrawObjData[DrawObjIdx];
+}
+
+static void DrawQueueAppend(void)
+{
+#ifndef TARGET_PC
+    if (DrawObjIdx == DRAW_OBJ_MAX) {
+        OSReport("Error: DrawObjIdx Over\n");
+        return;
+    }
+#endif
+    ++DrawObjIdx;
 }
 
 void Hu3DDraw(HU3DMODEL *modelP, Mtx mtx, HuVecF *scale)
@@ -142,7 +211,7 @@ void Hu3DDraw(HU3DMODEL *modelP, Mtx mtx, HuVecF *scale)
 
     hsf = modelP->hsf;
     if (modelP->attr & HU3D_ATTR_HOOKFUNC) {
-        drawObj = &DrawObjData[DrawObjIdx];
+        drawObj = DrawQueueSlot();
         MTXCopy(mtx, drawObj->matrix);
         pos.x = drawObj->matrix[0][3];
         pos.y = drawObj->matrix[1][3];
@@ -150,7 +219,7 @@ void Hu3DDraw(HU3DMODEL *modelP, Mtx mtx, HuVecF *scale)
         z = VECMag(&pos);
         drawObj->z = z;
         drawObj->model = modelP;
-        DrawObjIdx++;
+        DrawQueueAppend();
         return;
     }
     modelMeshNum = 0;
@@ -267,7 +336,7 @@ static void objMesh(HU3DMODEL *modelP, HSFOBJECT *objPtr) {
 
     faceBuf = objPtr->mesh.face;
     faceData = faceBuf->data;
-    drawObj = &DrawObjData[DrawObjIdx];
+    drawObj = DrawQueueSlot();
     hsf = modelP->hsf;
     if (attachMotionF == FALSE) {
         transformP = &objPtr->mesh.base;
@@ -380,19 +449,11 @@ static void objMesh(HU3DMODEL *modelP, HSFOBJECT *objPtr) {
                     else {
                         drawObj->z = -(1000000.0f - z);
                     }
-                    DrawObjIdx++;
-                    if (DrawObjIdx > DRAW_OBJ_MAX) {
-                        OSReport("Error: DrawObjIdx Over\n");
-                        DrawObjIdx--;
-                    }
+                    DrawQueueAppend();
                 }
                 else if (modelP->attr & HU3D_ATTR_ZCMP_OFF) {
                     drawObj->z = -1000000.0f;
-                    DrawObjIdx++;
-                    if (DrawObjIdx > DRAW_OBJ_MAX) {
-                        OSReport("Error: DrawObjIdx Over\n");
-                        DrawObjIdx--;
-                    }
+                    DrawQueueAppend();
                 } else {
                     materialBak = PTR_INVALID;
                     ObjDraw(drawObj);
@@ -2371,12 +2432,12 @@ void Hu3DDrawPost(void) {
     HSFBUFFER *faceBuf;
     HU3DDRAWOBJ *drawObj;
     s16 projBit;
-    s16 temp;
+    s32 temp;
     s16 invF;
-    s16 drawObjNo;
-    s16 drawObjNextNo;
-    s16 j;
-    s16 i;
+    s32 drawObjNo;
+    s64 drawObjNextNo;
+    s32 j;
+    s32 i;
     float z;
     float dot;
     float cosDot;
@@ -2573,6 +2634,12 @@ void Hu3DDrawPost(void) {
             }
         }
     }
+#ifdef TARGET_PC
+    drawQueue->active = FALSE;
+    if (drawQueue->parent) {
+        drawQueue = drawQueue->parent;
+    }
+#endif
     (void)invF; // required to match
 }
 

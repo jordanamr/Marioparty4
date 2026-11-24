@@ -1051,7 +1051,7 @@ u16 fn_1_3010(s32 arg0)
 u16 fn_1_3094(s32 arg0)
 {
     UnkM445Struct_02 *temp_r31;
-    u16 var_r30;
+    u16 var_r30 = 0;
 
     temp_r31 = &lbl_1_bss_588[arg0];
     if (lbl_1_bss_6DC < 4) {

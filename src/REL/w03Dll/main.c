@@ -28,7 +28,7 @@ void fn_1_740(void);
 void fn_1_8F0(void);
 s32 fn_1_910(void);
 s32 fn_1_A74(void);
-void fn_1_AF8(void);
+s32 fn_1_AF8(void);
 void fn_1_DEC(void);
 void fn_1_10B0(void);
 void fn_1_10E4(omObjData* arg0);
@@ -194,8 +194,8 @@ void BoardCreate(void) {
 
     BoardLightHookSet(&fn_1_884, &fn_1_8F0);
     BoardSpaceWalkEventFuncSet(&fn_1_910);
-    BoardSpaceWalkMiniEventFuncSet((void*)&fn_1_A74);
-    BoardSpaceLandEventFuncSet((void*)&fn_1_AF8);
+    BoardSpaceWalkMiniEventFuncSet(fn_1_A74);
+    BoardSpaceLandEventFuncSet(fn_1_AF8);
     BoardStarHostSet(lbl_1_data_1E4);
     BoardBooHouseHostSet(lbl_1_data_1E6);
     BoardLotteryHostSet(lbl_1_data_1E6);
@@ -316,21 +316,19 @@ s32 fn_1_A74(void) {
 
     if (var + -0x200000 == 0) {
         fn_1_7BA8();
-#ifdef NON_MATCHING
         return 0;
-#else
-        return;
-#endif
     }
     if (var + -0x400000 == 0) {
         fn_1_9AA0();
     }
+    return 0;
 }
 
-void fn_1_AF8(void) {
+s32 fn_1_AF8(void) {
     if ((BoardPlayerSizeGet(GWSystem.player_curr) == 0) && (fn_1_12C8() != 0) && (lbl_1_bss_0->unk2 != 0)) {
         BoardJunctionMaskSet(0xC00);
     }
+    return 0;
 }
 void fn_1_B5C(s32 arg0) {
     f32 var_f31;

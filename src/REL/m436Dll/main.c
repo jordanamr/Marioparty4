@@ -1477,7 +1477,7 @@ void fn_1_6060(omObjData *arg0)
 // unused
 s16 gap_04_00000182_data[] = { 0, 0x43, 0, 0x43, 1, 0x43, 2, 0x43, 3, 0x43, 4, 0x43, 5, 0x43, 6, 0x43, 7 };
 
-s32 fn_1_62C4(omObjData *arg0)
+void fn_1_62C4(omObjData *arg0)
 {
     Mtx sp8;
     StructBss4A4 *var_r25;
@@ -1563,7 +1563,6 @@ s32 fn_1_62C4(omObjData *arg0)
             }
             break;
     }
-    // TODO PC
 }
 
 void fn_1_68E8(omObjData *arg0)
@@ -1572,7 +1571,7 @@ void fn_1_68E8(omObjData *arg0)
 
     var_r30 = &lbl_1_bss_1A8;
     fn_1_11818(var_r30->unk00, 0, 8, 5, 0);
-    arg0->func = (void *)fn_1_62C4; // fn_1_62C4 must return s32 to match
+    arg0->func = fn_1_62C4;
 }
 
 void fn_1_6944(omObjData *arg0)
@@ -1602,7 +1601,7 @@ void fn_1_6944(omObjData *arg0)
         var_r29->unk88[i] = 0.0f;
     }
     var_r29->unk04 = 1;
-    arg0->func = (void *)fn_1_62C4; // fn_1_62C4 must return s32 to match
+    arg0->func = fn_1_62C4;
 }
 
 void fn_1_6BDC(void)

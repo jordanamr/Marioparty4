@@ -1885,7 +1885,9 @@ void fn_1_74B0(StructBss1DC *arg0)
 
     var_r29 = arg0->unk00->work[0];
     temp_r30 = arg0->unk00;
-    omSetTra(temp_r30, var_r29 * -150 - (rand8() % 100) * 2, 0.0f, (rand8() % 100) * 2 + 250);
+    s32 offsetX = rand8() % 100;
+    s32 offsetZ = rand8() % 100;
+    omSetTra(temp_r30, var_r29 * -150 - offsetX * 2, 0.0f, offsetZ * 2 + 250);
     omSetRot(temp_r30, 0.0f, 180.0f, 0.0f);
     fn_1_119A0(temp_r30, 0, 0, 1, 1);
     fn_1_15DC8(&arg0->unk50);
@@ -1918,7 +1920,9 @@ void fn_1_7678(omObjData *arg0)
     arg0->motion[10] = CharMotionCreate(temp_r30->unk3C, DATA_MAKE_NUM(DATADIR_MARIOMOT, 2));
     arg0->motion[11] = CharMotionCreate(temp_r30->unk3C, DATA_MAKE_NUM(DATADIR_MARIOMOT, 78));
     arg0->motion[12] = CharMotionCreate(temp_r30->unk3C, DATA_MAKE_NUM(DATADIR_MARIOMOT, 27));
-    omSetTra(arg0, temp_r29 * -150 + (rand8() % 100) * 5, 0.0f, (rand8() % 100) * 5 + 250);
+    s32 offsetX = rand8() % 100;
+    s32 offsetZ = rand8() % 100;
+    omSetTra(arg0, temp_r29 * -150 + offsetX * 5, 0.0f, offsetZ * 5 + 250);
     omSetRot(arg0, 0.0f, 180.0f, 0.0f);
     Hu3DModelShadowSet(arg0->model[0]);
     fn_1_119A0(arg0, 0, 0, 1, 1);
@@ -2930,6 +2934,7 @@ s32 fn_1_D930(void)
         var_r31->unk20 = 1;
         return fn_1_116C4(&lbl_1_bss_38);
     }
+    return 0;
 }
 
 void fn_1_DCEC(void)

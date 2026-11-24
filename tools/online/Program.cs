@@ -170,6 +170,11 @@ sealed class Session : IDisposable {
     readonly CancellationTokenSource cancel=new CancellationTokenSource();
     readonly Action<string> status;readonly Action connected;readonly Action<string> failed;
     byte[] build; volatile bool disposed;public Process Game;
+    long committedStamp;
+    int timeoutReported;
+    public bool TimedOut {get{return Volatile.Read(ref timeoutReported)!=0;}}
+    public static string TimeoutMessage {get{return L.T("La connexion avec un joueur a été perdue. La partie en ligne est terminée.");}}
+    readonly object stopNativeLock=new object();
     string closeCause;
     readonly object exitLogLock=new object();
     bool nativeExitLogged;
@@ -190,7 +195,11 @@ sealed class Session : IDisposable {
             return !Host && maxPlayers==2?"host_game_ended":"peer_game_ended";
         return fallback;
     }
-    public Session(Action<string> s,Action c,Action<string> f,PlayerInfo profile,DiscFile verifiedDisc) {status=s;connected=()=>{c();RoomChanged();};failed=f;initialProfile=profile;disc=verifiedDisc;}
+    public Session(Action<string> s,Action c,Action<string> f,PlayerInfo profile,DiscFile verifiedDisc) {status=s;connected=()=>{
+        c();RoomChanged();
+        if(Lobby!=null && Lobby.Ending==LobbyEnding.RemoteGameClosed && !disposed)
+            Task.Run((Action)Dispose);
+    };failed=f;initialProfile=profile;disc=verifiedDisc;}
     // The room as everyone else sees it: the directory (when public) and the
     // launcher that opened this window (RoomSync).
     public Relay.RoomStatus RoomStatus() {
@@ -273,10 +282,10 @@ sealed class Session : IDisposable {
                 // salon has to exist, and announce this seat's own mesh
                 // address, before anyone has connected to admit into it.
                 guestLinks=new Bridge[players];
-                Lobby=new Lobby(true,Profile,SendToSeat,id=>Task.Run(()=>LoadGame(id)),id=>{Report.Write("commit="+id);gameStart.Commit(id);},connected){Capacity=players};
+                Lobby=new Lobby(true,Profile,SendToSeat,id=>Task.Run(()=>LoadGame(id)),id=>CommitGame(id,false),connected){Capacity=players};
                 Report.Write("role=host mode=mesh build="+BitConverter.ToString(build).Replace("-","")+" players="+players);
                 OpenMesh();
-                lock(this) {if(!disposed) diagnosticTimer=new System.Threading.Timer(_=>Report.Write("phase="+Lobby.Phase+" occupied="+Lobby.Occupied+"/"+players+" disk_match="+Lobby.DiscMatches),null,0,5000);}
+                lock(this) {if(!disposed) diagnosticTimer=new System.Threading.Timer(_=>TickRoom(),null,0,5000);}
                 Lobby.Announce();connected();
             }
             Task.Run(()=>Maintain());
@@ -296,10 +305,28 @@ sealed class Session : IDisposable {
         try {
             while(!cancel.IsCancellationRequested) {
                 await Task.Delay(TimeSpan.FromSeconds(Math.Max(5,mapping.Lifetime/2)),cancel.Token);
-                if(Bridge==null && DateTime.UtcNow>Invite.Expires) throw new IOException(L.T("L'invitation a expiré. Cliquez sur Créer une partie pour recommencer."));
-                lock(this) {if(disposed) return;mapping.Renew();mappingUdp.Renew();if(mappingUdp.Port!=mapping.Port || !mappingUdp.Address.Equals(mapping.Address))throw new IOException(L.T("La connexion de la box a changé."));}
+                var lobby=Lobby;
+                bool hasGuests=lobby!=null && lobby.Occupied>1;
+                lock(this) {
+                    if(disposed)return;
+                    try { RenewHostMappings(DateTime.UtcNow,Invite,hasGuests,mapping,mappingUdp); }
+                    catch(Exception e) when(Lobby!=null && Lobby.Phase==LobbyPhase.Running) {
+                        // A working TURN allocation or existing connection can outlive a lease.
+                        Report.Write("event=lobby_mapping_renew_failed error="+e.GetType().Name);
+                    }
+                }
             }
         } catch(OperationCanceledException) {} catch {if(!disposed) {failed(L.T("La connexion temporaire a été interrompue. Recréez une partie."));Dispose();}}
+    }
+    internal static void RenewHostMappings(DateTime utcNow,Invitation invite,bool hasGuests,Gateway control,Gateway data) {
+        if(utcNow>invite.Expires && !hasGuests)
+            throw new IOException(L.T("L'invitation a expiré. Cliquez sur Créer une partie pour recommencer."));
+        control.Renew();
+        // The mesh owns its UDP lease separately in MaintainMesh.
+        if(data==null)return;
+        data.Renew();
+        if(data.Port!=control.Port || !data.Address.Equals(control.Address))
+            throw new IOException(L.T("La connexion de la box a changé."));
     }
     void Accept() {
         if(maxPlayers>2) {AcceptMesh();return;}
@@ -482,8 +509,10 @@ sealed class Session : IDisposable {
             catch(IOException e){Report.Write("guest_seat="+seat+" transport_error="+e.GetBaseException().GetType().Name);}
             catch(Exception e){Report.Write("guest_seat="+seat+" transport_error="+e.GetType().Name);}
             finally {
-                lock(this) {if(!disposed && guestLinks!=null && seat<guestLinks.Length && guestLinks[seat]==link)guestLinks[seat]=null;}
-                if(!disposed) try{Lobby.Leave(seat);}catch{}
+                lock(this) {if(!disposed && Lobby.Phase!=LobbyPhase.Running && guestLinks!=null && seat<guestLinks.Length && guestLinks[seat]==link)guestLinks[seat]=null;}
+                if(!disposed && Lobby.Phase==LobbyPhase.Running)
+                    Report.Write("event=mesh_control_lost seat="+seat+" game_transport=udp_continues");
+                else if(!disposed)try{Lobby.Leave(seat);}catch{}
                 try{link.Dispose();}catch{}
             }
         });
@@ -588,7 +617,7 @@ sealed class Session : IDisposable {
     void AttachLobby() {
         Bridge.Diagnostic=Report.Write;
         Report.Write("role="+(Host?"host":"guest")+" build="+BitConverter.ToString(build).Replace("-","")+" tls=connected game_transport=udp-authenticated path="+JoinPath);
-        Lobby=new Lobby(Host,Profile,(seat,payload)=>Bridge.SendControl(payload),id=>Task.Run(()=>LoadGame(id)),id=>{Report.Write("commit="+id);Bridge.CommitGame();gameStart.Commit(id);},connected);
+        Lobby=new Lobby(Host,Profile,(seat,payload)=>Bridge.SendControl(payload),id=>Task.Run(()=>LoadGame(id)),id=>CommitGame(id,maxPlayers==2),connected);
         bool meshOpened=false;
         Bridge.Control=packet=>{
             Lobby.Receive(packet);
@@ -599,7 +628,7 @@ sealed class Session : IDisposable {
         };
         Bridge.Ping=value=>{PingMs=value;connected();};
         Watch();Lobby.Announce();connected();
-        lock(this) {if(!disposed) diagnosticTimer=new System.Threading.Timer(_=>Report.Write("phase="+Lobby.Phase+" disk_match="+Lobby.DiscMatches+" ping_ms="+PingMs+" udp_ready="+Bridge.UdpReady+" local_packets="+Bridge.GamePackets+" peer_packets="+Bridge.PeerPackets+" "+Bridge.TransportStatus),null,0,5000);}
+        lock(this) {if(!disposed) diagnosticTimer=new System.Threading.Timer(_=>TickRoom(),null,0,5000);}
     }
     // Maps this player's own mesh port and announces it through the salon.
     // Any player can call this, host or guest, since a mesh needs every seat
@@ -692,7 +721,57 @@ sealed class Session : IDisposable {
         // game data either -- MeshRelay does, once OpenMesh() is under way --
         // so it runs control-only, exactly like every guest link the host
         // itself holds in AcceptMesh().
-        Task.Run(async ()=> {string reason="Votre ami s'est déconnecté. Recréez une connexion.";try {await (maxPlayers>2?Bridge.RunControlOnly():Bridge.Run());}catch(IOException e){Report.Write("transport_error="+e.GetBaseException().GetType().Name+" hresult="+e.GetBaseException().HResult);reason=e.Message;}catch(Exception e){Report.Write("transport_error="+e.GetType().Name);}finally {if(Lobby!=null && Lobby.Ending==LobbyEnding.Kicked)reason=L.T("L'hôte vous a retiré de la room.");if(!disposed) {NoteClose(ObservedCause(Host?"guest_connection_lost":"host_connection_lost"));failed(reason);Dispose();}}});
+        Task.Run(async ()=> {
+            string reason=L.T("Votre ami s'est déconnecté. Recréez une connexion.");
+            try {await (maxPlayers>2?Bridge.RunControlOnly():Bridge.Run());}
+            catch(IOException e){Report.Write("transport_error="+e.GetBaseException().GetType().Name+" hresult="+e.GetBaseException().HResult);reason=e.Message;}
+            catch(Exception e){Report.Write("transport_error="+e.GetType().Name);}
+            if(disposed)return;
+            if(maxPlayers>2 && Lobby.Phase==LobbyPhase.Running) {
+                Report.Write("event=mesh_control_lost seat=0 game_transport=udp_continues");
+                return;
+            }
+            if(Lobby.Ending==LobbyEnding.Kicked)reason=L.T("L'hôte vous a retiré de la room.");
+            NoteClose(ObservedCause(Host?"guest_connection_lost":"host_connection_lost"));failed(reason);Dispose();
+        });
+    }
+    void CommitGame(Guid attempt,bool twoPlayerBridge) {
+        Report.Write("commit="+attempt);
+        if(twoPlayerBridge)Bridge.CommitGame();
+        gameStart.Commit(attempt);
+        Interlocked.Exchange(ref committedStamp,Stopwatch.GetTimestamp());
+    }
+
+    // Use only authenticated peer traffic. Our own sends, timer ticks and
+    // local game inputs say nothing about the remote machine being alive.
+    internal static bool PeerExpired(long gameAgeMs,long controlAgeMs,bool hasDirectControl) {
+        return gameAgeMs>=90000 || (hasDirectControl && gameAgeMs>=30000 && controlAgeMs>=30000);
+    }
+    void TickRoom() {
+        var lobby=Lobby;
+        if(disposed || lobby==null)return;
+        var bridge=Bridge;
+        if(bridge!=null)Report.Write("phase="+lobby.Phase+" disk_match="+lobby.DiscMatches+" ping_ms="+PingMs+" udp_ready="+bridge.UdpReady+" local_packets="+bridge.GamePackets+" peer_packets="+bridge.PeerPackets+" "+bridge.TransportStatus);
+        else Report.Write("phase="+lobby.Phase+" occupied="+lobby.Occupied+"/"+maxPlayers+" disk_match="+lobby.DiscMatches);
+        long start=Interlocked.Read(ref committedStamp);
+        if(start==0 || lobby.Phase!=LobbyPhase.Running)return;
+        long now=Stopwatch.GetTimestamp();
+        for(int seat=0;seat<maxPlayers;seat++) {
+            if(seat==lobby.LocalSeat)continue;
+            bool directControl=Host || seat==0;
+            var link=maxPlayers==2?bridge:Host?guestLinks[seat]:seat==0?bridge:null;
+            long lastGame=maxPlayers==2?bridge.LastGameStamp:meshRelay.LastGameStamp(seat);
+            long gameAge=(now-Math.Max(start,lastGame))*1000/Stopwatch.Frequency;
+            long controlAge=(now-Math.Max(start,link!=null?link.LastControlStamp:0))*1000/Stopwatch.Frequency;
+            if(!PeerExpired(gameAge,controlAge,directControl))continue;
+            if(Interlocked.Exchange(ref timeoutReported,1)!=0 || disposed)return;
+            NoteClose(seat==0?"host_unreachable":"peer_unreachable");
+            Report.Write("event=peer_timeout seat="+seat+" game_age_ms="+gameAge+" control_age_ms="+(directControl?controlAge:-1),true);
+            lobby.LocalGameExited();
+            failed(TimeoutMessage);
+            Dispose();
+            return;
+        }
     }
     public bool GameRouteReady {
         get {
@@ -760,7 +839,10 @@ sealed class Session : IDisposable {
         // disk: the salon launches the game itself, so its copy can be stale, and a
         // load order that differs from the announced one desyncs the session.
         string modList=Profile.Mods.None?null:Profile.Mods.WriteListFile(ModListDirectory());
-        gameStart.Launch(args,disc.Path,false,Report.NativePath,modList);Game=gameStart.Process;
+        lock(this) {
+            cancel.Token.ThrowIfCancellationRequested();
+            gameStart.Launch(args,disc.Path,false,Report.NativePath,modList);Game=gameStart.Process;
+        }
         gameStart.WaitReady(cancel.Token);Report.Write("native_ready="+attempt);Lobby.Loaded(attempt);
         Game.WaitForExit();
         NoteClose(ObservedCause(Game.ExitCode==0?"native_exit_clean":"native_exit_nonzero"));
@@ -775,7 +857,8 @@ sealed class Session : IDisposable {
         // port mapping -- left the player looking at a salon still listing both of them
         // after their own game had closed. failed() is idempotent: it does nothing once
         // the form has moved on to another session.
-        failed(L.T("La partie est terminée. Recréez un salon pour rejouer."));
+        if(closeCause=="native_exit_clean" || closeCause=="native_exit_nonzero")
+            failed(L.T("La partie est terminée. Recréez un salon pour rejouer."));
         if(!disposed)Dispose();
         }catch(OperationCanceledException){}catch(Exception e){if(!disposed){
             bool exited=Game!=null && Game.HasExited;
@@ -785,26 +868,56 @@ sealed class Session : IDisposable {
         }}
         finally {if(gameStart!=null)gameStart.Dispose();}
     }
+    public void LeaveRoom(string cause) {
+        NoteClose(cause);
+        if(Lobby!=null)Lobby.LocalGameExited();
+        Dispose();
+    }
+    public void EnsureGameStopped() {
+        var child=Game;
+        if(child==null)return;
+        lock(stopNativeLock)StopNativeGame(child);
+    }
+    void StopNativeGame(Process child) {
+        try {
+            if(!child.HasExited) {
+#if !PARTYBOARD_LINUX
+                child.CloseMainWindow();
+#endif
+                if(!child.WaitForExit(2000)) {
+                    Report.Write("native_stop=companion_requested",true);
+#if PARTYBOARD_LINUX
+                    child.Kill(entireProcessTree:true);
+#else
+                    child.Kill();
+#endif
+                    child.WaitForExit(2000);
+                }
+            }
+        } catch(InvalidOperationException) when(child.HasExited) {}
+        ObserveNativeExit();
+    }
     public void Dispose() {
         lock(this) {
-            if(!disposed) {
-                NoteClose(ObservedCause("session_disposed"));
-                string phase=Lobby!=null?Lobby.Phase.ToString():"Opening";
-                string native=Game==null?"not_started":Game.HasExited?"exited":"running";
-                Report.Write("session_closed cause="+closeCause+" phase="+phase+" native="+native,true);
-            }
+            if(disposed)return;
+            NoteClose(ObservedCause("session_disposed"));
+            string phase=Lobby!=null?Lobby.Phase.ToString():"Opening";
+            string native=Game==null?"not_started":Game.HasExited?"exited":"running";
+            Report.Write("session_closed cause="+closeCause+" phase="+phase+" native="+native,true);
             if(modListDirectory!=null)try{Directory.Delete(modListDirectory,true);}catch{}if(diagnosticTimer!=null)diagnosticTimer.Dispose();
             disposed=true;cancel.Cancel();if(listener!=null) listener.Stop();if(peer!=null) peer.Close();if(peerWrite!=null)peerWrite.Close();
             if(turn!=null){turn.Dispose();turn=null;}if(relayHost!=null){relayHost.Dispose();relayHost=null;}
             if(beacon!=null){beacon.Dispose();beacon=null;}
             if(meshTurn!=null){meshTurn.Dispose();meshTurn=null;}
-            if(gameStart!=null)gameStart.Abort();if(Lobby!=null)Lobby.Close();
+            if(gameStart!=null)gameStart.Abort();
             if(Bridge!=null) Bridge.Dispose();if(guestLinks!=null)foreach(var g in guestLinks)if(g!=null)try{g.Dispose();}catch{}
             if(internetGame!=null)internetGame.Close();if(mappingUdp!=null)mappingUdp.Dispose();if(mapping!=null) mapping.Dispose();if(firewall!=null) firewall.Dispose();
             if(meshRelay!=null)meshRelay.Dispose();if(meshMapping!=null)meshMapping.Dispose();if(meshFirewall!=null)meshFirewall.Dispose();
-            // The game is never killed: it stops through its existing watchdog.
             if(cert!=null) cert.Dispose();
         }
+        // Closing the roster runs UI callbacks, some of which take the Session lock.
+        if(Lobby!=null)Lobby.Close();
+        EnsureGameStopped();
     }
 }
 

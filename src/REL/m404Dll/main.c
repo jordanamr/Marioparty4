@@ -1232,9 +1232,6 @@ float lbl_1_data_99C[] = { -450, -150, 150, 450 };
 
 s32 lbl_1_data_9AC[][2] = { { 8, 4 }, { 7, 8 }, { 6, 8 }, { 5, 16 }, { 2, 16 }, { 2, 16 } };
 
-s32 lbl_1_data_9DC[] = { 8, 8, 8, 4, 4, 4 };
-s32 lbl_1_data_9F4[] = { 8, 8, 8, 4, 4, 4 };
-
 void fn_1_55F4(omObjData *object)
 {
     s32 var_r30;
@@ -1318,124 +1315,100 @@ void fn_1_58E4(HU3DMODEL *modelData, Mtx arg1)
 #endif
 }
 
-ANIMDATA *fn_1_5D64(u16 sizeX, u16 sizeY, s32 arg2)
+static BOOL PixelTileSize(u8 bits, u32 *width, u32 *height)
 {
-    ANIMBMP *bmp;
-    ANIMDATA *anim;
+    switch (bits) {
+        case 4:  *width = 8; *height = 8; return TRUE;
+        case 8:  *width = 8; *height = 4; return TRUE;
+        case 16: *width = 4; *height = 4; return TRUE;
+        default: return FALSE;
+    }
+}
 
-    anim = HuMemDirectMallocNum(HEAP_SYSTEM, sizeof(ANIMBMP), MEMORY_DEFAULT_NUM);
-    bmp = HuMemDirectMallocNum(HEAP_SYSTEM, sizeof(ANIMDATA), MEMORY_DEFAULT_NUM);
+ANIMDATA *fn_1_5D64(u16 sizeX, u16 sizeY, s32 format)
+{
+    ANIMDATA *anim;
+    ANIMBMP *bmp;
+    u32 tileWidth, tileHeight;
+    u32 tilesX, tilesY;
+
+    if (!sizeX || !sizeY || sizeX > 0x7FFF || sizeY > 0x7FFF
+        || format < 0 || format >= ARRAY_COUNT(lbl_1_data_9AC)
+        || !PixelTileSize(lbl_1_data_9AC[format][1], &tileWidth, &tileHeight)) {
+        return NULL;
+    }
+    tilesX = (sizeX + tileWidth - 1) / tileWidth;
+    tilesY = (sizeY + tileHeight - 1) / tileHeight;
+
+    anim = HuMemDirectMallocNum(HEAP_SYSTEM, sizeof(*anim), MEMORY_DEFAULT_NUM);
+    bmp = HuMemDirectMallocNum(HEAP_SYSTEM, sizeof(*bmp), MEMORY_DEFAULT_NUM);
+    memset(anim, 0, sizeof(*anim));
+    memset(bmp, 0, sizeof(*bmp));
     anim->bmp = bmp;
+    anim->bmpNum = 1;
     bmp->sizeX = sizeX;
     bmp->sizeY = sizeY;
-    bmp->dataFmt = lbl_1_data_9AC[arg2][0];
-    bmp->pixSize = lbl_1_data_9AC[arg2][1];
-    bmp->dataSize = (bmp->pixSize * (bmp->sizeX * bmp->sizeY)) / 8;
+    bmp->dataFmt = lbl_1_data_9AC[format][0];
+    bmp->pixSize = lbl_1_data_9AC[format][1];
+    bmp->dataSize = tilesX * tilesY * 32;
     bmp->data = HuMemDirectMallocNum(HEAP_SYSTEM, bmp->dataSize, MEMORY_DEFAULT_NUM);
     memset(bmp->data, 0, bmp->dataSize);
     DCFlushRangeNoSync(bmp->data, bmp->dataSize);
     return anim;
 }
 
-void fn_1_5E74(ANIMDATA *arg0, u16 arg1, u16 arg2, u16 arg3)
+static u8 *PixelAddress(const ANIMBMP *bmp, u16 x, u16 y)
 {
-    u8 *var_r31;
-    u16 var_r30;
-    u16 var_r29;
-    s32 var_r28;
-    s32 temp_r0_2;
-    s32 temp_r7;
-    u8 temp_r0;
+    u32 tileWidth, tileHeight, tilesPerRow, offset;
 
-    switch (arg0->bmp->pixSize) {
-        case 4:
-            var_r30 = lbl_1_data_9DC[0]; // 8
-            var_r29 = lbl_1_data_9DC[1]; // 8
-            break;
-        case 8:
-            var_r30 = lbl_1_data_9DC[2]; // 8
-            var_r29 = lbl_1_data_9DC[3]; // 4
-            break;
-        case 16:
-            var_r30 = lbl_1_data_9DC[4]; // 4
-            var_r29 = lbl_1_data_9DC[5]; // 4
-            break;
+    if (x >= bmp->sizeX || y >= bmp->sizeY || !PixelTileSize(bmp->pixSize, &tileWidth, &tileHeight)) {
+        return NULL;
     }
+    /* GX stores these formats in 32-byte tiles, including partial edge tiles. */
+    tilesPerRow = (bmp->sizeX + tileWidth - 1) / tileWidth;
+    offset = ((y / tileHeight) * tilesPerRow + x / tileWidth) * 32;
+    offset += ((y % tileHeight) * tileWidth + x % tileWidth) * bmp->pixSize / 8;
+    if (offset + (bmp->pixSize == 16 ? 2 : 1) > bmp->dataSize) {
+        return NULL;
+    }
+    return (u8 *)bmp->data + offset;
+}
 
-    var_r31 = (void *)(((arg1 / var_r30) * 32) + (((arg1 % 8) * arg0->bmp->pixSize) / 8)
-        + (((arg0->bmp->sizeX / var_r30) * ((arg2 / var_r29) << 5)) + ((uintptr_t)arg0->bmp->data) + ((arg0->bmp->pixSize * ((arg2 % var_r29) * 8)) / 8)));
-
-    switch (arg0->bmp->pixSize) {
+void fn_1_5E74(ANIMDATA *anim, u16 x, u16 y, u16 value)
+{
+    u8 *pixel = PixelAddress(anim->bmp, x, y);
+    if (!pixel) {
+        return;
+    }
+    switch (anim->bmp->pixSize) {
         case 4:
-            if ((arg1 & 1) == 0) {
-                *var_r31 &= 0xF;
-                *var_r31 |= arg3 << 4;
-                break;
+            if (x & 1) {
+                *pixel = (*pixel & 0xF0) | (value & 0x0F);
+            } else {
+                *pixel = (*pixel & 0x0F) | ((value & 0x0F) << 4);
             }
-            *var_r31 &= 0xF0;
-            *var_r31 |= arg3;
             break;
         case 8:
-            *var_r31 |= arg3;
+            *pixel |= value;
             break;
         case 16:
-            *((u16 *)var_r31) = arg3;
+            pixel[0] = value >> 8;
+            pixel[1] = value;
             break;
     }
 }
 
-u16 fn_1_607C(ANIMDATA *arg0, u16 arg1, u16 arg2)
+u16 fn_1_607C(ANIMDATA *anim, u16 x, u16 y)
 {
-    u16 var_r31;
-    u16 var_r30;
-    u8 *var_r29;
-    s32 var_r28;
-    u32 temp_r0_2;
-    u32 temp_r6;
-    u8 temp_r0;
-    u8 temp_r0_3;
-
-    switch (arg0->bmp->pixSize) {
-        case 4:
-            var_r31 = lbl_1_data_9F4[0];
-            var_r30 = lbl_1_data_9F4[1];
-            break;
-        case 8:
-            var_r31 = lbl_1_data_9F4[2];
-            var_r30 = lbl_1_data_9F4[3];
-            break;
-        case 16:
-            var_r31 = lbl_1_data_9F4[4];
-            var_r30 = lbl_1_data_9F4[5];
-            break;
+    const u8 *pixel = PixelAddress(anim->bmp, x, y);
+    if (!pixel) {
+        return 0;
     }
-    var_r29 = (void *)(((arg1 / var_r31) * 32) + (((arg1 % 8) * arg0->bmp->pixSize) / 8)
-        + (((arg0->bmp->sizeX / var_r31) * ((arg2 / var_r30) << 5)) + ((uintptr_t)arg0->bmp->data) + ((arg0->bmp->pixSize * ((arg2 % var_r30) * 8)) / 8)));
-
-    (void)var_r31;
-    (void)var_r31;
-    (void)var_r31;
-    (void)var_r30;
-    (void)var_r30;
-    (void)var_r30;
-
-    switch (arg0->bmp->pixSize) {
-        case 4:
-            if ((arg1 & 1) == 0) {
-                var_r28 = *var_r29 >> 4;
-            }
-            else {
-                var_r28 = *var_r29 & 0xF;
-            }
-            return var_r28;
-        case 8:
-            return *var_r29;
-        case 16:
-#ifdef WIN32
-            // TODO PC do we need to byteswap this?
-            DebugBreak();
-#endif
-            return *((u16 *)var_r29);
+    switch (anim->bmp->pixSize) {
+        case 4:  return (x & 1) ? (*pixel & 0x0F) : (*pixel >> 4);
+        case 8:  return *pixel;
+        case 16: return ((u16)pixel[0] << 8) | pixel[1];
+        default: return 0;
     }
 }
 

@@ -378,7 +378,7 @@ void fn_1_AB24(void)
     Vec sp1C;
     Vec sp10;
     void *spC;
-    char sp8;
+    char coinCount[8];
     f32 var_f31;
     omObjData *temp_r30;
     s32 var_r29;
@@ -399,9 +399,9 @@ void fn_1_AB24(void)
     HuPrcSleep(0x1E);
     lbl_1_bss_C6 = lbl_1_data_4B2[lbl_1_bss_C2];
     BoardAudSeqPause(0, 0, 1000);
-    sprintf(&sp8, "%d", lbl_1_bss_C6);
+    sprintf(coinCount, "%d", lbl_1_bss_C6);
     BoardWinCreate(2, MAKE_MESSID(39, 17), 7);
-    BOARD_WIN_INSERT_MES_SET_PTR((uintptr_t)&sp8, 0);
+    BOARD_WIN_INSERT_MES_SET_PTR((uintptr_t)coinCount, 0);
     BoardWinInsertMesSet(lbl_1_data_4B8[lbl_1_bss_C2], 1);
     BoardWinWait();
     BoardWinKill();

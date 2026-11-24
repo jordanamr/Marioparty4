@@ -1384,7 +1384,7 @@ void Hu3DModelHiliteTypeSet(s16 arg0, s16 arg1) {
     arg1 = ((s16) arg1) * 0x10;
     arg1 &= 0xF0;
     for (i = 0; i < temp_r30->materialNum; i++, var_r31++) {
-        var_r31->pass = var_r31->pass & 0xF | arg1;
+        var_r31->pass = (var_r31->pass & 0xF) | arg1;
         var_r31->flags |= 0x100;
     }
     temp_r29 = &Hu3DData[arg0];
@@ -1726,7 +1726,7 @@ s16 Hu3DGLightCreate(f32 posX, f32 posY, f32 posZ, f32 dirX, f32 dirY, f32 dirZ,
     return Hu3DGLightCreateV(&pos, &dir, &color);
 }
 
-inline s16 Hu3DLightCreateV(HU3DLIGHT *light, Vec *arg0, Vec *arg1, GXColor *arg2) {
+static inline void Hu3DLightCreateV(HU3DLIGHT *light, Vec *arg0, Vec *arg1, GXColor *arg2) {
     light->type = 0;
     light->pos = *arg0;
     light->dir = *arg1;

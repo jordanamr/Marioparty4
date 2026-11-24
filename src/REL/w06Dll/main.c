@@ -241,12 +241,14 @@ static s32 fn_1_900(void) {
     } else if (temp_r31 == 0x400000) {
         fn_1_4A60();
     }
+    return 0;
 }
 
 static s32 fn_1_984(void) {
     if (BoardPlayerSizeGet(GWSystem.player_curr) != 2) {
         fn_1_6EF0();
     }
+    return 0;
 }
 
 static void fn_1_9C0(void) {

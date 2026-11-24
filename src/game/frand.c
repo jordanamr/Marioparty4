@@ -55,7 +55,7 @@ static inline u32 frandom(u32 param)
  * call sites only one of them visited. 512 entries is several frames at the
  * 40 to 60 draws per frame measured on 2026-09-13. */
 #define PARTYBOARD_RNG_RING 512u
-u32 partyboardRngRingCaller[PARTYBOARD_RNG_RING];
+uintptr_t partyboardRngRingCaller[PARTYBOARD_RNG_RING];
 u32 partyboardRngRingFrame[PARTYBOARD_RNG_RING];
 u32 partyboardRngRingWrite;
 
@@ -66,7 +66,7 @@ static void PartyBoard_RngRecord(uintptr_t caller)
         return;
     }
     slot = partyboardRngRingWrite % PARTYBOARD_RNG_RING;
-    partyboardRngRingCaller[slot] = (u32)caller;
+    partyboardRngRingCaller[slot] = caller;
     partyboardRngRingFrame[slot] = PartyBoard_NetplayFrameForDiagnostics();
     ++partyboardRngRingWrite;
 }
@@ -83,7 +83,7 @@ void PartyBoard_NetplayRngRingRead(PartyBoardRngDrawSink sink, void *context)
         /* Oldest first, so the reader sees the draws in the order made. */
         u32 slot = (partyboardRngRingWrite - total + i) % PARTYBOARD_RNG_RING;
         sink(context, partyboardRngRingFrame[slot],
-            (uintptr_t)partyboardRngRingCaller[slot]);
+            partyboardRngRingCaller[slot]);
     }
 }
 #endif

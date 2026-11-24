@@ -1,3 +1,4 @@
+#include "game/frand.h"
 #include "REL/m409Dll.h"
 
 #include "ext_math.h"
@@ -510,7 +511,7 @@ static inline void unkInline(unkStruct4 *var_r31, s16 var_r29, s16 *var_r28, s16
     Hu3DMotionSet(var_r31[var_r29].unk6, var_r31[var_r29].unk8);
     var_r31[var_r29].unkC = var_r29 + 3;
     if (arg3) {
-        *var_r28 += (((rand8() << 8) | rand8()) % 4) + 2;
+        *var_r28 += (HuRand16FromBytes() % 4) + 2;
     }
     else {
         *var_r28 = 2;
@@ -747,7 +748,7 @@ void fn_1_2DCC(omObjData *object)
 
         loop:
             if (var_r31->unk20) {
-                var_r31->unk20->unkE = 2 + (((rand8() << 8) | rand8()) % 4) + var_r31->unkE;
+                var_r31->unk20->unkE = 2 + (HuRand16FromBytes() % 4) + var_r31->unkE;
                 var_r31 = var_r31->unk20;
                 goto loop;
             }
@@ -932,36 +933,36 @@ void fn_1_44F0(s16 arg0, f32 arg8, f32 arg9, f32 argA, s8 arg1, s16 arg2)
     for (var_r29 = 0; var_r29 < arg2; var_r29++) {
         switch (arg1) { /* irregular */
             case 0:
-                sp20.x = arg8 + ((((rand8() << 8) | rand8()) % 41) - 20);
-                sp20.z = argA + ((((rand8() << 8) | rand8()) % 41) - 20);
+                sp20.x = arg8 + ((HuRand16FromBytes() % 41) - 20);
+                sp20.z = argA + ((HuRand16FromBytes() % 41) - 20);
                 sp20.y = arg9;
-                sp14.x = 0.01f * ((((rand8() << 8) | rand8()) % 101) + 200);
-                sp14.y = 0.01f * ((((rand8() << 8) | rand8()) % 101) + 200);
-                sp14.z = 0.01f * ((((rand8() << 8) | rand8()) % 101) + 200);
-                spA.r = spA.g = spA.b = (((rand8() << 8) | rand8()) % 33) + 32;
+                sp14.x = 0.01f * ((HuRand16FromBytes() % 101) + 200);
+                sp14.y = 0.01f * ((HuRand16FromBytes() % 101) + 200);
+                sp14.z = 0.01f * ((HuRand16FromBytes() % 101) + 200);
+                spA.r = spA.g = spA.b = (HuRand16FromBytes() % 33) + 32;
                 spA.a = 0xFF;
                 var_r31 = fn_1_58E0(arg0, &sp20, &sp14, 0.0f, &spA);
                 if (!var_r31)
                     return;
 
-                temp_f31 = (((rand8() << 8) | rand8()) % 361);
+                temp_f31 = (HuRand16FromBytes() % 361);
                 var_r31->unk0.x = 2.0 + (3.0 * sind(temp_f31));
-                var_r31->unk0.y = (0.1f * ((((rand8() << 8) | rand8()) % 31) + 40));
+                var_r31->unk0.y = (0.1f * ((HuRand16FromBytes() % 31) + 40));
                 var_r31->unk0.z = (3.5 * cosd(temp_f31));
                 var_r31->unk28 = 0;
-                var_r31->unk2A = ((((rand8() << 8) | rand8()) % 3) + 2);
+                var_r31->unk2A = ((HuRand16FromBytes() % 3) + 2);
                 var_r31->unk18 = (f32)spA.r;
-                var_r31->unk1C = (((((rand8() << 8) | rand8()) % 69) + 0x80) / (f32)(var_r31->unk2A * 0xE));
+                var_r31->unk1C = (((HuRand16FromBytes() % 69) + 0x80) / (f32)(var_r31->unk2A * 0xE));
                 var_r31->unk20 = 255.0f;
-                var_r31->unk24 = (((((rand8() << 8) | rand8())) % 128 + 0x80) / (f32)(var_r31->unk2A * 0xE));
+                var_r31->unk24 = (((HuRand16FromBytes()) % 128 + 0x80) / (f32)(var_r31->unk2A * 0xE));
                 break;
             case 1:
-                sp20.x = arg8 + ((((rand8() << 8) | rand8()) % 41) - 20);
-                sp20.z = argA + ((((rand8() << 8) | rand8()) % 41) - 20);
-                sp20.y = arg9 + ((((rand8() << 8) | rand8()) % 41) - 20);
-                sp14.x = 0.01f * ((((rand8() << 8) | rand8()) % 101) + 300);
-                sp14.y = 0.01f * ((((rand8() << 8) | rand8()) % 101) + 300);
-                sp14.z = 0.01f * ((((rand8() << 8) | rand8()) % 101) + 300);
+                sp20.x = arg8 + ((HuRand16FromBytes() % 41) - 20);
+                sp20.z = argA + ((HuRand16FromBytes() % 41) - 20);
+                sp20.y = arg9 + ((HuRand16FromBytes() % 41) - 20);
+                sp14.x = 0.01f * ((HuRand16FromBytes() % 101) + 300);
+                sp14.y = 0.01f * ((HuRand16FromBytes() % 101) + 300);
+                sp14.z = 0.01f * ((HuRand16FromBytes() % 101) + 300);
                 spA.r = 0xFF;
                 spA.g = 0xDC;
                 spA.b = 0x8C;
@@ -971,10 +972,10 @@ void fn_1_44F0(s16 arg0, f32 arg8, f32 arg9, f32 argA, s8 arg1, s16 arg2)
                     return;
 
                 var_r31->unk28 = 0;
-                var_r31->unk2A = ((((rand8() << 8) | rand8()) % 3) + 2);
-                var_r31->unk0.x = (0.1f * ((((rand8() << 8) | rand8()) % 11) + 30));
+                var_r31->unk2A = ((HuRand16FromBytes() % 3) + 2);
+                var_r31->unk0.x = (0.1f * ((HuRand16FromBytes() % 11) + 30));
                 var_r31->unk0.y = 0.0f;
-                var_r31->unk0.z = (0.1f * ((((rand8() << 8) | rand8()) % 41) - 20));
+                var_r31->unk0.z = (0.1f * ((HuRand16FromBytes() % 41) - 20));
                 var_r31->unk20 = 32.0f;
                 var_r31->unk24 = (32.0f / (var_r31->unk2A * 0xE));
                 break;
@@ -993,10 +994,10 @@ void fn_1_4FFC(s16 arg0, f32 arg1, f32 arg2, f32 arg3, s16 arg4)
     unkStruct5 *temp_r31;
 
     for (var_r30 = 0; var_r30 < arg4; var_r30++) {
-        sp2C.x = arg1 + ((((rand8() << 8) | rand8()) % 21) - 10);
+        sp2C.x = arg1 + ((HuRand16FromBytes() % 21) - 10);
         sp2C.y = arg2;
-        sp2C.z = arg3 + ((((rand8() << 8) | rand8()) % 21) - 10);
-        sp20.x = 0.1f * ((((rand8() << 8) | rand8()) % 31) + 10);
+        sp2C.z = arg3 + ((HuRand16FromBytes() % 21) - 10);
+        sp20.x = 0.1f * ((HuRand16FromBytes() % 31) + 10);
         sp20.y = 1.0f;
         sp20.z = 1.0f;
         sp1A.r = sp1A.g = sp1A.b = sp1A.a = 0xFF;
@@ -1005,14 +1006,14 @@ void fn_1_4FFC(s16 arg0, f32 arg1, f32 arg2, f32 arg3, s16 arg4)
             break;
 
         temp_r31->unk4C = -1;
-        temp_f31 = ((((rand8() << 8) | rand8()) % 81) - 40);
+        temp_f31 = ((HuRand16FromBytes() % 81) - 40);
         temp_r31->unk0.x = (13.0 * cosd(temp_f31));
-        temp_r31->unk0.y = 0.1f * ((((rand8() << 8) | rand8()) % 21) + 20);
+        temp_r31->unk0.y = 0.1f * ((HuRand16FromBytes() % 21) + 20);
         temp_r31->unk0.z = (9.0 * sind(temp_f31));
         temp_r31->unkC.x = (0.05f * temp_r31->unk0.x);
         temp_r31->unkC.z = (0.05f * temp_r31->unk0.z);
         temp_r31->unk18 = 500.0f;
-        temp_r31->unk1C = ((((rand8() << 8) | rand8()) % 21) + 40);
+        temp_r31->unk1C = ((HuRand16FromBytes() % 21) + 40);
     }
 }
 

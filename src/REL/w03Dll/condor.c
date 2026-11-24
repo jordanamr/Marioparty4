@@ -1135,18 +1135,17 @@ void fn_1_602C(omObjData *arg0, w03UnkStruct5 *arg1)
 
 f32 fn_1_61A4(omObjData *arg0, w03UnkStruct5 *arg1)
 {
-    w03StructUnk3 *sp8;
     f32 temp_f31;
     s16 i;
     w03StructUnk2 *temp_r29;
     s16 var_r28;
     f32 *temp_r31;
 
-    if (lbl_1_bss_74) {
-        temp_r29 = OM_GET_WORK_PTR(lbl_1_bss_74, w03StructUnk2);
-        sp8 = temp_r29->unk_08;
-        var_r28 = temp_r29->unk_03;
+    if (!lbl_1_bss_74) {
+        return 0.0f;
     }
+    temp_r29 = OM_GET_WORK_PTR(lbl_1_bss_74, w03StructUnk2);
+    var_r28 = temp_r29->unk_03;
 
     temp_f31 = BoardModelMotionTimeGet(lbl_1_data_314);
     temp_f31 = temp_f31 + arg1->unk_08;

@@ -90,7 +90,7 @@ sealed class MainForm : Form {
             });
         });
         play.MinimumSize=new Size(240,38);
-        cancel=Make(L.T("Quitter le salon"),Reset);bottom.Controls.Add(play);bottom.Controls.Add(cancel);root.Controls.Add(bottom,0,9);
+        cancel=Make(L.T("Quitter le salon"),()=>Reset(true));bottom.Controls.Add(play);bottom.Controls.Add(cancel);root.Controls.Add(bottom,0,9);
         actions.Controls.Add(Make(L.T("Exporter diagnostic"),ExportReport));
         network=Make(L.T("Port fixe…"),ChooseNetwork);actions.Controls.Add(network);
         update=Make(L.T("Vérifier les mises à jour"),CheckForUpdates);actions.Controls.Add(update);
@@ -106,7 +106,7 @@ sealed class MainForm : Form {
             var timer=new System.Windows.Forms.Timer{Interval=400};timer.Tick+=(s,e)=>SyncRoom();timer.Start();
             FormClosed+=(s,e)=>{timer.Stop();try{RoomSync.Write(startup.StateDirectory,new System.Collections.Generic.Dictionary<string,object>{{"state","closed"},{"message",status.Text}},++syncRevision);}catch{}};
         }
-        FormClosing+=(s,e)=>{closing=true;fileCancel.Cancel();var old=session;session=null;if(old!=null)old.Dispose();if(disc!=null)disc.Dispose();};
+        FormClosing+=(s,e)=>{closing=true;fileCancel.Cancel();var old=session;session=null;if(old!=null){old.LeaveRoom("launcher_exited");old.EnsureGameStopped();}stoppingSessions.GetAwaiter().GetResult();if(disc!=null)disc.Dispose();};
     }
     Button network;
     // The fixed port (Gateway.cs, NetworkSettings): empty means automatic.
@@ -504,6 +504,7 @@ sealed class MainForm : Form {
         base.SetVisibleCore(false);
     }
     bool hadSession;
+    Task stoppingSessions=Task.FromResult(true);
     long syncRevision;string syncLast;
     // What room.json says: this window's room, in the launcher's words.
     System.Collections.Generic.Dictionary<string,object> RoomState() {
@@ -560,6 +561,8 @@ sealed class MainForm : Form {
             // to show here: the launcher is told why, and this process goes.
             if(session!=null)hadSession=true;
             if(startup.Headless && hadSession && session==null) {
+                // A background reset may still be closing the native game.
+                if(!stoppingSessions.IsCompleted)return;
                 RoomSync.Write(startup.StateDirectory,new System.Collections.Generic.Dictionary<string,object>{{"state","closed"},{"message",status.Text}},++syncRevision);
                 Close();return;
             }
@@ -591,7 +594,7 @@ sealed class MainForm : Form {
             }
             case "close":
                 RoomSync.Complete(startup.StateDirectory,request,true,L.T("Room fermée."));
-                hadSession=false;Reset();Close();return;
+                hadSession=false;var closingSession=session;session=null;if(closingSession!=null)closingSession.LeaveRoom("user_close_request");Close();return;
             case "start": {
                 if(current==null || current.Lobby==null || !current.Lobby.CanStart){RoomSync.Complete(startup.StateDirectory,request,false,current!=null && !current.Host?L.T("Seul l'hote peut lancer la partie."):L.T("La partie ne peut pas encore être lancée."));return;}
                 Task.Run(()=>{
@@ -669,6 +672,15 @@ sealed class MainForm : Form {
             if(!(e is IOException || e is UnauthorizedAccessException || e is NotSupportedException || e is ArgumentException))throw;
         }
     }
-    void Reset(){var old=session;session=null;if(old!=null)Task.Run(()=>old.Dispose());RefreshLobby();SetStatus(disc!=null?(Lan?L.T("Créez une partie LAN ou trouvez-en une dans « Parties en LAN »."):L.T("Créez une room, ou rejoignez une room publique ou l'invitation d'un ami.")):L.T("Choisissez votre disque pour commencer."));}
+    void Reset(bool manual=false){
+        var old=session;session=null;
+        if(old!=null) {
+            var shutdown=Task.Run(()=>{
+                if(manual)old.LeaveRoom("user_close_request");else old.Dispose();
+                old.EnsureGameStopped();
+            });
+            stoppingSessions=stoppingSessions.IsCompleted?shutdown:Task.WhenAll(stoppingSessions,shutdown);
+        }
+        RefreshLobby();SetStatus(disc!=null?(Lan?L.T("Créez une partie LAN ou trouvez-en une dans « Parties en LAN »."):L.T("Créez une room, ou rejoignez une room publique ou l'invitation d'un ami.")):L.T("Choisissez votre disque pour commencer."));}
 }
 }

@@ -668,6 +668,32 @@ static Vec basePos[] = { { -0.5f, 0.5f, 0.0f }, { 0.5f, 0.5f, 0.0f }, { 0.5f, -0
 
 static float baseST[] = { 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f };
 
+static void ParticleAdvanceTexture(HU3DPARTICLE *particleP)
+{
+    ANIMBANK *animBank = &particleP->anim->bank[particleP->animBank];
+    ANIMFRAME *animFrame = &animBank->frame[particleP->animNo];
+    s32 i;
+    for (i = 0; i < (s32) particleP->animSpeed * minimumVcount; i++) {
+        particleP->animTime += 1.0f;
+        if (particleP->animTime >= animFrame->time) {
+            particleP->animNo++;
+            particleP->animTime -= animFrame->time;
+            if (particleP->animNo >= animBank->timeNum || animFrame[1].time == -1) {
+                particleP->animNo = 0;
+            }
+        }
+        animFrame = &animBank->frame[particleP->animNo];
+    }
+    particleP->animTime += particleP->animSpeed * minimumVcount - i;
+    if (particleP->animTime >= animFrame->time) {
+        particleP->animNo++;
+        particleP->animTime -= animFrame->time;
+        if (particleP->animNo >= animBank->timeNum || animFrame[1].time == -1) {
+            particleP->animNo = 0;
+        }
+    }
+}
+
 static void particleFunc(HU3DMODEL *arg0, Mtx arg1)
 {
     HuVecF *vtxBuf;
@@ -693,14 +719,29 @@ static void particleFunc(HU3DMODEL *arg0, Mtx arg1)
     HuVecF initVtx[4];
     ROMtx basePosMtx;
 
+#ifdef TARGET_PC
+    BOOL activeParticles = FALSE;
+    BOOL simulationPass;
+#endif
+
     particleP = arg0->hookData;
+#ifdef TARGET_PC
+    /* Shadow maps and extra cameras redraw the same particle system. Use
+       its first ordinary camera on each tick to advance the effect once. */
+    simulationPass = !shadowModelDrawF && minimumVcount != 0 &&
+        particleP->prevCounter != GlobalCounter;
+#endif
     anim = particleP->anim;
     if (HmfInverseMtxF3X3(arg1, mtxInv) == 0) {
         MTXIdentity(mtxInv);
     }
     MTXReorder(mtxInv, basePosMtx);
     if ((Hu3DPauseF == 0 || (arg0->attr & HU3D_ATTR_NOPAUSE)) && particleP->hook &&
+#ifdef TARGET_PC
+        simulationPass) {
+#else
         minimumVcount != 0 && particleP->prevCounter != GlobalCounter) {
+#endif
         HU3DPARTICLEHOOK hook = particleP->hook;
         u32 tick;
         for (tick = 0; tick < (u32)minimumVcount; ++tick) {
@@ -711,6 +752,11 @@ static void particleFunc(HU3DMODEL *arg0, Mtx arg1)
     vtxBuf = particleP->vtxBuf;
     MTXROMultVecArray(basePosMtx, &basePos[0], initVtx, 4);
     for (i = 0, dispF = FALSE; i < particleP->maxCnt; i++, particleDataP++) {
+#ifdef TARGET_PC
+        if (particleDataP->scale && (particleDataP->cameraBit & arg0->cameraBit)) {
+            activeParticles = TRUE;
+        }
+#endif
         if (particleDataP->scale && (particleDataP->cameraBit & Hu3DCameraBit)) {
             if (!particleDataP->zRot) {
                 scale = particleDataP->scale;
@@ -756,6 +802,12 @@ static void particleFunc(HU3DMODEL *arg0, Mtx arg1)
             vtxBuf++;
         }
     }
+#ifdef TARGET_PC
+    if (simulationPass && activeParticles && (particleP->attr & HU3D_PARTICLE_ATTR_ANIMON) &&
+        (!Hu3DPauseF || (arg0->attr & HU3D_ATTR_NOPAUSE))) {
+        ParticleAdvanceTexture(particleP);
+    }
+#endif
     if (dispF) {
         DCFlushRangeNoSync(particleP->vtxBuf, particleP->maxCnt * sizeof(Vec) * 4);
         GXLoadPosMtxImm(arg1, 0);
@@ -792,27 +844,11 @@ static void particleFunc(HU3DMODEL *arg0, Mtx arg1)
             animFrame = &animBank->frame[particleP->animNo];
             animPat = &anim->pat[animFrame->pat];
             HuSprTexLoad(particleP->anim, animPat->layer->bmpNo, 0, GX_CLAMP, GX_CLAMP, GX_LINEAR);
+#ifndef TARGET_PC
             if (Hu3DPauseF == FALSE || (arg0->attr & HU3D_ATTR_NOPAUSE)) {
-                for (i = 0; i < (s32) particleP->animSpeed * minimumVcount; i++) {
-                    particleP->animTime += 1.0f;
-                    if (particleP->animTime >= animFrame->time) {
-                        particleP->animNo++;
-                        particleP->animTime -= animFrame->time;
-                        if (particleP->animNo >= animBank->timeNum || animFrame[1].time == -1) {
-                            particleP->animNo = 0;
-                        }
-                    }
-                    animFrame = &animBank->frame[particleP->animNo];
-                }
-                particleP->animTime += particleP->animSpeed * minimumVcount - i;
-                if (particleP->animTime >= animFrame->time) {
-                    particleP->animNo++;
-                    particleP->animTime -= animFrame->time;
-                    if (particleP->animNo >= animBank->timeNum || animFrame[1].time == -1) {
-                        particleP->animNo = 0;
-                    }
-                }
+                ParticleAdvanceTexture(particleP);
             }
+#endif
             animLayer = animPat->layer;
             animBmp = &anim->bmp[animLayer->bmpNo];
             x = (float) animLayer->sizeX / animBmp->sizeX;
@@ -852,7 +888,11 @@ static void particleFunc(HU3DMODEL *arg0, Mtx arg1)
         GXSETARRAY(GX_VA_TEX0, baseST, sizeof(baseST), 8, TRUE);
         GXCallDisplayList(particleP->dlBuf, particleP->dlSize);
     }
+#ifdef TARGET_PC
+    if (simulationPass) {
+#else
     if (shadowModelDrawF == FALSE) {
+#endif
         if (!(particleP->attr & HU3D_PARTICLE_ATTR_STOPCNT) && Hu3DPauseF == FALSE) {
             particleP->count += minimumVcount;
         }

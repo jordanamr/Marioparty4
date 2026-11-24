@@ -1,3 +1,4 @@
+#include "game/frand.h"
 #include "REL/m440Dll.h"
 
 #include "ext_math.h"
@@ -417,10 +418,10 @@ void fn_1_C1D4(omObjData *arg0, unkObjStruct *arg1)
                     }
                 }
                 var_r28--;
-                var_r30 = (((rand8() << 8) | rand8()) % (s16)(var_r28 + 1));
+                var_r30 = (HuRand16FromBytes() % (s16)(var_r28 + 1));
                 arg1->unk50 = sp12[var_r30];
             }
-            var_r30 = (((rand8() << 8) | rand8()) % (s16)(var_r29 + 1));
+            var_r30 = (HuRand16FromBytes() % (s16)(var_r29 + 1));
             arg1->unk52 = sp8[var_r30];
         }
         if (arg1->unk54 == 0) {
@@ -448,20 +449,20 @@ void fn_1_C1D4(omObjData *arg0, unkObjStruct *arg1)
                         var_f31 = 1.0f;
                         arg1->unk5A = 0;
                         arg1->unk54--;
-                        var_r30 = (((rand8() << 8) | rand8()) % (s16)(var_r29 + 1));
+                        var_r30 = (HuRand16FromBytes() % (s16)(var_r29 + 1));
                         arg1->unk52 = sp8[var_r30];
                     }
                     HuPadTrigR[arg1->unk6] = (u8)(arg1->unk58 * var_f31);
                     return;
                 }
-                if ((((rand8() << 8) | rand8()) % 101) < 0x32) {
+                if ((HuRand16FromBytes() % 101) < 0x32) {
                     arg1->unk56 = 0;
-                    arg1->unk58 = ((((rand8() << 8) | rand8()) % 81) + 0x32);
+                    arg1->unk58 = ((HuRand16FromBytes() % 81) + 0x32);
                     arg1->unk5A = 1;
                     return;
                 }
                 arg1->unk54--;
-                var_r30 = (((rand8() << 8) | rand8()) % (s16)(var_r29 + 1));
+                var_r30 = (HuRand16FromBytes() % (s16)(var_r29 + 1));
                 arg1->unk52 = sp8[var_r30];
                 return;
             }
@@ -1148,8 +1149,8 @@ void fn_1_F228(void)
                         var_r28 = 0;
                         break;
                 }
-                temp_r31->unk4C = ((((rand8() << 8) | rand8()) % 256) / 255.0f);
-                temp_r31->unk54 = (((rand8() << 8) | rand8()) % (s16)(var_r28 + 1));
+                temp_r31->unk4C = ((HuRand16FromBytes() % 256) / 255.0f);
+                temp_r31->unk54 = (HuRand16FromBytes() % (s16)(var_r28 + 1));
                 temp_r31->unk50 = -1;
                 temp_r31->unk56 = temp_r31->unk5A = 0;
                 temp_r31->unkA = -1;

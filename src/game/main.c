@@ -488,8 +488,10 @@ s32 rand8(void)
 #ifdef TARGET_PC
     ++partyboardRand8Calls;
 #endif
-    rnd_seed = (rnd_seed * 0x41C64E6D) + 0x3039;
-    return (u8)(((rnd_seed + 1) >> 16) & 0xFF);
+    /* The console LCG wraps modulo 2^32 on every draw. */
+    u32 next = (u32)rnd_seed * 0x41C64E6Du + 0x3039u;
+    rnd_seed = (s32)next;
+    return (u8)((next + 1u) >> 16);
 }
 
 #ifdef TARGET_PC

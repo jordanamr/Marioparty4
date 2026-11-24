@@ -94,6 +94,7 @@ sealed class LinuxRoom {
                     var lobby=current?.Lobby;
                     if(failure!=null || lobby?.Phase==LobbyPhase.Closed) {
                         bool gameEnded=lobby?.Ending==LobbyEnding.LocalGameClosed || lobby?.Ending==LobbyEnding.RemoteGameClosed;
+                        if(current?.TimedOut==true){failure=Session.TimeoutMessage;gameEnded=false;}
                         Publish(gameEnded?"closed":"error");
                         return gameEnded?0:1;
                     }
@@ -136,14 +137,7 @@ sealed class LinuxRoom {
                 // A close request can arrive while mapping ports or preparing a game.
                 current?.Dispose();
                 worker.Wait(TimeSpan.FromSeconds(5));
-                var child=current?.Game;
-                if(child!=null && !child.HasExited && !child.WaitForExit(2000)) {
-                    current.Report.Write("native_stop=companion_requested",true);
-                    try { child.Kill(entireProcessTree:true); }
-                    catch(InvalidOperationException) when(child.HasExited) {}
-                    child.WaitForExit(2000);
-                }
-                current?.ObserveNativeExit();
+                current?.EnsureGameStopped();
             }
         }
     }

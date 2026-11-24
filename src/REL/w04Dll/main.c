@@ -190,6 +190,7 @@ static s32 fn_1_798(void) {
     var_r30 = GWPlayer[var_r31].space_curr;
     sp8 = BoardSpaceFlagGet(0, var_r30);
     fn_1_9EBC();
+    return 0;
 }
 
 static s32 fn_1_7FC(void) {
@@ -404,6 +405,7 @@ static s32 fn_1_103C(void) {
         fn_1_DB0();
     }
     BoardRollDispSet(1);
+    return 0;
 }
 
 s32 fn_1_1130(s16 arg0, float arg1, float arg2) {

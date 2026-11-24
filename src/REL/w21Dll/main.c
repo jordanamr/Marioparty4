@@ -76,10 +76,10 @@ static s32 WalkEvent(void)
 
 static s32 WalkMiniEvent(void)
 {
-	
+    return 0;
 }
 
 static s32 LandEvent(void)
 {
-	
+    return 0;
 }
