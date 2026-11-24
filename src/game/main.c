@@ -422,7 +422,7 @@ void main(void)
                 || PartyBoard_RenderedFrames - netplayNoticeFrame >= 600u) {
                 if (PartyBoard_NetplayPeerSeen()) {
                     ui_push_toast("info", "En attente de l'autre joueur",
-                        "La liaison est interrompue. La partie reprend seule si elle revient avant 2 minutes.", 12000);
+                        "La liaison est interrompue. La partie reprendra si la connexion revient à temps.", 12000);
                 } else {
                     ui_push_toast("info", "En attente du second joueur",
                         "Personne n'a encore rejoint. Rien ne s'affichera tant que la partie n'a pas commence : c'est normal, ce n'est pas un plantage.", 12000);

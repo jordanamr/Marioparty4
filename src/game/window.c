@@ -524,8 +524,8 @@ static u8 winBGMake(ANIMDATA *bg, ANIMDATA *frame)
 
     w = bg->bmp->sizeX;
     h = bg->bmp->sizeY;
-    block_w = (w + 7) & 0xF8;
-    block_h = (h + 3) & 0xFC;
+    block_w = (w + 7) & ~7;
+    block_h = (h + 3) & ~3;
     bmp_data = bg->bmp->data = HuMemDirectMallocNum(HEAP_SYSTEM, block_w * block_h, MEMORY_DEFAULT_NUM);
     for (i = 0; i < h; i++) {
         if (i == 0) {

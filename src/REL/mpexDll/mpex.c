@@ -2834,7 +2834,7 @@ void fn_1_ED78(s32 arg0, s32 arg1)
 
 void fn_1_F0C0(void)
 {
-    float sp8[2];
+    float sp8[2] = {0.0f, 0.0f};
     s32 var_r31;
     s32 var_r30;
     s32 var_r29;
@@ -3071,7 +3071,7 @@ void fn_1_10268(s32 arg0)
 
 void fn_1_1045C(void)
 {
-    float sp8[2];
+    float sp8[2] = {0.0f, 0.0f};
     s32 var_r31;
     s32 var_r29;
 

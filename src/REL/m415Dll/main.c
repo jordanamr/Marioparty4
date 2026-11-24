@@ -54,6 +54,15 @@ Vec lbl_1_data_1C = { 0.0f, 3000.0f, -2000.0f };
 Vec lbl_1_data_28 = { 0.0f, 1.0f, 0.0f };
 Vec lbl_1_data_34 = { 0.0f, 0.0f, 0.0f };
 
+#ifdef TARGET_PC
+/* The final object-manager callback runs after the players, once per game tick. */
+static void M415UpdateView(omObjData *object)
+{
+    omOutView(object);
+    M415UpdateCursors();
+}
+#endif
+
 void ObjectSetup(void)
 {
     s32 var_r31;
@@ -86,7 +95,11 @@ void ObjectSetup(void)
     Hu3DCameraCreate(1);
     Hu3DCameraPerspectiveSet(1, -1.0f, 5.0f, 10000.0f, 1.2f);
     Hu3DCameraViewportSet(1, 0.0f, 0.0f, HU_FB_WIDTH, HU_FB_HEIGHT, 0.0f, 1.0f);
+#ifdef TARGET_PC
+    lbl_1_bss_364 = omAddObjEx(temp_r30, 0x7FDA, 0, 0, -1, M415UpdateView);
+#else
     lbl_1_bss_364 = omAddObjEx(temp_r30, 0x7FDA, 0, 0, -1, omOutView);
+#endif
     lbl_1_bss_368 = omAddObjEx(temp_r30, 0x10, 8, 0, -1, fn_1_43C);
     lbl_1_bss_35C = omAddObjEx(temp_r30, 0x20, 0x10, 0, -1, fn_1_15D0);
     lbl_1_bss_360 = omAddObjEx(temp_r30, 0x50, 0x10, 0, -1, fn_1_2B18);

@@ -51,6 +51,26 @@ unkStruct lbl_1_data_4C[4]
 u32 lbl_1_data_BC = 0xFFFFFFFF;
 s32 lbl_1_data_C0 = -1;
 
+#ifdef TARGET_PC
+/* The final object-manager callback runs after the players, once per game tick. */
+static void M409UpdateView(omObjData *object)
+{
+    int i;
+    omOutView(object);
+    if (!omPauseChk() && lbl_1_bss_E0->func == fn_1_F70) {
+        for (i = 0; i < 2; ++i) {
+            s16 modelId = lbl_1_bss_E0->model[i];
+            if (modelId != HU3D_MODELID_NONE) {
+                HU3DMODEL *model = &Hu3DData[modelId];
+                unkStruct6 *particles = model->hookData;
+                particles->unkC(model, particles);
+            }
+        }
+    }
+    M409UpdateCursors();
+}
+#endif
+
 void ObjectSetup(void)
 {
     Vec sp2C;
@@ -73,7 +93,11 @@ void ObjectSetup(void)
     omGameSysInit(lbl_1_bss_E8);
     Hu3DCameraCreate(1);
     Hu3DCameraPerspectiveSet(1, 41.5f, 5.0f, 5000.0f, 1.2f);
+#ifdef TARGET_PC
+    omAddObjEx(lbl_1_bss_E8, 0x7FDA, 0U, 0U, -1, M409UpdateView);
+#else
     omAddObjEx(lbl_1_bss_E8, 0x7FDA, 0U, 0U, -1, omOutView);
+#endif
     sp14.x = 0.0f;
     sp14.y = 374.0f;
     sp14.z = 1086.0f;
@@ -105,6 +129,7 @@ void fn_1_434(omObjData *object)
 #if VERSION_NTSC
         fn_1_5F5C(lbl_1_bss_E0->model[0]);
         fn_1_5F5C(lbl_1_bss_E0->model[1]);
+        lbl_1_bss_E0->model[0] = lbl_1_bss_E0->model[1] = HU3D_MODELID_NONE;
 #endif
         WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_NORMAL, 0x3C);
         MGSeqKillAll();
@@ -119,6 +144,7 @@ void fn_1_4DC(omObjData *object)
 #if VERSION_PAL
         fn_1_5F5C(lbl_1_bss_E0->model[0]);
         fn_1_5F5C(lbl_1_bss_E0->model[1]);
+        lbl_1_bss_E0->model[0] = lbl_1_bss_E0->model[1] = HU3D_MODELID_NONE;
 #endif
         omOvlReturnEx(1, 1);
     }
@@ -1017,7 +1043,7 @@ void fn_1_4FFC(s16 arg0, f32 arg1, f32 arg2, f32 arg3, s16 arg4)
     }
 }
 
-void fn_1_5408(HU3DMODEL *arg0, struct _unkStruct6 *arg1, Mtx arg2)
+void fn_1_5408(HU3DMODEL *arg0, struct _unkStruct6 *arg1)
 {
     s16 var_r29;
     GXColor *var_r30;
@@ -1063,7 +1089,7 @@ void fn_1_5408(HU3DMODEL *arg0, struct _unkStruct6 *arg1, Mtx arg2)
     }
 }
 
-void fn_1_55E0(HU3DMODEL *arg0, struct _unkStruct6 *arg1, Mtx arg2)
+void fn_1_55E0(HU3DMODEL *arg0, struct _unkStruct6 *arg1)
 {
     GXColor *var_r30;
     f32 var_f31;
@@ -1120,7 +1146,7 @@ void fn_1_55E0(HU3DMODEL *arg0, struct _unkStruct6 *arg1, Mtx arg2)
     }
 }
 
-void fn_1_57DC(HU3DMODEL *arg0, struct _unkStruct6 *arg1, Mtx arg2)
+void fn_1_57DC(HU3DMODEL *arg0, struct _unkStruct6 *arg1)
 {
     Vec sp18;
     Vec spC;
@@ -1325,7 +1351,6 @@ void fn_1_602C(HU3DMODEL *arg0, f32 (*arg1)[4])
     s16 var_r25;
     unkStruct6 *temp_r30;
     unkStruct5 *var_r29;
-    m409Func6 var_r23;
 
     temp_r30 = (unkStruct6 *)arg0->hookData;
     GXLoadPosMtxImm(arg1, 0);
@@ -1377,10 +1402,11 @@ void fn_1_602C(HU3DMODEL *arg0, f32 (*arg1)[4])
     GXSETARRAY(GX_VA_TEX0, temp_r30->unk20, temp_r30->unk0 * sizeof(Vec2f) * 4, sizeof(Vec2f), TRUE);
     fn_1_40A4(arg1, sp128);
     MTXReorder(sp128, spF8);
-    if (((u8)omPauseChk() == 0) && (temp_r30->unkC)) {
-        var_r23 = temp_r30->unkC;
-        var_r23(arg0, temp_r30, arg1);
+#ifndef TARGET_PC
+    if (!omPauseChk() && temp_r30->unkC) {
+        temp_r30->unkC(arg0, temp_r30);
     }
+#endif
     var_r29 = temp_r30->unk18;
     var_r31 = temp_r30->unk1C;
     var_r26 = temp_r30->unk20;

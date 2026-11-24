@@ -303,29 +303,26 @@ std::uint64_t monotonicMs()
         std::chrono::steady_clock::now().time_since_epoch()).count());
 }
 
-#ifdef _WIN32
-// The diagnostic file stays open for the whole run. PartyBoard_NetplayTrace
-// writes through here on gameplay ticks; reopening and closing the file for
-// every line cost two file-system calls each, and reading the environment
-// every call cost a lookup even when no file was asked for. Each line is still
-// flushed, so a supervisor tailing the file, or a crash, loses nothing.
-FILE *diagnosticFile()
+// Keep using native path encodings when the user profile contains accents.
+static FILE *openDiagnostic(const char *suffix)
 {
-    // Copied: a later _putenv_s may move the environment block.
-    static const std::wstring path = [] {
-        const wchar_t *value = _wgetenv(L"PARTYBOARD_NET_DIAGNOSTIC");
-        return std::wstring(value != nullptr ? value : L"");
-    }();
-    static FILE *file = nullptr;
-    if (!path.empty() && file == nullptr) file = _wfopen(path.c_str(), L"ab");
-    return file;
-}
+#ifdef _WIN32
+    const wchar_t *name = _wgetenv(L"PARTYBOARD_NET_DIAGNOSTIC");
+    if (!name || !*name) return nullptr;
+    auto path = std::filesystem::path(name);
+    path += suffix;
+    return _wfopen(path.c_str(), L"ab");
+#else
+    const char *name = std::getenv("PARTYBOARD_NET_DIAGNOSTIC");
+    if (!name || !*name) return nullptr;
+    return std::fopen((std::string(name) + suffix).c_str(), "ab");
 #endif
+}
 
 void writeDiagnostic(const char *event, bool force = false)
 {
-#ifdef _WIN32
-    FILE *file = diagnosticFile();
+    // The supervisor creates the directory and sets the path before launching the game.
+    static FILE *file = openDiagnostic("");
     if (!file) return;
     const auto now = monotonicMs();
     if (force) {
@@ -372,9 +369,6 @@ void writeDiagnostic(const char *event, bool force = false)
         GWSystem.turn, GWSystem.max_turn, GWSystem.board);
     std::fflush(file);
     if (force) { ++gRuntime.diagnosticEventLines; } else { ++gRuntime.diagnosticLines; }
-#else
-    (void)event; (void)force;
-#endif
 }
 
 void serviceStateRepair(bool force = false);
@@ -1424,12 +1418,7 @@ bool checkStateFailure()
     // The companion collects this sidecar next to its native log; keep writing
     // it. The per-peer report above holds the field-level evidence, which is
     // too large to flood stderr or the capped routine log with.
-    FILE *sidecar = nullptr;
-#ifdef _WIN32
-    const auto *diagnostic = _wgetenv(L"PARTYBOARD_NET_DIAGNOSTIC");
-    if (diagnostic && *diagnostic)
-        sidecar = _wfopen((std::wstring(diagnostic) + L".desync").c_str(), L"ab");
-#endif
+    FILE *sidecar = openDiagnostic(".desync");
     if (sidecar) std::fprintf(sidecar, "%s\n", message);
     if (a && b) {
         for (std::size_t index = 0; index < kSubsystemCount; ++index) {

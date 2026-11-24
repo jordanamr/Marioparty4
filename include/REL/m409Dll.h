@@ -12,7 +12,7 @@ extern s32 rand8(void);
 // types
 struct _unkStruct6;
 struct _unkStruct8;
-typedef void (*m409Func6)(HU3DMODEL *, struct _unkStruct6 *, Mtx);
+typedef void (*m409Func6)(HU3DMODEL *, struct _unkStruct6 *);
 typedef void (*m409PlayerFunc8)(struct _unkStruct8 *);
 
 typedef struct _unkStruct {
@@ -280,9 +280,9 @@ float fn_1_4120(float, float, float, float);
 void fn_1_417C(void);
 void fn_1_44F0(s16, float, float, float, s8, s16);
 void fn_1_4FFC(s16, float, float, float, s16);
-void fn_1_5408(HU3DMODEL *, unkStruct6 *, Mtx);
-void fn_1_55E0(HU3DMODEL *, unkStruct6 *, Mtx);
-void fn_1_57DC(HU3DMODEL *, unkStruct6 *, Mtx);
+void fn_1_5408(HU3DMODEL *, unkStruct6 *);
+void fn_1_55E0(HU3DMODEL *, unkStruct6 *);
+void fn_1_57DC(HU3DMODEL *, unkStruct6 *);
 unkStruct5 *fn_1_58E0(s16, Vec *, Vec *, float, GXColor *);
 s16 fn_1_5A18(ANIMDATA *, s16, float, s16, s16);
 void fn_1_5F5C(s16);
@@ -320,6 +320,9 @@ float fn_1_BF38(s16);
 void fn_1_BF88(s16, s16);
 void fn_1_C0C0(void);
 void fn_1_C164(unkStruct8 *);
+#ifdef TARGET_PC
+void M409UpdateCursors(void);
+#endif
 void fn_1_CB98(HU3DMODEL *model, Mtx matrix);
 unkStruct8 *fn_1_CCB0(s16 idx);
 unkStruct8Sub *fn_1_CCCC(s16, s16);

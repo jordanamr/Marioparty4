@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the ROM-free Take a Breather and Trace Race regressions against an existing Linux Ninja build.
+"""Run the ROM-free minigame simulation and texture regressions against an existing Linux Ninja build.
 
 Usage: python3 tools/test_minigame_determinism.py build/linux-clang-relwithdebinfo
 """
@@ -16,7 +16,11 @@ def main():
     parser.add_argument("build", type=Path, help="Linux CMake/Ninja directory containing libdol.so")
     build = parser.parse_args().build.resolve()
     root = Path(__file__).resolve().parents[1]
-    test_cases = [("m456Dll", "stage.c", "water_netplay_test.c"), ("m404Dll", "main.c", "trace_race_pixels_test.c")]
+    test_cases = [
+        ("m456Dll", "stage.c", "water_netplay_test.c"),
+        ("m404Dll", "main.c", "trace_race_pixels_test.c"),
+        ("m409Dll", "cursor.c", "cursor_lifetime_test.c"),
+    ]
     for module, filename, test in test_cases:
         compile_and_run(root, build, module, filename, test)
 

@@ -171,6 +171,7 @@ jobs:
           build/x-linux-ci-${{matrix.preset}}/tests/launch_args_test
           build/x-linux-ci-${{matrix.preset}}/tests/app_update_test
           build/x-linux-ci-${{matrix.preset}}/tests/widescreen_fit_test
+          python3 tools/test_minigame_determinism.py build/x-linux-ci-${{matrix.preset}}
 
       - name: Generate AppImage
         run: ci/build-appimage.sh

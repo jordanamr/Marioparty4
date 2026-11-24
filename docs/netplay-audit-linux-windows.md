@@ -26,3 +26,15 @@ L’échelle de résolution, le format 4:3 ou ultralarge, le plein écran et l�
 - Les rapports de désynchronisation conservent désormais les adresses de retour sur toute la largeur d’un pointeur. Cela permet d’identifier le module appelant sur les exécutables 64 bits, lorsque le module est encore chargé.
 
 Une compilation et un parcours de jeu ne couvrent pas à eux seuls tous les embranchements d’un plateau. Pour comparer les comportements après une modification, reprendre le même RVZ sur les deux pairs, choisir des réglages opposés et comparer les états confirmés jusqu’au retour du mini-jeu ou jusqu’après la sortie de la boutique.
+
+## Curseurs et fenêtres de la salle Extra
+
+Dans le module m409, un essai à deux clients Linux a identifié à l’image 8165 une différence de huit blocs de mémoire système, soit 5 024 octets. Les deux rapports donnent les mêmes entrées et le même état des générateurs. Le recensement des allocations permet de remonter au viseur, dont le rappel de dessin pouvait détruire une instance avant le prochain pas de jeu. Les modules m409 et m415 exécutent désormais cette mise à jour depuis le gestionnaire des objets. La sonde de régression vérifie la libération des huit blocs avec des cadences de dessin différentes.
+
+Le menu des jeux bonus comparait les dimensions de ses textes à des valeurs non initialisées. De plus, le calcul de la mémoire du fond de fenêtre tronquait les dimensions alignées à huit bits. Le menu part désormais d’une taille nulle et le moteur réserve toute la surface des tuiles. Sur Linux comme sur Windows, le compagnon peut conserver le journal des états confirmés et son fichier détaillant les désaccords.
+
+Depuis la racine du projet, après compilation du port Linux avec Ninja, la commande suivante exécute les régressions sur l’eau, les textures et la durée de vie du viseur, sans image disque.
+
+```sh
+python3 tools/test_minigame_determinism.py build/linux-clang-relwithdebinfo
+```

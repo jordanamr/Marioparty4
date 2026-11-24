@@ -261,6 +261,9 @@ void fn_1_7674(float *, Vec *, Vec *, s32);
 void fn_1_7A54(float, Vec *, float *, Vec *, Vec *, s32);
 // map.c
 void fn_1_8780(s16 arg0, s16 arg1);
+#ifdef TARGET_PC
+void M415UpdateCursors(void);
+#endif
 void fn_1_95C0(HU3DMODEL *, Mtx);
 ANIMDATA **fn_1_9734(s16);
 void fn_1_9DC8(unkSubStruct2 *);

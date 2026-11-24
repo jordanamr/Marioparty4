@@ -43,6 +43,7 @@ void fn_1_C0C0(void)
         fn_1_E228(var_r31);
     }
     HuMemDirectFree(lbl_1_bss_F0.unk10);
+    lbl_1_bss_F0.unk0 = 0;
     HuMemDirectFree(lbl_1_bss_F0.unkC);
     Hu3DModelKill(lbl_1_bss_F0.unk4);
 }
@@ -230,6 +231,32 @@ void fn_1_C164(unkStruct8 *arg0)
     }
 }
 
+static void UpdateCursor(unkStruct8 *cursor)
+{
+    if (cursor->unk30) {
+        cursor->unk30(cursor);
+    }
+    if (cursor->unk8) {
+        fn_1_D430(cursor);
+    }
+}
+
+#ifdef TARGET_PC
+void M409UpdateCursors(void)
+{
+    int i;
+    if (omPauseChk()) {
+        return;
+    }
+    for (i = 0; i < lbl_1_bss_F0.unk0; ++i) {
+        unkStruct8 *cursor = &lbl_1_bss_F0.unk10[i];
+        if ((cursor->unk8 & 2) && !(cursor->unk8 & 4)) {
+            UpdateCursor(cursor);
+        }
+    }
+}
+#endif
+
 void fn_1_CB98(HU3DMODEL *model, Mtx matrix)
 {
     Mtx sp38;
@@ -247,16 +274,12 @@ void fn_1_CB98(HU3DMODEL *model, Mtx matrix)
         if ((var_r31->unk8 == 0) || ((var_r31->unk8 & 2) == 0) || ((var_r31->unk8 & 4) != 0)) {
             continue;
         }
-        if (omPauseChk() == 0) {
-            if (var_r31->unk30) {
-                var_r31->unk30(var_r31);
-            }
-            if (var_r31->unk8 == 0)
-                continue;
-            fn_1_D430(var_r31);
-            if (var_r31->unk8 == 0)
-                continue;
+#ifndef TARGET_PC
+        if (!omPauseChk()) {
+            UpdateCursor(var_r31);
+            if (!var_r31->unk8) continue;
         }
+#endif
         fn_1_C164(var_r31);
     }
 }
@@ -508,6 +531,7 @@ void fn_1_D430(unkStruct8 *arg0)
                     }
                     else if ((var_r28->unk34 & 0x80000000) != 0) {
                         fn_1_DDB8(arg0->unk0);
+                        return;
                     }
                     var_r27++;
                 }
