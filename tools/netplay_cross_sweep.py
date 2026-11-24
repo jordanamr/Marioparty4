@@ -36,6 +36,7 @@ SCENARIOS = {
     "avalanche": Scenario("2:4", "m406Dll", True),
     "domination": Scenario("2:5", "m407dll", False),
     "stamp-out": Scenario("2:13", "m415Dll", True),
+    "take-a-breather": Scenario("2:15", "m456Dll", True),
     "toad": Scenario("0:0", "w01Dll", False, 0, 89),
     "goomba": Scenario("0:-2", "w02Dll", True, 1, 90),
     "shy-guy": Scenario("0:-1", "w03Dll", False, 2, 91),
