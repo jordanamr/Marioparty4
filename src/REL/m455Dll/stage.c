@@ -7,6 +7,7 @@
 #include "game/sprite.h"
 
 #include "REL/m455Dll.h"
+#include "port/widescreen.h"
 
 #include "ext_math.h"
 #include "math.h"
@@ -504,7 +505,6 @@ void fn_1_4B1C(HU3DMODEL *model, Mtx matrix)
     float fov;
     Mtx proj;
     Mtx texMtx;
-    Mtx projCamera;
     s16 lightMask;
     s16 i;
 
@@ -514,11 +514,8 @@ void fn_1_4B1C(HU3DMODEL *model, Mtx matrix)
     if (fov <= 0.0f) {
         fov = 45;
     }
-    MTXLightPerspective(proj, fov, 1.2f, 0.5f, -0.5f, 0.5f, 0.5f);
-    MTXInverse(Hu3DCameraMtx, texMtx);
-    MTXConcat(texMtx, Hu3DCameraMtx, texMtx);
-    MTXConcat(proj, Hu3DCameraMtx, projCamera);
-    MTXConcat(projCamera, texMtx, texMtx);
+    MTXLightPerspective(proj, fov, PARTYBOARD_RENDER_ASPECT(cameraP->aspect), 0.5f, -0.5f, 0.5f, 0.5f);
+    MTXConcat(proj, matrix, texMtx);
     GXLoadTexMtxImm(texMtx, GX_TEXMTX0, GX_MTX3x4);
     GXSetTexCoordGen(GX_TEXCOORD0, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX0);
     lightMask = Hu3DLightSet(model, &Hu3DCameraMtx, &Hu3DCameraMtxXPose, 4);
@@ -563,11 +560,18 @@ void fn_1_4E64(HU3DMODEL *model, Mtx matrix)
     Mtx invXPose;
     Mtx proj;
     Mtx texMtx;
-    Mtx projCamera;
     float sp14;
     float sp10;
     float fov;
     s16 i;
+#ifdef TARGET_PC
+    /* The console water mesh ends just beyond the sides of the original camera.
+     * Both the geometry and its framebuffer lookup need the same render matrix. */
+    Mtx waterMatrix;
+    MTXScale(waterMatrix, PartyBoard_WidescreenAspectScale(), 1.0f, 1.0f);
+    MTXConcat(matrix, waterMatrix, waterMatrix);
+    matrix = waterMatrix;
+#endif
     fn_1_4B1C(model, matrix);
     sp14 = 1.5f;
     sp10 = 0;
@@ -578,11 +582,8 @@ void fn_1_4E64(HU3DMODEL *model, Mtx matrix)
     if (fov <= 0.0f) {
         fov = 45;
     }
-    MTXLightPerspective(proj, fov, 1.2f, 0.5f, -0.5f, 0.5f, 0.5f);
-    MTXInverse(Hu3DCameraMtx, texMtx);
-    MTXConcat(texMtx, Hu3DCameraMtx, texMtx);
-    MTXConcat(proj, Hu3DCameraMtx, projCamera);
-    MTXConcat(projCamera, texMtx, texMtx);
+    MTXLightPerspective(proj, fov, PARTYBOARD_RENDER_ASPECT(cameraP->aspect), 0.5f, -0.5f, 0.5f, 0.5f);
+    MTXConcat(proj, matrix, texMtx);
     GXLoadTexMtxImm(texMtx, GX_TEXMTX0, GX_MTX3x4);
     GXSetTexCoordGen(GX_TEXCOORD0, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX0);
     GXSetTexCoordGen(GX_TEXCOORD1, GX_TG_MTX2x4, GX_TG_TEX1, GX_IDENTITY);
@@ -741,7 +742,7 @@ void fn_1_59A0(HU3DMODEL *model, Mtx matrix)
 {
     s32 sp10 = 0;
     Work347C *work = model->hookData;
-    float scale = 1.5f;
+    float scale = PARTYBOARD_RENDER_ASPECT(1.5f);
     float x = 0;
     Mtx temp;
     Mtx final;
